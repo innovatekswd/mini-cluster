@@ -51,7 +51,7 @@ apps:
 parts:
   minicluster-cli:
     plugin: dump
-    source: ../minicluster-cli/build
+    source: cli/build
     organize:
       mc: bin/mc
     stage:
@@ -74,7 +74,7 @@ parts:
     stage-packages:
       - libicu70
     override-build: |
-      dotnet publish ControlCenter.Api/Innovatek.ControlCenter.Api.csproj \
+      dotnet publish api/Innovatek.Parallel.MiniCluster.Api/Innovatek.Parallel.MiniCluster.Api.csproj \
         -c Release \
         -o $CRAFT_PART_INSTALL/opt/minicluster \
         --self-contained false \
@@ -85,7 +85,7 @@ parts:
 
   minicluster-ui:
     plugin: npm
-    source: ../minicluster-ui
+    source: ui
     npm-node-version: "20.11.0"
     override-build: |
       npm ci

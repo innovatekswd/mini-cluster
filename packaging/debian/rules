@@ -10,14 +10,14 @@ export DOTNET_NOLOGO = 1
 override_dh_auto_build:
 	# Build .NET API
 	mkdir -p build
-	dotnet publish ControlCenter.Api/Innovatek.ControlCenter.Api.csproj \
+	dotnet publish api/Innovatek.Parallel.MiniCluster.Api/Innovatek.Parallel.MiniCluster.Api.csproj \
 		-c Release \
 		-o build/publish \
 		--self-contained false
-	# Build React UI (if minicluster-ui exists alongside)
-	if [ -d "../minicluster-ui" ]; then \
-		cd ../minicluster-ui && npm ci && npm run build; \
-		cp -r ../minicluster-ui/build/client build/wwwroot; \
+	# Build React UI
+	if [ -d "ui" ]; then \
+		cd ui && npm ci && npm run build; \
+		cp -r ui/build/client build/wwwroot; \
 	fi
 
 override_dh_auto_install:
@@ -33,7 +33,7 @@ override_dh_auto_install:
 	install -m 644 debian/minicluster.service debian/minicluster/lib/systemd/system/
 	# Install configuration directory
 	install -d debian/minicluster/etc/minicluster
-	install -m 644 ControlCenter.Api/appsettings.json debian/minicluster/etc/minicluster/
+	install -m 644 api/Innovatek.Parallel.MiniCluster.Api/appsettings.json debian/minicluster/etc/minicluster/
 	# Create symlink for config
 	ln -sf /etc/minicluster/appsettings.json debian/minicluster/opt/minicluster/appsettings.json
 	# Create data directory
@@ -43,9 +43,10 @@ override_dh_auto_install:
 
 override_dh_auto_clean:
 	rm -rf build
-	rm -rf ControlCenter.Api/bin ControlCenter.Api/obj
-	rm -rf ControlCenter.Core/bin ControlCenter.Core/obj
-	rm -rf Innovatek.VariableResolver/bin Innovatek.VariableResolver/obj
+	rm -rf api/Innovatek.Parallel.MiniCluster.Api/bin api/Innovatek.Parallel.MiniCluster.Api/obj
+	rm -rf api/Innovatek.Parallel.MiniCluster.Core/bin api/Innovatek.Parallel.MiniCluster.Core/obj
+	rm -rf api/Innovatek.Parallel.Identity/bin api/Innovatek.Parallel.Identity/obj
+	rm -rf api/Innovatek.Parallel.TemplateEngine/bin api/Innovatek.Parallel.TemplateEngine/obj
 
 override_dh_strip:
 	# Skip stripping for .NET assemblies

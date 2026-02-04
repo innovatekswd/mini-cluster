@@ -29,7 +29,7 @@ type TestEnv struct {
 func DefaultEnv() *TestEnv {
 	baseDir := os.Getenv("MINICLUSTER_TEST_BASE")
 	if baseDir == "" {
-		// Assume we're in minicluster-integration-tests
+		// Assume we're in tests
 		baseDir = filepath.Join("..", "")
 	}
 
@@ -37,7 +37,7 @@ func DefaultEnv() *TestEnv {
 		APIServerURL: "http://localhost:5147",
 		CLIPath:      filepath.Join(baseDir, "minicluster-cli", "build", "mc"),
 		APIPath:      filepath.Join(baseDir, "minicluster-api"),
-		WorkDir:      filepath.Join(baseDir, "minicluster-integration-tests", ".testdata"),
+		WorkDir:      filepath.Join(baseDir, "tests", ".testdata"),
 		Verbose:      os.Getenv("VERBOSE") == "1",
 	}
 }

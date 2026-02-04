@@ -76,7 +76,7 @@ make test
 ## Project Structure
 
 ```
-minicluster-integration-tests/
+tests/
 ├── go.mod
 ├── Makefile
 ├── README.md

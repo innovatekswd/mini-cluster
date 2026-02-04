@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/innovatek/minicluster-integration-tests/testutil"
+	"github.com/innovatek/tests/testutil"
 )
 
 var testEnv *testutil.TestEnv

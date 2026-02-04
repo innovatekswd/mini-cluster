@@ -24,10 +24,10 @@ if [ ! -d "$API_PUBLISH_DIR" ]; then
     echo "Usage: ./package-deb.sh <version> <api-publish-dir> [ui-build-dir] [cli-binary]"
     echo ""
     echo "First build the API:"
-    echo "  dotnet publish ControlCenter.Api/Innovatek.ControlCenter.Api.csproj -c Release -o ./build/publish --self-contained false"
+    echo "  dotnet publish api/Innovatek.Parallel.MiniCluster.Api/Innovatek.Parallel.MiniCluster.Api.csproj -c Release -o ./build/publish --self-contained false"
     echo ""
     echo "Then package:"
-    echo "  ./package-deb.sh 1.0.0 ./build/publish ../minicluster-ui/build/client ../minicluster-cli/build/mc"
+    echo "  ./package-deb.sh 1.0.0 ./build/publish ui/build/client cli/build/mc"
     exit 1
 fi
 
@@ -73,8 +73,8 @@ fi
 # Copy configuration (use from package or from publish dir)
 if [ -f "${PKG_DIR}/opt/minicluster/appsettings.json" ]; then
     cp "${PKG_DIR}/opt/minicluster/appsettings.json" "${PKG_DIR}/etc/minicluster/"
-elif [ -f "$PROJECT_DIR/ControlCenter.Api/appsettings.json" ]; then
-    cp "$PROJECT_DIR/ControlCenter.Api/appsettings.json" "${PKG_DIR}/etc/minicluster/"
+elif [ -f "$PROJECT_DIR/api/Innovatek.Parallel.MiniCluster.Api/appsettings.json" ]; then
+    cp "$PROJECT_DIR/api/Innovatek.Parallel.MiniCluster.Api/appsettings.json" "${PKG_DIR}/etc/minicluster/"
 fi
 
 # Update connection strings for production paths

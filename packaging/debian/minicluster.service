@@ -8,7 +8,7 @@ Type=simple
 User=minicluster
 Group=minicluster
 WorkingDirectory=/opt/minicluster
-ExecStart=/usr/bin/dotnet /opt/minicluster/Innovatek.ControlCenter.Api.dll
+ExecStart=/usr/bin/dotnet /opt/minicluster/Innovatek.Parallel.MiniCluster.Api.dll
 Restart=always
 RestartSec=10
 

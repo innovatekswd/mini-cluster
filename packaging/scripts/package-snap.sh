@@ -20,10 +20,10 @@ if [ ! -d "$API_PUBLISH_DIR" ]; then
     echo "Usage: ./packaging/scripts/package-snap.sh <api-publish-dir> [ui-build-dir]"
     echo ""
     echo "First build the API:"
-    echo "  dotnet publish ControlCenter.Api/Innovatek.ControlCenter.Api.csproj -c Release -o ./build/publish --self-contained false"
+    echo "  dotnet publish api/Innovatek.Parallel.MiniCluster.Api/Innovatek.Parallel.MiniCluster.Api.csproj -c Release -o ./build/publish --self-contained false"
     echo ""
     echo "Then package:"
-    echo "  ./packaging/scripts/package-snap.sh ./build/publish ../minicluster-ui/build/client"
+    echo "  ./packaging/scripts/package-snap.sh ./build/publish ui/build/client"
     exit 1
 fi
 

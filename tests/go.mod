@@ -1,4 +1,4 @@
-module github.com/innovatek/minicluster-integration-tests
+module github.com/innovatek/tests
 
 go 1.24
 

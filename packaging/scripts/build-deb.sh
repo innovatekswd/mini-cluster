@@ -8,7 +8,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACKAGING_DIR="$(dirname "$SCRIPT_DIR")"
 PROJECT_DIR="$(dirname "$PACKAGING_DIR")"
-CLI_DIR="$(dirname "$PROJECT_DIR")/minicluster-cli"
+CLI_DIR="$PROJECT_DIR/cli"
 
 VERSION="${1:-1.0.0}"
 
@@ -16,7 +16,7 @@ cd "$PROJECT_DIR"
 
 echo "=== Step 1: Building API ==="
 mkdir -p ./build
-dotnet publish ControlCenter.Api/Innovatek.ControlCenter.Api.csproj \
+dotnet publish api/Innovatek.Parallel.MiniCluster.Api/Innovatek.Parallel.MiniCluster.Api.csproj \
     -c Release \
     -o ./build/publish \
     /p:UseAppHost=false \
@@ -24,12 +24,12 @@ dotnet publish ControlCenter.Api/Innovatek.ControlCenter.Api.csproj \
 
 echo ""
 echo "=== Step 2: Building UI ==="
-if [ -d "../minicluster-ui" ]; then
-    cd ../minicluster-ui
+if [ -d "$PROJECT_DIR/ui" ]; then
+    cd "$PROJECT_DIR/ui"
     npm ci
     npm run build
     cd "$PROJECT_DIR"
-    UI_DIR="../minicluster-ui/build/client"
+    UI_DIR="$PROJECT_DIR/ui/build/client"
 else
     echo "UI not found, skipping..."
     UI_DIR=""

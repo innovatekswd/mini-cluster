@@ -19,6 +19,6 @@ fi
 cd "$SNAP/opt/minicluster"
 
 # Start the application
-exec "$SNAP/opt/minicluster/Innovatek.ControlCenter.Api" \
+exec dotnet "$SNAP/opt/minicluster/Innovatek.Parallel.MiniCluster.Api.dll" \
     --contentRoot "$SNAP/opt/minicluster" \
     --urls "$ASPNETCORE_URLS"
