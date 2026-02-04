@@ -1,0 +1,25 @@
+Source: minicluster
+Section: admin
+Priority: optional
+Maintainer: Innovatek <support@innovatek.com>
+Build-Depends: debhelper-compat (= 13), dotnet-sdk-9.0, nodejs (>= 18), npm
+Standards-Version: 4.6.0
+Homepage: https://github.com/innovatek/minicluster
+Vcs-Browser: https://github.com/innovatek/minicluster
+Vcs-Git: https://github.com/innovatek/minicluster.git
+
+Package: minicluster
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}, aspnetcore-runtime-9.0
+Recommends: nginx
+Description: MiniCluster - Lightweight Application Orchestration Platform
+ MiniCluster is a lightweight application orchestration and management
+ platform that provides a web-based control center for managing
+ distributed applications, services, and configurations.
+ .
+ Features:
+  - Web-based dashboard for application management
+  - Real-time service monitoring and metrics
+  - Process lifecycle management
+  - Configuration management with variable resolution
+  - Multi-machine support

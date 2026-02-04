@@ -1,0 +1,170 @@
+#!/bin/bash
+set -e
+
+# Function to check if .NET 10 runtime is installed
+check_dotnet_runtime() {
+    if command -v dotnet &> /dev/null; then
+        if dotnet --list-runtimes 2>/dev/null | grep -q "Microsoft.AspNetCore.App 10\|Microsoft.NETCore.App 10"; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Function to install .NET 10 runtime
+install_dotnet_runtime() {
+    echo ""
+    echo "=========================================="
+    echo " .NET 10 Runtime Required"
+    echo "=========================================="
+    echo ""
+    echo "MiniCluster requires ASP.NET Core 10 runtime."
+    echo ""
+    
+    # Detect Ubuntu/Debian version
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        DISTRO=$ID
+        VERSION=$VERSION_ID
+    else
+        DISTRO="unknown"
+        VERSION="unknown"
+    fi
+    
+    echo "Detected: $DISTRO $VERSION"
+    echo ""
+    
+    # Ask user for permission to auto-install
+    if [ -t 0 ]; then
+        echo "Would you like to automatically add Microsoft's repository and install .NET 10?"
+        echo ""
+        read -p "Auto-install .NET 10 runtime? [Y/n] " -n 1 -r
+        echo ""
+        
+        if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
+            echo "Adding Microsoft package repository..."
+            
+            # Install prerequisites
+            apt-get update -qq
+            apt-get install -y -qq wget apt-transport-https
+            
+            # Add Microsoft repository
+            case "$DISTRO" in
+                ubuntu)
+                    wget -q "https://packages.microsoft.com/config/ubuntu/${VERSION}/packages-microsoft-prod.deb" -O /tmp/packages-microsoft-prod.deb
+                    dpkg -i /tmp/packages-microsoft-prod.deb
+                    rm /tmp/packages-microsoft-prod.deb
+                    ;;
+                debian)
+                    wget -q "https://packages.microsoft.com/config/debian/${VERSION}/packages-microsoft-prod.deb" -O /tmp/packages-microsoft-prod.deb
+                    dpkg -i /tmp/packages-microsoft-prod.deb
+                    rm /tmp/packages-microsoft-prod.deb
+                    ;;
+                *)
+                    echo "Unsupported distribution for auto-install."
+                    echo "Please manually install .NET 10 runtime."
+                    show_manual_instructions
+                    return 1
+                    ;;
+            esac
+            
+            # Install runtime
+            echo "Installing ASP.NET Core 10 runtime..."
+            apt-get update -qq
+            apt-get install -y aspnetcore-runtime-10.0
+            
+            echo ""
+            echo ".NET 10 runtime installed successfully!"
+            return 0
+        fi
+    fi
+    
+    # Show manual instructions if not auto-installing
+    show_manual_instructions
+    return 1
+}
+
+# Function to show manual installation instructions
+show_manual_instructions() {
+    echo ""
+    echo "=========================================="
+    echo " Manual Installation Instructions"
+    echo "=========================================="
+    echo ""
+    echo "Run these commands to install .NET 10 runtime:"
+    echo ""
+    echo "  # Add Microsoft package repository"
+    echo "  wget https://packages.microsoft.com/config/ubuntu/\$(lsb_release -rs)/packages-microsoft-prod.deb -O packages-microsoft-prod.deb"
+    echo "  sudo dpkg -i packages-microsoft-prod.deb"
+    echo "  rm packages-microsoft-prod.deb"
+    echo ""
+    echo "  # Install ASP.NET Core runtime"
+    echo "  sudo apt update"
+    echo "  sudo apt install aspnetcore-runtime-10.0"
+    echo ""
+    echo "After installing .NET 10, start MiniCluster with:"
+    echo "  sudo systemctl start minicluster"
+    echo ""
+}
+
+case "$1" in
+    configure)
+        # Check for .NET 10 runtime
+        if ! check_dotnet_runtime; then
+            install_dotnet_runtime || true
+        fi
+        
+        # Create minicluster user if it doesn't exist
+        if ! getent passwd minicluster > /dev/null; then
+            adduser --system --group --no-create-home --home /opt/minicluster minicluster
+        fi
+
+        # Set ownership
+        chown -R minicluster:minicluster /opt/minicluster
+        chown -R minicluster:minicluster /var/lib/minicluster
+        chown -R minicluster:minicluster /var/log/minicluster
+        chown -R minicluster:minicluster /etc/minicluster
+
+        # Set permissions
+        chmod 755 /opt/minicluster
+        chmod 750 /var/lib/minicluster
+        chmod 750 /var/log/minicluster
+        chmod 750 /etc/minicluster
+        chmod 640 /etc/minicluster/appsettings.json
+
+        # Enable and start service
+        systemctl daemon-reload
+        systemctl enable minicluster.service
+        
+        echo ""
+        echo "=========================================="
+        echo " MiniCluster Installed Successfully!"
+        echo "=========================================="
+        echo ""
+        
+        # Check again and provide appropriate message
+        if check_dotnet_runtime; then
+            echo "To start the service:"
+            echo "  sudo systemctl start minicluster"
+        else
+            echo "NOTE: .NET 10 runtime not detected."
+            echo "Please install it first, then start the service:"
+            echo "  sudo systemctl start minicluster"
+        fi
+        
+        echo ""
+        echo "To check status:"
+        echo "  sudo systemctl status minicluster"
+        echo ""
+        echo "Configuration: /etc/minicluster/appsettings.json"
+        echo "Data:          /var/lib/minicluster"
+        echo "Logs:          journalctl -u minicluster"
+        echo ""
+        echo "Default URL:   http://localhost:5147"
+        echo ""
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

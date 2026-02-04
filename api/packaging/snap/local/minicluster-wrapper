@@ -1,0 +1,24 @@
+#!/bin/bash
+# MiniCluster wrapper script for Snap
+
+# Set up environment
+export ASPNETCORE_ENVIRONMENT="${ASPNETCORE_ENVIRONMENT:-Production}"
+export ASPNETCORE_URLS="${ASPNETCORE_URLS:-http://0.0.0.0:5147}"
+
+# Create necessary directories
+mkdir -p "$SNAP_COMMON/data"
+mkdir -p "$SNAP_COMMON/logs"
+mkdir -p "$SNAP_COMMON/config"
+
+# Copy default config if not exists
+if [ ! -f "$SNAP_COMMON/config/appsettings.json" ]; then
+    cp "$SNAP/opt/minicluster/appsettings.json" "$SNAP_COMMON/config/"
+fi
+
+# Change to application directory
+cd "$SNAP/opt/minicluster"
+
+# Start the application
+exec "$SNAP/opt/minicluster/Innovatek.ControlCenter.Api" \
+    --contentRoot "$SNAP/opt/minicluster" \
+    --urls "$ASPNETCORE_URLS"

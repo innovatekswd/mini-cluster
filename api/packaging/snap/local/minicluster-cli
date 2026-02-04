@@ -1,0 +1,52 @@
+#!/bin/bash
+# MiniCluster CLI tool for Snap
+
+SNAP_CONFIG="$SNAP_COMMON/config"
+API_URL="${MINICLUSTER_API_URL:-http://localhost:5147}"
+
+show_help() {
+    echo "MiniCluster CLI"
+    echo ""
+    echo "Usage: minicluster.cli <command> [options]"
+    echo ""
+    echo "Commands:"
+    echo "  status          Show service status"
+    echo "  config          Show configuration path"
+    echo "  logs            Show recent logs"
+    echo "  apps            List applications"
+    echo "  health          Check API health"
+    echo ""
+    echo "Configuration:"
+    echo "  Config file: $SNAP_CONFIG/appsettings.json"
+    echo "  Data dir:    $SNAP_COMMON/data"
+    echo "  Logs dir:    $SNAP_COMMON/logs"
+    echo ""
+}
+
+case "$1" in
+    status)
+        snap services minicluster
+        ;;
+    config)
+        echo "Configuration: $SNAP_CONFIG/appsettings.json"
+        if [ -f "$SNAP_CONFIG/appsettings.json" ]; then
+            cat "$SNAP_CONFIG/appsettings.json"
+        fi
+        ;;
+    logs)
+        journalctl -u snap.minicluster.minicluster -n 50 --no-pager
+        ;;
+    apps)
+        curl -s "$API_URL/api/apps" | python3 -m json.tool 2>/dev/null || echo "API not available"
+        ;;
+    health)
+        curl -s "$API_URL/health" && echo "" || echo "API not responding"
+        ;;
+    help|--help|-h)
+        show_help
+        ;;
+    *)
+        show_help
+        exit 1
+        ;;
+esac

@@ -1,0 +1,11 @@
+minicluster (1.0.0-1) stable; urgency=medium
+
+  * Initial release
+  * Web-based dashboard for application management
+  * Real-time service monitoring with SignalR
+  * Process lifecycle management
+  * Configuration management with variable resolution
+  * Multi-machine support
+  * SQLite database backend
+
+ -- Innovatek <support@innovatek.com>  Sat, 01 Feb 2026 00:00:00 +0000

@@ -1,0 +1,187 @@
+// Mock services data with app assignments for testing
+import type { Service } from '../types/Service';
+
+export const mockServices: Service[] = [
+  // E-Commerce Platform (appId: '1')
+  {
+    id: 'svc-1',
+    name: 'E-Commerce API',
+    executablePath: '/usr/bin/node',
+    arguments: 'dist/api/server.js',
+    workingDirectory: '/home/projects/ecommerce-api',
+    environmentVariables: { PORT: '3000', NODE_ENV: 'production' },
+    accessLink: 'http://localhost:3000',
+    isExternal: false,
+    useShellExecute: false,
+    createNoWindow: true,
+    autoStart: true,
+    captureOutput: 1,
+    status: 'running',
+    appId: '1',
+    createdAt: new Date('2026-01-15T10:00:00Z').toISOString(),
+    modifiedAt: new Date('2026-01-30T14:30:00Z').toISOString(),
+  },
+  {
+    id: 'svc-2',
+    name: 'E-Commerce Worker',
+    executablePath: '/usr/bin/node',
+    arguments: 'dist/worker/index.js',
+    workingDirectory: '/home/projects/ecommerce-worker',
+    environmentVariables: { QUEUE_URL: 'redis://localhost:6379' },
+    accessLink: '',
+    isExternal: false,
+    useShellExecute: false,
+    createNoWindow: true,
+    autoStart: true,
+    captureOutput: 1,
+    status: 'running',
+    appId: '1',
+    createdAt: new Date('2026-01-15T10:00:00Z').toISOString(),
+    modifiedAt: new Date('2026-01-30T14:30:00Z').toISOString(),
+  },
+  {
+    id: 'svc-3',
+    name: 'E-Commerce Database',
+    executablePath: '/usr/bin/postgres',
+    arguments: '-D /var/lib/postgresql/data',
+    workingDirectory: '/var/lib/postgresql',
+    environmentVariables: { POSTGRES_PASSWORD: 'secret' },
+    accessLink: '',
+    isExternal: false,
+    useShellExecute: false,
+    createNoWindow: true,
+    autoStart: true,
+    captureOutput: 1,
+    status: 'stopped',
+    appId: '1',
+    createdAt: new Date('2026-01-15T10:00:00Z').toISOString(),
+    modifiedAt: new Date('2026-01-30T14:30:00Z').toISOString(),
+  },
+  
+  // Analytics Pipeline (appId: '2')
+  {
+    id: 'svc-4',
+    name: 'Data Processor',
+    executablePath: '/usr/bin/python3',
+    arguments: 'processor.py',
+    workingDirectory: '/home/projects/analytics',
+    environmentVariables: { DATA_PATH: '/data' },
+    accessLink: '',
+    isExternal: false,
+    useShellExecute: false,
+    createNoWindow: true,
+    autoStart: true,
+    captureOutput: 1,
+    status: 'running',
+    appId: '2',
+    createdAt: new Date('2026-01-18T09:00:00Z').toISOString(),
+    modifiedAt: new Date('2026-01-29T16:00:00Z').toISOString(),
+  },
+  {
+    id: 'svc-5',
+    name: 'Analytics Dashboard',
+    executablePath: '/usr/bin/node',
+    arguments: 'server.js',
+    workingDirectory: '/home/projects/analytics-dashboard',
+    environmentVariables: { PORT: '8080' },
+    accessLink: 'http://localhost:8080',
+    isExternal: false,
+    useShellExecute: false,
+    createNoWindow: true,
+    autoStart: true,
+    captureOutput: 1,
+    status: 'running',
+    appId: '2',
+    createdAt: new Date('2026-01-18T09:00:00Z').toISOString(),
+    modifiedAt: new Date('2026-01-29T16:00:00Z').toISOString(),
+  },
+  
+  // Monitoring Stack (appId: '3')
+  {
+    id: 'svc-6',
+    name: 'Prometheus',
+    executablePath: '/usr/bin/prometheus',
+    arguments: '--config.file=/etc/prometheus/prometheus.yml',
+    workingDirectory: '/etc/prometheus',
+    environmentVariables: {},
+    accessLink: 'http://localhost:9090',
+    isExternal: false,
+    useShellExecute: false,
+    createNoWindow: true,
+    autoStart: true,
+    captureOutput: 1,
+    status: 'running',
+    appId: '3',
+    createdAt: new Date('2026-01-20T11:00:00Z').toISOString(),
+    modifiedAt: new Date('2026-01-31T08:00:00Z').toISOString(),
+  },
+  {
+    id: 'svc-7',
+    name: 'Grafana',
+    executablePath: '/usr/bin/grafana-server',
+    arguments: '',
+    workingDirectory: '/usr/share/grafana',
+    environmentVariables: { GF_SERVER_HTTP_PORT: '3001' },
+    accessLink: 'http://localhost:3001',
+    isExternal: false,
+    useShellExecute: false,
+    createNoWindow: true,
+    autoStart: true,
+    captureOutput: 1,
+    status: 'running',
+    appId: '3',
+    createdAt: new Date('2026-01-20T11:00:00Z').toISOString(),
+    modifiedAt: new Date('2026-01-31T08:00:00Z').toISOString(),
+  },
+  
+  // Unassigned services (no appId)
+  {
+    id: 'svc-8',
+    name: 'Legacy Service 1',
+    executablePath: '/usr/bin/node',
+    arguments: 'legacy.js',
+    workingDirectory: '/home/projects/legacy',
+    environmentVariables: {},
+    accessLink: '',
+    isExternal: false,
+    useShellExecute: false,
+    createNoWindow: true,
+    autoStart: false,
+    captureOutput: 1,
+    status: 'stopped',
+    createdAt: new Date('2026-01-10T08:00:00Z').toISOString(),
+    modifiedAt: new Date('2026-01-28T12:00:00Z').toISOString(),
+  },
+  {
+    id: 'svc-9',
+    name: 'Legacy Service 2',
+    executablePath: '/usr/bin/python3',
+    arguments: 'old_script.py',
+    workingDirectory: '/home/projects/old',
+    environmentVariables: {},
+    accessLink: '',
+    isExternal: false,
+    useShellExecute: false,
+    createNoWindow: true,
+    autoStart: false,
+    captureOutput: 1,
+    status: 'stopped',
+    createdAt: new Date('2026-01-10T08:00:00Z').toISOString(),
+    modifiedAt: new Date('2026-01-28T12:00:00Z').toISOString(),
+  },
+];
+
+// Helper to get services by app ID
+export function getServicesByAppId(appId: string): Service[] {
+  return mockServices.filter(service => service.appId === appId);
+}
+
+// Helper to get unassigned services
+export function getUnassignedServices(): Service[] {
+  return mockServices.filter(service => !service.appId);
+}
+
+// Helper to get all services
+export function getAllServices(): Service[] {
+  return mockServices;
+}

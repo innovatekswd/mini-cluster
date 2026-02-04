@@ -1,0 +1,106 @@
+name: minicluster
+version: '1.0.0'
+summary: Lightweight Process Management Platform
+description: |
+  MiniCluster is a modern process management and monitoring platform
+  that provides a web-based control center for managing applications,
+  services, and deployments across multiple machines.
+
+  Features:
+  - Web-based dashboard for process management
+  - Real-time monitoring and logging via SignalR
+  - Application deployment and configuration management
+  - REST API for automation
+  - Multi-machine support
+
+grade: stable
+confinement: strict
+base: core22
+architectures:
+  - build-on: amd64
+
+layout:
+  /var/lib/minicluster:
+    bind: $SNAP_COMMON/data
+  /var/log/minicluster:
+    bind: $SNAP_COMMON/logs
+
+apps:
+  minicluster:
+    command: bin/minicluster-wrapper
+    daemon: simple
+    restart-condition: always
+    restart-delay: 10s
+    plugs:
+      - network
+      - network-bind
+      - home
+      - removable-media
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://0.0.0.0:5147
+      DOTNET_PRINT_TELEMETRY_MESSAGE: "false"
+      HOME: $SNAP_COMMON
+
+  mc:
+    command: bin/mc
+    plugs:
+      - network
+      - home
+
+parts:
+  minicluster-cli:
+    plugin: dump
+    source: ../minicluster-cli/build
+    organize:
+      mc: bin/mc
+    stage:
+      - bin/mc
+
+  dotnet-runtime:
+    plugin: nil
+    stage-packages:
+      - aspnetcore-runtime-10.0
+    override-build: |
+      craftctl default
+
+  minicluster-api:
+    plugin: dotnet
+    source: .
+    dotnet-build-configuration: Release
+    dotnet-self-contained-runtime-identifier: linux-x64
+    build-packages:
+      - dotnet-sdk-10.0
+    stage-packages:
+      - libicu70
+    override-build: |
+      dotnet publish ControlCenter.Api/Innovatek.ControlCenter.Api.csproj \
+        -c Release \
+        -o $CRAFT_PART_INSTALL/opt/minicluster \
+        --self-contained false \
+        -r linux-x64
+      craftctl default
+    after:
+      - dotnet-runtime
+
+  minicluster-ui:
+    plugin: npm
+    source: ../minicluster-ui
+    npm-node-version: "20.11.0"
+    override-build: |
+      npm ci
+      npm run build
+      mkdir -p $CRAFT_PART_INSTALL/opt/minicluster/wwwroot
+      cp -r build/client/* $CRAFT_PART_INSTALL/opt/minicluster/wwwroot/
+      craftctl default
+    after:
+      - minicluster-api
+
+  wrapper-scripts:
+    plugin: dump
+    source: packaging/snap/local/
+    organize:
+      minicluster-wrapper: bin/minicluster-wrapper
+    after:
+      - minicluster-ui
+      - minicluster-cli

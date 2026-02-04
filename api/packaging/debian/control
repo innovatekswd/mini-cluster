@@ -1,0 +1,24 @@
+Source: minicluster
+Section: admin
+Priority: optional
+Maintainer: Innovatek <support@innovatek.com>
+Build-Depends: debhelper (>= 12), dotnet-sdk-10.0, nodejs (>= 18), npm
+Standards-Version: 4.5.1
+Homepage: https://github.com/innovatek/minicluster
+
+Package: minicluster
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: aspnetcore-runtime-10.0 | dotnet-runtime-10.0
+Pre-Depends: wget
+Description: MiniCluster - Lightweight Process Management Platform
+ MiniCluster is a modern process management and monitoring platform
+ that provides a web-based control center for managing applications,
+ services, and deployments across multiple machines.
+ .
+ Features:
+  - Web-based dashboard for process management
+  - Real-time monitoring and logging
+  - Application deployment and configuration
+  - Multi-machine support
+  - REST API for automation

@@ -1,0 +1,90 @@
+import type { AppWithStats } from "~/types/App";
+
+export const mockApps: AppWithStats[] = [
+  {
+    id: "1",
+    name: "E-Commerce",
+    description: "Online store and shopping cart services",
+    icon: "🛒",
+    color: "#10b981",
+    serviceCount: 5,
+    runningCount: 4,
+    stoppedCount: 1,
+    createdAt: "2024-01-15T10:00:00Z",
+    modifiedAt: "2024-01-20T14:30:00Z",
+    sortOrder: 1,
+  },
+  {
+    id: "2",
+    name: "Analytics",
+    description: "Data processing and visualization",
+    icon: "📊",
+    color: "#3b82f6",
+    serviceCount: 3,
+    runningCount: 3,
+    stoppedCount: 0,
+    createdAt: "2024-01-10T09:00:00Z",
+    modifiedAt: "2024-01-18T11:00:00Z",
+    sortOrder: 2,
+  },
+  {
+    id: "3",
+    name: "Monitoring",
+    description: "System health and performance tracking",
+    icon: "📈",
+    color: "#8b5cf6",
+    serviceCount: 4,
+    runningCount: 2,
+    stoppedCount: 2,
+    createdAt: "2024-01-12T08:30:00Z",
+    modifiedAt: "2024-01-19T16:45:00Z",
+    sortOrder: 3,
+  },
+  {
+    id: "4",
+    name: "Dev Tools",
+    description: "Development and testing utilities",
+    icon: "🔧",
+    color: "#f59e0b",
+    serviceCount: 6,
+    runningCount: 5,
+    stoppedCount: 1,
+    createdAt: "2024-01-08T12:00:00Z",
+    modifiedAt: "2024-01-21T10:15:00Z",
+    sortOrder: 4,
+  },
+  {
+    id: "5",
+    name: "API Gateway",
+    description: "API routing and authentication",
+    icon: "🚪",
+    color: "#06b6d4",
+    serviceCount: 2,
+    runningCount: 2,
+    stoppedCount: 0,
+    createdAt: "2024-01-14T15:30:00Z",
+    modifiedAt: "2024-01-22T09:00:00Z",
+    sortOrder: 5,
+  },
+  {
+    id: "6",
+    name: "Machine Learning",
+    description: "AI models and training pipelines",
+    icon: "🤖",
+    color: "#ec4899",
+    serviceCount: 3,
+    runningCount: 1,
+    stoppedCount: 2,
+    createdAt: "2024-01-16T11:00:00Z",
+    modifiedAt: "2024-01-23T13:20:00Z",
+    sortOrder: 6,
+  },
+];
+
+export function getAppsSorted() {
+  return [...mockApps].sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+export function getAppById(id: string) {
+  return mockApps.find(app => app.id === id);
+}

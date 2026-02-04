@@ -1,0 +1,15 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+    remove|upgrade|deconfigure)
+        # Stop service before removal
+        if systemctl is-active --quiet minicluster.service; then
+            systemctl stop minicluster.service
+        fi
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

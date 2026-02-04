@@ -1,0 +1,10 @@
+minicluster (1.0.0-1) stable; urgency=medium
+
+  * Initial release
+  * Web-based control center for process management
+  * Real-time monitoring and logging via SignalR
+  * Application deployment and configuration management
+  * REST API for automation
+  * Multi-machine support
+
+ -- Innovatek <support@innovatek.com>  Sat, 01 Feb 2026 12:00:00 +0000

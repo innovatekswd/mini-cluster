@@ -1,0 +1,37 @@
+[Unit]
+Description=MiniCluster Control Center API
+Documentation=https://github.com/innovatek/minicluster
+After=network.target
+
+[Service]
+Type=simple
+User=minicluster
+Group=minicluster
+WorkingDirectory=/opt/minicluster
+ExecStart=/usr/bin/dotnet /opt/minicluster/Innovatek.ControlCenter.Api.dll
+Restart=always
+RestartSec=10
+
+# Environment
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://0.0.0.0:5147
+Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=minicluster
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/minicluster /var/log/minicluster /etc/minicluster
+
+# Resource limits
+LimitNOFILE=65536
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

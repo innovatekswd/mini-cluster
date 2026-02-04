@@ -1,0 +1,174 @@
+{
+    "VariableGroups": 
+    [
+        {
+            "Name":"Production",
+            "Description":"Group1 Description",
+            "IsActive": true,
+            "Variables":{
+                "BaseDirectory": "E:\\innovatek\\builds\\setup-2025-04-28-B\\backend",
+                "Authority1": "http://127.0.0.1:8080/realms/ecommerce",
+                "Authority2": "https://annacoins.shj.ae/realms/ecommerce",
+                "Authority": "https://annacoins.shj.ae/realms/ecommerce",
+                "AuthorityEmpty": "",
+                "ValidIssuer": "https://annacoins.shj.ae/realms/ecommerce",
+                "db_prod": "--ConnectionStrings:Default=\"Server=10.32.27.154;Initial Catalog=TAJIR_Awqaf;User Id=TAJIR_IAASAAG_22;Password=R#@1542@25922A$mpfq;MultipleActiveResultSets=true;TrustServerCertificate=True\"",
+                "BaseCmdLineArgs_prod": "--ConnectionStrings:Default=\"Server=10.32.27.154;Initial Catalog=TAJIR_Awqaf;User Id=TAJIR_IAASAAG_22;Password=R#@1542@25922A$mpfq;MultipleActiveResultSets=true;TrustServerCertificate=True\" --ConnectionStrings:KeyCloak=\"Server=AWQAF-CPW-ACWB1\\SQLEXPRESS;Database=keycloak;User Id=sa;Password=P@ssw0rd@2025;Encrypt=true;TrustServerCertificate=true\" --ConnectionStrings:messaging=\"rabbitmq://127.0.0.1:5672/\" --services:configuration-api:http:0=http://127.0.0.1:9910 --services:catalog-api:http:0=http://127.0.0.1:9903 --services:stock-api:http:0=http://127.0.0.1:9906 --services:file-api:http:0=http://127.0.0.1:9904 --services:cart-api:http:0=http://127.0.0.1:9902 --services:shipping-api:http:0=http://127.0.0.1:9905 --services:order-api:http:0=http://127.0.0.1:9907 --services:otp-api:http:0=http://127.0.0.1:9909 --services:notification-api:http:0=http://127.0.0.1:9912 --OpenTelemetry:Tracing:Exporter:Otlp:Endpoint=http://127.0.0.1:5341/ingest/otlp/v1/traces  --AuthServer:Authority=https://annacoins.shj.ae/realms/ecommerce --AuthServer:HttpClientUrl=https://annacoins.shj.ae/admin/realms/ecommerce/ --AuthServer:RequireHttpsMetadata=false --IdentityClients:Default:Authority={Authority} --IdentityClients:Default:RequireHttpsMetadata=false --IdentityClients:Default:RedirectUri=http://localhost/swagger/oauth2-redirect.html",
+                "BaseCmdLineArgs": "--AuthServer:CustomerClientSecret=dTfPKNWiATfcfM1Fx0fiFmQ3qp6THSaY --AuthServer:HttpClientUrl=\"https://annacoins.shj.ae/admin/realms/ecommerce/\" --AuthServer:RequireHttpsMetadata=false --ConnectionStrings:SeqUrl=\"http://localhost:5341/\"  --ConnectionStrings:Default=\"Server=10.32.27.154;Initial Catalog=TAJIR_Awqaf;User Id=TAJIR_IAASAAG_22;Password=R#@1542@25922A$mpfq;MultipleActiveResultSets=true;TrustServerCertificate=True\" --ConnectionStrings:KeyCloak=\"Server=AWQAF-CPW-ACWB1\\SQLEXPRESS;Database=keycloak;User Id=sa;Password=P@ssw0rd@2025;Encrypt=true;TrustServerCertificate=true\" --ConnectionStrings:messaging=\"rabbitmq://127.0.0.1:5672/\" --services:configuration-api:http:0=http://127.0.0.1:9910 --services:catalog-api:http:0=http://127.0.0.1:9903 --services:stock-api:http:0=http://127.0.0.1:9906 --services:file-api:http:0=http://127.0.0.1:9904 --services:cart-api:http:0=http://127.0.0.1:9902 --services:shipping-api:http:0=http://127.0.0.1:9905 --services:order-api:http:0=http://127.0.0.1:9907 --services:otp-api:http:0=http://127.0.0.1:9909 --services:notification-api:http:0=http://127.0.0.1:9912 --OpenTelemetry:Tracing:Exporter:Otlp:Endpoint=http://127.0.0.1:5341/ingest/otlp/v1/traces   --AuthServer:RequireHttpsMetadata=false --IdentityClients:Default:RequireHttpsMetadata=false --IdentityClients:Default:RedirectUri=http://localhost/swagger/oauth2-redirect.html"
+            }
+        }
+    ] ,
+    "Apps": [
+        {
+            "Name": "configuration_api",
+            "ExecutablePath": "dotnet",
+            "Arguments": "{BaseDirectory}\\configuration_api\\Innovatek.ConfigurationService.HttpApi.Host.dll --IdentityClients:Default:Authority=\"{Authority1}\" --AuthServer:Authority=\"{ValidIssuer}\" {BaseCmdLineArgs}",
+            "EnvironmentVariables": {
+                "ASPNETCORE_ENVIRONMENT": "Production",
+                "ASPNETCORE_URLS": "http://0.0.0.0:9910",
+                "OTEL_EXPORTER_OTLP_ENDPOINT": "http://127.0.0.1:4317"
+            },
+            "AutoStart": false,
+            "WorkingDirectory": "{BaseDirectory}\\configuration_api",
+            "AccessLink": "http://127.0.0.1:9910",
+            "IsExternal": false
+        },
+        {
+            "Name": "file_api",
+            "ExecutablePath": "dotnet",
+            "Arguments": "{BaseDirectory}\\file_api\\Innovatek.FileServer.API.dll {BaseCmdLineArgs}",
+            "EnvironmentVariables": {
+                "ASPNETCORE_ENVIRONMENT": "Production",
+                "ASPNETCORE_URLS": "http://0.0.0.0:9904",
+                "OTEL_EXPORTER_OTLP_ENDPOINT": "http://127.0.0.1:4317"
+            },
+            "AutoStart": false,
+            "WorkingDirectory": "{BaseDirectory}\\file_api",
+            "AccessLink": "http://127.0.0.1:9904",
+            "IsExternal": false
+        },
+        {
+            "Name": "otp_api",
+            "ExecutablePath": "dotnet",
+            "Arguments": "{BaseDirectory}\\otp_api\\Innovatek.OTPService.dll {BaseCmdLineArgs}",
+            "EnvironmentVariables": {
+                "ASPNETCORE_ENVIRONMENT": "Production",
+                "ASPNETCORE_URLS": "http://0.0.0.0:9909",
+                "OTEL_EXPORTER_OTLP_ENDPOINT": "http://127.0.0.1:4317"
+            },
+            "AutoStart": false,
+            "WorkingDirectory": "{BaseDirectory}\\otp_api",
+            "AccessLink": "http://127.0.0.1:9909",
+            "IsExternal": false
+        },
+        {
+            "Name": "notification_api",
+            "ExecutablePath": "dotnet",
+            "Arguments": "{BaseDirectory}\\notification_api\\Innovatek.Ecommerce.Notification.HttpApi.Host.dll {BaseCmdLineArgs}",
+            "EnvironmentVariables": {
+                "ASPNETCORE_ENVIRONMENT": "Production",
+                "ASPNETCORE_URLS": "http://0.0.0.0:9912",
+                "OTEL_EXPORTER_OTLP_ENDPOINT": "http://127.0.0.1:4317"
+            },
+            "AutoStart": false,
+            "WorkingDirectory": "{BaseDirectory}\\notification_api",
+            "AccessLink": "http://127.0.0.1:9912",
+            "IsExternal": false
+        },
+        {
+            "Name": "stock_api",
+            "ExecutablePath": "dotnet",
+            "Arguments": "{BaseDirectory}\\stock_api\\Innovatek.Inventory.API.dll {BaseCmdLineArgs}",
+            "EnvironmentVariables": {
+                "ASPNETCORE_ENVIRONMENT": "Production",
+                "ASPNETCORE_URLS": "http://0.0.0.0:9906",
+                "OTEL_EXPORTER_OTLP_ENDPOINT": "http://127.0.0.1:4317"
+            },
+            "AutoStart": false,
+            "WorkingDirectory": "{BaseDirectory}\\stock_api",
+            "AccessLink": "http://127.0.0.1:9906",
+            "IsExternal": false
+        },
+        {
+            "Name": "cart_api",
+            "ExecutablePath": "dotnet",
+            "Arguments": "{BaseDirectory}\\cart_api\\Innovatek.Ecommerce.CartService.HttpApi.Host.dll {BaseCmdLineArgs}",
+            "EnvironmentVariables": {
+                "ASPNETCORE_ENVIRONMENT": "Production",
+                "ASPNETCORE_URLS": "http://0.0.0.0:9902",
+                "OTEL_EXPORTER_OTLP_ENDPOINT": "http://127.0.0.1:4317"
+            },
+            "AutoStart": false,
+            "WorkingDirectory": "{BaseDirectory}\\cart_api",
+            "AccessLink": "http://127.0.0.1:9902",
+            "IsExternal": false
+        },
+        {
+            "Name": "catalog_api",
+            "ExecutablePath": "dotnet",
+            "Arguments": "{BaseDirectory}\\catalog_api\\Innovatek.CatalogService.API.dll {BaseCmdLineArgs}",
+            "EnvironmentVariables": {
+                "ASPNETCORE_ENVIRONMENT": "Production",
+                "ASPNETCORE_URLS": "http://0.0.0.0:9903",
+                "OTEL_EXPORTER_OTLP_ENDPOINT": "http://127.0.0.1:4317"
+            },
+            "AutoStart": false,
+            "WorkingDirectory": "{BaseDirectory}\\catalog_api",
+            "AccessLink": "http://127.0.0.1:9903",
+            "IsExternal": false
+        },
+        {
+            "Name": "shipping_api",
+            "ExecutablePath": "dotnet",
+            "Arguments": "{BaseDirectory}\\shipping_api\\Innovatek.Ecommerce.ShippingService.HttpApi.Host.dll {BaseCmdLineArgs}",
+            "EnvironmentVariables": {
+                "ASPNETCORE_ENVIRONMENT": "Production",
+                "ASPNETCORE_URLS": "http://0.0.0.0:9905",
+                "OTEL_EXPORTER_OTLP_ENDPOINT": "http://127.0.0.1:4317"
+            },
+            "AutoStart": false,
+            "WorkingDirectory": "{BaseDirectory}\\shipping_api",
+            "AccessLink": "http://127.0.0.1:9905",
+            "IsExternal": false
+        },
+        {
+            "Name": "order_api",
+            "ExecutablePath": "dotnet",
+            "Arguments": "{BaseDirectory}\\order_api\\OrderService.HttpApi.Host.dll {BaseCmdLineArgs}",
+            "EnvironmentVariables": {
+                "ASPNETCORE_ENVIRONMENT": "Production",
+                "ASPNETCORE_URLS": "http://0.0.0.0:9907",
+                "OTEL_EXPORTER_OTLP_ENDPOINT": "http://127.0.0.1:4317"
+            },
+            "AutoStart": false,
+            "WorkingDirectory": "{BaseDirectory}\\order_api",
+            "AccessLink": "http://127.0.0.1:9907",
+            "IsExternal": false
+        },
+        {
+            "Name": "orchestrator_api",
+            "ExecutablePath": "dotnet",
+            "Arguments": "{BaseDirectory}\\orchestrator_api\\Innovatek.Ecommerce.Orchestrator.HttpApi.Host.dll --IdentityClients:Default:Authority=\"{Authority}\" --AuthServer:Authority=\"{ValidIssuer}\" {BaseCmdLineArgs}",
+            "EnvironmentVariables": {
+                "ASPNETCORE_ENVIRONMENT": "Production",
+                "ASPNETCORE_URLS": "http://0.0.0.0:9901",
+                "OTEL_EXPORTER_OTLP_ENDPOINT": "http://127.0.0.1:4317"
+            },
+            "AutoStart": false,
+            "WorkingDirectory": "{BaseDirectory}\\orchestrator_api",
+            "AccessLink": "http://127.0.0.1:9901",
+            "IsExternal": false
+        },
+		
+		{
+			"Name": "keycloak",
+            "ExecutablePath": "E:\\innovatek\\tools\\keycloak-26.1.4\\keycloak-26.1.4\\bin\\run.bat",
+            "Arguments": "",
+            "EnvironmentVariables": {},
+            "AutoStart": false,
+            "AccessLink": "http://annacoins.shj.ae:8080/",
+            "IsExternal": false
+		}
+		
+    ]
+}

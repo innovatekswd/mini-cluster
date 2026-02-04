@@ -1,0 +1,12 @@
+@ControlCenter.Api_HostAddress = http://localhost:5147
+
+GET {{ControlCenter.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+###
+
+
+GET {{ControlCenter.Api_HostAddress}}/api/apps/sampleapp/logs/search?query=error&type=stderr&from=2025-04-07T00:00:00Z&to=2025-04-08T00:00:00Z&page=1&pageSize=50
+
+###
+
+

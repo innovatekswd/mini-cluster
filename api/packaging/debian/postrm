@@ -1,0 +1,31 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+    purge)
+        # Remove user and group
+        if getent passwd minicluster > /dev/null; then
+            deluser --system minicluster || true
+        fi
+        if getent group minicluster > /dev/null; then
+            delgroup --system minicluster || true
+        fi
+
+        # Remove data and config directories
+        rm -rf /var/lib/minicluster
+        rm -rf /var/log/minicluster
+        rm -rf /etc/minicluster
+        ;;
+
+    remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+        ;;
+
+    *)
+        echo "postrm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

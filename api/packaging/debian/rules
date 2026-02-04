@@ -1,0 +1,54 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+export DOTNET_CLI_TELEMETRY_OPTOUT = 1
+export DOTNET_NOLOGO = 1
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	# Build .NET API
+	mkdir -p build
+	dotnet publish ControlCenter.Api/Innovatek.ControlCenter.Api.csproj \
+		-c Release \
+		-o build/publish \
+		--self-contained false
+	# Build React UI (if minicluster-ui exists alongside)
+	if [ -d "../minicluster-ui" ]; then \
+		cd ../minicluster-ui && npm ci && npm run build; \
+		cp -r ../minicluster-ui/build/client build/wwwroot; \
+	fi
+
+override_dh_auto_install:
+	# Install API files
+	install -d debian/minicluster/opt/minicluster
+	cp -r build/publish/* debian/minicluster/opt/minicluster/
+	# Install wwwroot if built
+	if [ -d "build/wwwroot" ]; then \
+		cp -r build/wwwroot debian/minicluster/opt/minicluster/; \
+	fi
+	# Install systemd service
+	install -d debian/minicluster/lib/systemd/system
+	install -m 644 debian/minicluster.service debian/minicluster/lib/systemd/system/
+	# Install configuration directory
+	install -d debian/minicluster/etc/minicluster
+	install -m 644 ControlCenter.Api/appsettings.json debian/minicluster/etc/minicluster/
+	# Create symlink for config
+	ln -sf /etc/minicluster/appsettings.json debian/minicluster/opt/minicluster/appsettings.json
+	# Create data directory
+	install -d debian/minicluster/var/lib/minicluster
+	# Create log directory
+	install -d debian/minicluster/var/log/minicluster
+
+override_dh_auto_clean:
+	rm -rf build
+	rm -rf ControlCenter.Api/bin ControlCenter.Api/obj
+	rm -rf ControlCenter.Core/bin ControlCenter.Core/obj
+	rm -rf Innovatek.VariableResolver/bin Innovatek.VariableResolver/obj
+
+override_dh_strip:
+	# Skip stripping for .NET assemblies
+
+override_dh_shlibdeps:
+	# Skip shared library dependencies for .NET

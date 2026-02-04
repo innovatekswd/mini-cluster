@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "minicluster-api"
+		},
+		{
+			"path": "minicluster-ui"
+		},
+		{
+			"path": "minicluster-cli"
+		}
+	],
+	"settings": {}
+}

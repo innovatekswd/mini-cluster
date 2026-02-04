@@ -1,0 +1,716 @@
+# Reverse Proxy & Load Balancer Integration
+
+> **Version:** 1.0  
+> **Status:** 📋 Planned (YARP built-in ✅)  
+> **Priority:** HIGH  
+> **Effort:** 3 weeks
+
+---
+
+## Overview
+
+MiniCluster provides comprehensive proxy management, offering both a built-in reverse proxy (YARP) and seamless integration with popular external proxy servers. This allows operators to use their preferred proxy technology while benefiting from MiniCluster's automated configuration.
+
+---
+
+## Supported Proxies
+
+| Proxy | Type | Auto-Config | Hot Reload | SSL | Status |
+|-------|------|-------------|------------|-----|--------|
+| **YARP** | Built-in | ✅ | ✅ | ✅ | ✅ Implemented |
+| **Nginx** | External | ✅ | ✅ | ✅ | 📋 Planned |
+| **Caddy** | External | ✅ | ✅ | ✅ Auto | 📋 Planned |
+| **Traefik** | External | ✅ | ✅ Dynamic | ✅ | 📋 Planned |
+| **HAProxy** | External | ✅ | ✅ | ✅ | 📋 Planned |
+| **Varnish** | Cache/Proxy | ✅ | ✅ | Via SSL terminator | 📋 Planned |
+| **Apache** | External | ✅ | ⚠️ Graceful | ✅ | 💡 Future |
+| **Envoy** | External | ✅ | ✅ xDS | ✅ | 💡 Future |
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         MiniCluster API                              │
+│                                                                      │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐  │
+│  │  Proxy Manager  │───▶│ Config Generator│───▶│  Proxy Adapter  │  │
+│  └─────────────────┘    └─────────────────┘    └────────┬────────┘  │
+│                                                          │           │
+└──────────────────────────────────────────────────────────┼───────────┘
+                                                           │
+           ┌───────────────┬───────────────┬───────────────┤
+           │               │               │               │
+     ┌─────▼─────┐   ┌─────▼─────┐   ┌─────▼─────┐   ┌─────▼─────┐
+     │   Nginx   │   │   Caddy   │   │  Traefik  │   │  HAProxy  │
+     │  Adapter  │   │  Adapter  │   │  Adapter  │   │  Adapter  │
+     └─────┬─────┘   └─────┬─────┘   └─────┬─────┘   └─────┬─────┘
+           │               │               │               │
+     ┌─────▼─────┐   ┌─────▼─────┐   ┌─────▼─────┐   ┌─────▼─────┐
+     │   Nginx   │   │   Caddy   │   │  Traefik  │   │  HAProxy  │
+     │  Process  │   │  Process  │   │  Process  │   │  Process  │
+     └───────────┘   └───────────┘   └───────────┘   └───────────┘
+```
+
+---
+
+## Core Concepts
+
+### Route Definition (Universal)
+
+All proxies use a common route model that gets translated to proxy-specific configs:
+
+```csharp
+public class ProxyRoute
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; }                  // "api-gateway"
+    
+    // Matching
+    public string[] Hosts { get; set; }              // ["api.example.com", "*.api.local"]
+    public string PathPrefix { get; set; }           // "/api/v1"
+    public string[] Methods { get; set; }            // ["GET", "POST"] or ["*"]
+    public Dictionary<string, string> Headers { get; set; }  // Header matching
+    
+    // Backend
+    public Guid? ServiceId { get; set; }             // Link to MiniCluster service
+    public string[] Backends { get; set; }           // ["localhost:5001", "localhost:5002"]
+    public LoadBalanceMethod LoadBalance { get; set; } // RoundRobin, LeastConn, IPHash
+    
+    // Behavior
+    public bool StripPathPrefix { get; set; }        // Remove /api/v1 before forwarding
+    public int TimeoutSeconds { get; set; }          // Backend timeout
+    public int MaxRetries { get; set; }              // Retry on failure
+    
+    // Security
+    public bool RequireAuth { get; set; }            // MiniCluster auth
+    public bool EnableCors { get; set; }
+    public string[] AllowedOrigins { get; set; }
+    
+    // SSL
+    public SslMode SslMode { get; set; }             // Terminate, Passthrough, Redirect
+    public string? CertificatePath { get; set; }
+    public string? CertificateKeyPath { get; set; }
+    
+    // Rate Limiting
+    public RateLimitConfig? RateLimit { get; set; }
+    
+    // Caching (Varnish-relevant)
+    public CacheConfig? Cache { get; set; }
+}
+
+public enum LoadBalanceMethod
+{
+    RoundRobin,
+    LeastConnections,
+    IPHash,
+    Random,
+    WeightedRoundRobin
+}
+
+public enum SslMode
+{
+    None,
+    Terminate,           // SSL terminates at proxy
+    Passthrough,         // SSL passes to backend
+    RedirectToHttps      // HTTP → HTTPS redirect
+}
+```
+
+---
+
+## Proxy-Specific Adapters
+
+### 1. Nginx Adapter
+
+#### Configuration Generation
+```nginx
+# Generated by MiniCluster - DO NOT EDIT MANUALLY
+# Last updated: 2024-01-15T10:30:00Z
+
+upstream myapp_api {
+    least_conn;
+    server 127.0.0.1:5001 weight=5;
+    server 127.0.0.1:5002 weight=5;
+    keepalive 32;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.example.com;
+    
+    # Redirect HTTP to HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name api.example.com;
+    
+    ssl_certificate /etc/minicluster/certs/api.example.com.crt;
+    ssl_certificate_key /etc/minicluster/certs/api.example.com.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    
+    location /api/v1/ {
+        proxy_pass http://myapp_api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 30s;
+        
+        # Rate limiting
+        limit_req zone=api_limit burst=20 nodelay;
+    }
+}
+```
+
+#### Nginx Control
+```csharp
+public class NginxAdapter : IProxyAdapter
+{
+    public string Name => "nginx";
+    
+    public async Task<bool> TestConfig()
+    {
+        // nginx -t
+        var result = await _processRunner.Run("nginx", "-t");
+        return result.ExitCode == 0;
+    }
+    
+    public async Task Reload()
+    {
+        // nginx -s reload (graceful)
+        await _processRunner.Run("nginx", "-s", "reload");
+    }
+    
+    public async Task<ProxyStatus> GetStatus()
+    {
+        // Check nginx master process
+        // Parse nginx status module if available
+    }
+    
+    public async Task WriteConfig(IEnumerable<ProxyRoute> routes)
+    {
+        var config = _generator.GenerateNginxConfig(routes);
+        await File.WriteAllTextAsync(_configPath, config);
+    }
+}
+```
+
+---
+
+### 2. Caddy Adapter
+
+#### Configuration Generation (Caddyfile)
+```caddyfile
+# Generated by MiniCluster
+# Caddy automatically manages SSL certificates via Let's Encrypt
+
+api.example.com {
+    reverse_proxy /api/v1/* localhost:5001 localhost:5002 {
+        lb_policy least_conn
+        health_uri /health
+        health_interval 10s
+        
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+    }
+    
+    rate_limit {
+        zone api_zone {
+            key {remote_host}
+            events 100
+            window 1m
+        }
+    }
+}
+
+# Alternative: JSON config for dynamic updates
+```
+
+#### Caddy JSON API (Dynamic Updates)
+```csharp
+public class CaddyAdapter : IProxyAdapter
+{
+    public async Task Reload()
+    {
+        // Caddy supports hot reload via API
+        var config = _generator.GenerateCaddyJson(routes);
+        await _httpClient.PostAsync("http://localhost:2019/load", 
+            new StringContent(config, Encoding.UTF8, "application/json"));
+    }
+    
+    // No restart needed - Caddy updates in-place!
+}
+```
+
+---
+
+### 3. Traefik Adapter
+
+#### Configuration (Dynamic File Provider)
+```yaml
+# Generated by MiniCluster
+# traefik/dynamic/minicluster.yml
+
+http:
+  routers:
+    myapp-api:
+      rule: "Host(`api.example.com`) && PathPrefix(`/api/v1`)"
+      service: myapp-api
+      entryPoints:
+        - websecure
+      middlewares:
+        - strip-api-prefix
+        - rate-limit
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    myapp-api:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:5001"
+          - url: "http://127.0.0.1:5002"
+        healthCheck:
+          path: /health
+          interval: "10s"
+          timeout: "3s"
+
+  middlewares:
+    strip-api-prefix:
+      stripPrefix:
+        prefixes:
+          - "/api/v1"
+    
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 50
+```
+
+#### Traefik Provider Integration
+```csharp
+public class TraefikAdapter : IProxyAdapter
+{
+    // Traefik watches file changes - just write the config
+    public async Task Reload()
+    {
+        await WriteConfig(_routes);
+        // Traefik auto-detects changes, no explicit reload needed
+    }
+}
+```
+
+---
+
+### 4. HAProxy Adapter
+
+#### Configuration Generation
+```haproxy
+# Generated by MiniCluster
+
+global
+    log /dev/log local0
+    maxconn 4096
+    tune.ssl.default-dh-param 2048
+
+defaults
+    mode http
+    timeout connect 5s
+    timeout client 30s
+    timeout server 30s
+    option httplog
+    option dontlognull
+
+frontend http_front
+    bind *:80
+    redirect scheme https code 301 if !{ ssl_fc }
+
+frontend https_front
+    bind *:443 ssl crt /etc/minicluster/certs/combined.pem
+    
+    # ACL for routing
+    acl is_api path_beg /api/v1
+    
+    use_backend myapp_api if is_api
+    default_backend default
+
+backend myapp_api
+    balance leastconn
+    option httpchk GET /health
+    http-check expect status 200
+    
+    server api1 127.0.0.1:5001 check weight 50
+    server api2 127.0.0.1:5002 check weight 50
+    
+    # Rate limiting via stick tables
+    stick-table type ip size 100k expire 30s store http_req_rate(10s)
+    http-request track-sc0 src
+    http-request deny deny_status 429 if { sc_http_req_rate(0) gt 100 }
+
+backend default
+    server fallback 127.0.0.1:8080
+```
+
+#### HAProxy Control
+```csharp
+public class HAProxyAdapter : IProxyAdapter
+{
+    public async Task Reload()
+    {
+        // HAProxy supports graceful reload
+        // systemctl reload haproxy
+        // OR: haproxy -f /etc/haproxy/haproxy.cfg -p /var/run/haproxy.pid -sf $(cat /var/run/haproxy.pid)
+    }
+    
+    public async Task<ProxyStatus> GetStatus()
+    {
+        // Query HAProxy stats socket
+        // echo "show stat" | socat stdio /var/run/haproxy.sock
+    }
+}
+```
+
+---
+
+### 5. Varnish Adapter
+
+#### Configuration Generation (VCL)
+```vcl
+# Generated by MiniCluster
+vcl 4.1;
+
+import std;
+
+backend myapp_api_1 {
+    .host = "127.0.0.1";
+    .port = "5001";
+    .probe = {
+        .url = "/health";
+        .interval = 5s;
+        .timeout = 2s;
+        .window = 5;
+        .threshold = 3;
+    }
+}
+
+backend myapp_api_2 {
+    .host = "127.0.0.1";
+    .port = "5002";
+    .probe = {
+        .url = "/health";
+        .interval = 5s;
+        .timeout = 2s;
+        .window = 5;
+        .threshold = 3;
+    }
+}
+
+sub vcl_init {
+    new api_director = directors.round_robin();
+    api_director.add_backend(myapp_api_1);
+    api_director.add_backend(myapp_api_2);
+}
+
+sub vcl_recv {
+    if (req.url ~ "^/api/v1/") {
+        set req.backend_hint = api_director.backend();
+        
+        # Strip prefix
+        set req.url = regsub(req.url, "^/api/v1/", "/");
+        
+        # Cache control
+        if (req.method != "GET" && req.method != "HEAD") {
+            return (pass);
+        }
+    }
+}
+
+sub vcl_backend_response {
+    # Cache API responses for 60 seconds
+    if (bereq.url ~ "^/api/") {
+        set beresp.ttl = 60s;
+        set beresp.grace = 30s;
+    }
+}
+
+sub vcl_deliver {
+    if (obj.hits > 0) {
+        set resp.http.X-Cache = "HIT";
+    } else {
+        set resp.http.X-Cache = "MISS";
+    }
+}
+```
+
+#### Varnish Control
+```csharp
+public class VarnishAdapter : IProxyAdapter
+{
+    public async Task Reload()
+    {
+        // varnishadm vcl.load minicluster_new /etc/varnish/minicluster.vcl
+        // varnishadm vcl.use minicluster_new
+    }
+    
+    public async Task PurgeCache(string pattern)
+    {
+        // varnishadm "ban req.url ~ pattern"
+    }
+}
+```
+
+---
+
+## Proxy Manager Service
+
+### Configuration
+```json
+{
+  "ProxyManager": {
+    "Enabled": true,
+    "DefaultProxy": "nginx",
+    
+    "Proxies": {
+      "yarp": {
+        "Enabled": true,
+        "Type": "builtin"
+      },
+      "nginx": {
+        "Enabled": true,
+        "ConfigPath": "/etc/nginx/conf.d/minicluster.conf",
+        "ReloadCommand": "nginx -s reload",
+        "TestCommand": "nginx -t"
+      },
+      "caddy": {
+        "Enabled": false,
+        "AdminApi": "http://localhost:2019",
+        "ConfigPath": "/etc/caddy/Caddyfile"
+      },
+      "traefik": {
+        "Enabled": false,
+        "DynamicConfigDir": "/etc/traefik/dynamic",
+        "Dashboard": "http://localhost:8080"
+      },
+      "haproxy": {
+        "Enabled": false,
+        "ConfigPath": "/etc/haproxy/haproxy.cfg",
+        "StatsSocket": "/var/run/haproxy.sock"
+      },
+      "varnish": {
+        "Enabled": false,
+        "VclPath": "/etc/varnish/minicluster.vcl",
+        "AdminAddress": "localhost:6082"
+      }
+    },
+    
+    "AutoSync": {
+      "Enabled": true,
+      "Interval": "30s",
+      "SyncOnServiceChange": true
+    },
+    
+    "Ssl": {
+      "AutoProvision": true,
+      "Provider": "letsencrypt",
+      "Email": "admin@example.com",
+      "CertDirectory": "/etc/minicluster/certs"
+    }
+  }
+}
+```
+
+---
+
+## API Endpoints
+
+```
+# Route Management
+GET    /api/proxy/routes                    List all routes
+POST   /api/proxy/routes                    Create route
+GET    /api/proxy/routes/{id}               Get route
+PUT    /api/proxy/routes/{id}               Update route
+DELETE /api/proxy/routes/{id}               Delete route
+
+# Quick route from service
+POST   /api/services/{id}/expose            Create route for service
+
+# Proxy Control
+GET    /api/proxy/adapters                  List enabled proxies
+GET    /api/proxy/adapters/{name}/status    Get proxy status
+POST   /api/proxy/adapters/{name}/reload    Force reload config
+POST   /api/proxy/adapters/{name}/test      Test config validity
+GET    /api/proxy/adapters/{name}/config    Get generated config (preview)
+
+# Sync Control
+POST   /api/proxy/sync                      Force sync to all proxies
+GET    /api/proxy/sync/status               Get last sync status
+
+# SSL/TLS
+GET    /api/proxy/certificates              List certificates
+POST   /api/proxy/certificates/provision    Request new certificate
+DELETE /api/proxy/certificates/{domain}     Remove certificate
+
+# Varnish-specific
+POST   /api/proxy/adapters/varnish/purge    Purge cache
+GET    /api/proxy/adapters/varnish/stats    Cache statistics
+```
+
+---
+
+## CLI Commands
+
+```bash
+# Route Management
+mc proxy route list
+mc proxy route create --name api --host api.example.com --path /api --backend localhost:5001
+mc proxy route delete api
+
+# Quick expose
+mc service expose myapp-api --host api.example.com --path /api/v1
+mc service unexpose myapp-api
+
+# Proxy Control
+mc proxy status                     # Status of all enabled proxies
+mc proxy status nginx              # Specific proxy status
+mc proxy reload                    # Reload all proxies
+mc proxy reload nginx              # Reload specific proxy
+mc proxy test                      # Test all configs
+mc proxy config nginx --preview    # Show generated config
+
+# Sync
+mc proxy sync                      # Force sync now
+mc proxy sync --dry-run            # Show what would change
+
+# SSL
+mc proxy cert list
+mc proxy cert provision api.example.com
+mc proxy cert renew api.example.com
+
+# Varnish cache
+mc proxy cache purge "/api/*"
+mc proxy cache stats
+```
+
+---
+
+## UI Components
+
+### Routes Management Page
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Proxy Routes                                    [+ Add Route]      │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  🔍 Search routes...                    Filter: [All Proxies ▼]     │
+│                                                                      │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │ 🌐 api-gateway                                        Active  │  │
+│  │ api.example.com/api/v1/* → myapp-api (2 backends)              │  │
+│  │ SSL: ✅  Rate Limit: 100/min  Cache: ❌                        │  │
+│  │ Proxies: nginx, traefik                    [Edit] [Delete]    │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │ 🌐 static-assets                                      Active  │  │
+│  │ cdn.example.com/* → static-server                              │  │
+│  │ SSL: ✅  Rate Limit: ❌  Cache: ✅ 1h                          │  │
+│  │ Proxies: varnish, nginx                    [Edit] [Delete]    │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Proxy Status Dashboard
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Proxy Status                                                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
+│  │    YARP      │  │    Nginx     │  │   Varnish    │              │
+│  │   Built-in   │  │   External   │  │    Cache     │              │
+│  │              │  │              │  │              │              │
+│  │  ● Running   │  │  ● Running   │  │  ● Running   │              │
+│  │  12 routes   │  │  8 routes    │  │  4 routes    │              │
+│  │              │  │  Last reload │  │  Hit rate    │              │
+│  │              │  │  2 min ago   │  │  87.3%       │              │
+│  │   [Config]   │  │   [Reload]   │  │   [Purge]    │              │
+│  └──────────────┘  └──────────────┘  └──────────────┘              │
+│                                                                      │
+│  Last Sync: 30 seconds ago  ✅ All configs in sync                  │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Quick Expose Modal (from Service)
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Expose Service: myapp-api                                    [×]   │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Domain:     [api.example.com                             ]         │
+│  Path:       [/api/v1                                     ]         │
+│                                                                      │
+│  SSL:        ● Auto (Let's Encrypt)  ○ Custom  ○ None               │
+│                                                                      │
+│  Target Proxies:                                                     │
+│  ☑ Nginx       ☑ Traefik       ☐ HAProxy                           │
+│                                                                      │
+│  Advanced Options ▼                                                  │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │ Load Balance:  [Least Connections ▼]                        │   │
+│  │ Rate Limit:    [100          ] requests per [minute ▼]      │   │
+│  │ Timeout:       [30           ] seconds                      │   │
+│  │ ☐ Strip path prefix                                         │   │
+│  │ ☑ Enable CORS (origins: *)                                  │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+├─────────────────────────────────────────────────────────────────────┤
+│                                      [Cancel]  [Expose Service]     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Implementation Plan
+
+### Phase 1: Framework & Nginx (Week 1)
+1. Create IProxyAdapter interface
+2. Implement ProxyRoute entity and API
+3. Build Nginx adapter with config generation
+4. Implement reload and test functionality
+5. Add basic UI for route management
+
+### Phase 2: Caddy & Traefik (Week 2)
+1. Implement Caddy adapter (JSON API)
+2. Implement Traefik adapter (file provider)
+3. Add quick expose from service
+4. SSL certificate management
+5. Multi-proxy sync logic
+
+### Phase 3: HAProxy, Varnish & Polish (Week 3)
+1. Implement HAProxy adapter
+2. Implement Varnish adapter with cache control
+3. Proxy status dashboard
+4. CLI commands
+5. Documentation and examples
+
+---
+
+## References
+
+- Built-in YARP: [CORE_FEATURES.md](CORE_FEATURES.md#7-reverse-proxy)
+- Original plugin spec: `../spec/012-plugin-system/spec.md`
+- CLI commands: [CLI_SPECIFICATION.md](../09-cli/CLI_SPECIFICATION.md)
