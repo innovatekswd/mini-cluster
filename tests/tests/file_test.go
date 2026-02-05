@@ -206,14 +206,14 @@ func TestFolderDownload(t *testing.T) {
 
 	// Create multiple files to upload
 	folderName := "folder-download-test-" + randomString(8)
-	
+
 	// Upload file 1
 	tmpFile1 := filepath.Join(os.TempDir(), "folder-test-1.txt")
 	defer os.Remove(tmpFile1)
 	content1 := "Content of file 1"
 	err := os.WriteFile(tmpFile1, []byte(content1), 0644)
 	require.NoError(t, err, "Failed to create temp file")
-	
+
 	result := testEnv.RunCLI("file", "upload", tmpFile1, folderName)
 	require.Equal(t, 0, result.ExitCode, "Failed to upload file 1: %s", result.Stderr)
 
@@ -223,7 +223,7 @@ func TestFolderDownload(t *testing.T) {
 	content2 := "Content of file 2"
 	err = os.WriteFile(tmpFile2, []byte(content2), 0644)
 	require.NoError(t, err, "Failed to create temp file")
-	
+
 	result = testEnv.RunCLI("file", "upload", tmpFile2, folderName)
 	require.Equal(t, 0, result.ExitCode, "Failed to upload file 2: %s", result.Stderr)
 
@@ -233,7 +233,7 @@ func TestFolderDownload(t *testing.T) {
 	content3 := "Content of file 3 in subdir"
 	err = os.WriteFile(tmpFile3, []byte(content3), 0644)
 	require.NoError(t, err, "Failed to create temp file")
-	
+
 	result = testEnv.RunCLI("file", "upload", tmpFile3, folderName+"/subdir")
 	require.Equal(t, 0, result.ExitCode, "Failed to upload file 3: %s", result.Stderr)
 

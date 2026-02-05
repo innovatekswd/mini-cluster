@@ -335,9 +335,9 @@ func (c *Client) DownloadFolder(ctx context.Context, folder, destPath string) er
 	// Build URL with query parameters (no fileName means download folder as zip)
 	params := url.Values{}
 	params.Add("folder", folder)
-	
+
 	url := c.baseURL + "/api/files/download?" + params.Encode()
-	
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)

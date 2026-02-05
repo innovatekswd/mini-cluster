@@ -120,7 +120,7 @@ func runFileDownload(cmd *cobra.Command, args []string) error {
 
 	// Check if source looks like a file (has extension) or folder
 	hasExtension := filepath.Ext(sourceFile) != ""
-	
+
 	if sourceDir == "." && hasExtension {
 		return fmt.Errorf("source path must include folder: folder/filename or just folder for entire folder download")
 	}
