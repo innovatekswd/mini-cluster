@@ -6,7 +6,7 @@ import { apiClient } from "~/lib/apiClient";
 import type { Service, ServiceFormData } from "~/types/Service";
 import { ServiceConfigForm } from "~/components/ServiceConfigForm";
 import { ServiceConsole } from "~/components/ServiceConsole";
-import { VariableGroupProvider } from "~/context/VariableGroupContext";
+import { EnvironmentProvider } from "~/context/EnvironmentContext";
 import { useToast } from "~/components/Toast";
 import { FaPlus, FaServer, FaExclamationTriangle, FaRocket, FaKeyboard, FaTimes } from "react-icons/fa";
 import { AppFilter } from "~/components/AppFilter";
@@ -147,7 +147,7 @@ export default function DashboardPage() {
       isSidebarOpen={sidebarOpen}
       isSidebarPinned={sidebarPinned}
     >
-      <VariableGroupProvider>
+      <EnvironmentProvider>
         <div className="flex h-full overflow-hidden flex-col">
           {/* App Filter Bar */}
           <div className="flex-none px-4 py-3 bg-slate-900/50 border-b border-slate-700/50">
@@ -401,7 +401,7 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
-      </VariableGroupProvider>
+      </EnvironmentProvider>
     </Layout>
   );
 }

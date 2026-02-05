@@ -2,12 +2,17 @@
 package api
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -198,4 +203,229 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// UploadFile uploads a file to the server
+func (c *Client) UploadFile(ctx context.Context, file io.Reader, fileName, folder string) (map[string]interface{}, error) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	// Add file field
+	part, err := writer.CreateFormFile("File", fileName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create form file: %w", err)
+	}
+
+	_, err = io.Copy(part, file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to copy file content: %w", err)
+	}
+
+	// Add folder field
+	err = writer.WriteField("Folder", folder)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write folder field: %w", err)
+	}
+
+	err = writer.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+
+	// Create request
+	url := c.baseURL + "/api/files/upload"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set headers
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("User-Agent", "minicluster-cli/1.0")
+
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+
+	if c.debug {
+		fmt.Printf("[DEBUG] POST %s\n", url)
+	}
+
+	// Execute request
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if c.debug {
+		fmt.Printf("[DEBUG] Response: %d %s\n", resp.StatusCode, resp.Status)
+	}
+
+	// Read response body
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	// Check for error status codes
+	if resp.StatusCode >= 400 {
+		return nil, parseAPIError(resp.StatusCode, respBody)
+	}
+
+	// Parse response
+	var result map[string]interface{}
+	if len(respBody) > 0 {
+		if err := json.Unmarshal(respBody, &result); err != nil {
+			return nil, fmt.Errorf("failed to parse response: %w", err)
+		}
+	}
+
+	return result, nil
+}
+
+// DownloadFile downloads a file from the server
+func (c *Client) DownloadFile(ctx context.Context, folder, fileName string) (io.ReadCloser, error) {
+	// Build URL with query parameters
+	params := url.Values{}
+	params.Add("folder", folder)
+	params.Add("fileName", fileName)
+
+	url := c.baseURL + "/api/files/download?" + params.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set headers
+	req.Header.Set("User-Agent", "minicluster-cli/1.0")
+
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+
+	if c.debug {
+		fmt.Printf("[DEBUG] GET %s\n", url)
+	}
+
+	// Execute request
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+
+	if c.debug {
+		fmt.Printf("[DEBUG] Response: %d %s\n", resp.StatusCode, resp.Status)
+	}
+
+	// Check for error status codes
+	if resp.StatusCode >= 400 {
+		respBody, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		return nil, parseAPIError(resp.StatusCode, respBody)
+	}
+
+	// Return the response body as a reader
+	return resp.Body, nil
+}
+
+// DownloadFolder downloads a folder as a zip and extracts it to the destination
+func (c *Client) DownloadFolder(ctx context.Context, folder, destPath string) error {
+	// Build URL with query parameters (no fileName means download folder as zip)
+	params := url.Values{}
+	params.Add("folder", folder)
+	
+	url := c.baseURL + "/api/files/download?" + params.Encode()
+	
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set headers
+	req.Header.Set("User-Agent", "minicluster-cli/1.0")
+
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+
+	if c.debug {
+		fmt.Printf("[DEBUG] GET %s\n", url)
+	}
+
+	// Execute request
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if c.debug {
+		fmt.Printf("[DEBUG] Response: %d %s\n", resp.StatusCode, resp.Status)
+	}
+
+	// Check for error status codes
+	if resp.StatusCode >= 400 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return parseAPIError(resp.StatusCode, respBody)
+	}
+
+	// Read the zip file into memory
+	zipData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read zip data: %w", err)
+	}
+
+	// Extract the zip file
+	zipReader, err := zip.NewReader(bytes.NewReader(zipData), int64(len(zipData)))
+	if err != nil {
+		return fmt.Errorf("failed to read zip archive: %w", err)
+	}
+
+	// Extract all files
+	for _, file := range zipReader.File {
+		if err := extractZipFile(file, destPath); err != nil {
+			return fmt.Errorf("failed to extract %s: %w", file.Name, err)
+		}
+	}
+
+	return nil
+}
+
+// extractZipFile extracts a single file from a zip archive
+func extractZipFile(file *zip.File, destPath string) error {
+	// Construct the full path
+	fullPath := filepath.Join(destPath, file.Name)
+
+	// Check for directory traversal
+	if !strings.HasPrefix(fullPath, filepath.Clean(destPath)+string(filepath.Separator)) {
+		return fmt.Errorf("illegal file path: %s", file.Name)
+	}
+
+	if file.FileInfo().IsDir() {
+		// Create directory
+		return os.MkdirAll(fullPath, file.Mode())
+	}
+
+	// Create parent directories
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+		return err
+	}
+
+	// Extract file
+	srcFile, err := file.Open()
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	destFile, err := os.OpenFile(fullPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, srcFile)
+	return err
 }

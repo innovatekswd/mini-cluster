@@ -53,8 +53,8 @@ namespace Innovatek.Parallel.MiniCluster.Test
             var controller = new ImportController(_dbContext, _mapperMock, _variableResolverMock, _loggerMock);
             var importRequest = new ImportController.ImportRequest
             {
-                VariableGroups = new List<CreateVariableGroupDto> {
-                    new CreateVariableGroupDto(){
+                Environments = new List<CreateEnvironmentDto> {
+                    new CreateEnvironmentDto(){
                         Name = "group1",
                         Variables = new Dictionary<string, string>
                         {
@@ -101,7 +101,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
         {
             // Arrange
             var controller = new ImportController(_dbContext, _mapperMock, _variableResolverMock, _loggerMock);
-            var group1Vars = new CreateVariableGroupDto() { 
+            var group1Vars = new CreateEnvironmentDto() { 
                 Name = "group1", 
                 Variables = new Dictionary<string, string> {
                         { "BasePath", "/usr/local" },
@@ -110,7 +110,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             };
             var importRequest = new ImportController.ImportRequest
             {
-                VariableGroups = new List<CreateVariableGroupDto>() { group1Vars },
+                Environments = new List<CreateEnvironmentDto>() { group1Vars },
                 
                 Services = new List<ServiceBase>() // No services
             };
@@ -128,7 +128,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             var result = await controller.ImportServices(file, resolveVariables: false);
 
             // Assert
-            var variableGroups = await _dbContext.VariableGroups.ToListAsync();
+            var variableGroups = await _dbContext.Environments.ToListAsync();
             variableGroups.Should().HaveCount(1);
             variableGroups[0].Variables.Should().ContainKey("BasePath");
             variableGroups[0].Variables["BasePath"].Should().Be("/usr/local");
@@ -151,15 +151,15 @@ namespace Innovatek.Parallel.MiniCluster.Test
                 IsActive = false
             };
 
-            _dbContext.VariableGroups.Add(existingGroup);
+            _dbContext.Environments.Add(existingGroup);
             await _dbContext.SaveChangesAsync();
 
             var controller = new ImportController(_dbContext, _mapperMock, _variableResolverMock, _loggerMock);
             var importRequest = new ImportController.ImportRequest
             {
-                VariableGroups = new List<CreateVariableGroupDto>
+                Environments = new List<CreateEnvironmentDto>
                 {
-                    new CreateVariableGroupDto
+                    new CreateEnvironmentDto
                     {
                         Name = "group1",
                         Description = "Updated description",
@@ -186,7 +186,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             var result = await controller.ImportServices(file, resolveVariables: false);
 
             // Assert
-            var variableGroups = await _dbContext.VariableGroups.ToListAsync();
+            var variableGroups = await _dbContext.Environments.ToListAsync();
             variableGroups.Should().HaveCount(1);
             variableGroups[0].Name.Should().Be("group1");
             variableGroups[0].Description.Should().Be("Updated description");
@@ -218,7 +218,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
 
             // Assert
             result.Should().BeOfType<OkObjectResult>();
-            ((OkObjectResult)result).Value.Should().BeEquivalentTo(new { Message = "Services and VariableGroups imported successfully." });
+            ((OkObjectResult)result).Value.Should().BeEquivalentTo(new { Message = "Services and Environments imported successfully." });
         }
         [Fact]
         public async Task ExportedJson_CanBeImportedBack()
@@ -227,9 +227,9 @@ namespace Innovatek.Parallel.MiniCluster.Test
             var controller = new ImportController(_dbContext, _mapperMock, _variableResolverMock, _loggerMock);
             var importRequest = new ImportController.ImportRequest
             {
-                VariableGroups = new List<CreateVariableGroupDto>
+                Environments = new List<CreateEnvironmentDto>
                 {
-                    new CreateVariableGroupDto
+                    new CreateEnvironmentDto
                     {
                         Name = "group1",
                         Description = "desc",
@@ -267,7 +267,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             var exportedJson = await reader.ReadToEndAsync();
 
             // Clear database
-            _dbContext.VariableGroups.RemoveRange(_dbContext.VariableGroups);
+            _dbContext.Environments.RemoveRange(_dbContext.Environments);
             _dbContext.Services.RemoveRange(_dbContext.Services);
             await _dbContext.SaveChangesAsync();
 
@@ -283,7 +283,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
 
             // Assert: Data is restored
             importResult.Should().BeOfType<OkObjectResult>();
-            var variableGroups = await _dbContext.VariableGroups.ToListAsync();
+            var variableGroups = await _dbContext.Environments.ToListAsync();
             variableGroups.Should().HaveCount(1);
             variableGroups[0].Name.Should().Be("group1");
             var services = await _dbContext.Services.ToListAsync();
@@ -321,9 +321,9 @@ namespace Innovatek.Parallel.MiniCluster.Test
             var controller = new ImportController(_dbContext, _mapper, _variableResolverFactory, _loggerMock);
             var importRequest = new ImportController.ImportRequest
             {
-                VariableGroups = new List<CreateVariableGroupDto>
+                Environments = new List<CreateEnvironmentDto>
                 {
-                    new CreateVariableGroupDto
+                    new CreateEnvironmentDto
                     {
                         Name = "group1",
                         Description = "desc",
@@ -356,7 +356,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
 
             // Assert: Import
             importResult.Should().BeOfType<OkObjectResult>();
-            var variableGroups = await _dbContext.VariableGroups.ToListAsync();
+            var variableGroups = await _dbContext.Environments.ToListAsync();
             variableGroups.Should().HaveCount(1);
             var services = await _dbContext.Services.ToListAsync();
             services.Should().HaveCount(1);
@@ -391,7 +391,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             var fileResult = exportResult as FileStreamResult;
             using var reader = new StreamReader(fileResult!.FileStream);
             var exportedJson = await reader.ReadToEndAsync();
-            exportedJson.Should().Contain("\"VariableGroups\": []");
+            exportedJson.Should().Contain("\"Environments\": []");
             exportedJson.Should().Contain("\"Services\": []");
         }
     }

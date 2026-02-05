@@ -17,7 +17,7 @@ public class AppDbContext : DbContext, IIdentityDbContext
     // Apps - for grouping services
     public DbSet<App> Apps { get; set; }
     
-    public DbSet<VariableGroup> VariableGroups { get; set; }
+    public DbSet<Environment> Environments { get; set; }
     public DbSet<ServiceFile> ServiceFiles { get; set; }
     public DbSet<AppSettings> AppSettings { get; set; }
     
@@ -86,7 +86,7 @@ public class AppDbContext : DbContext, IIdentityDbContext
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
-        modelBuilder.Entity<VariableGroup>(entity =>
+        modelBuilder.Entity<Environment>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Variables)

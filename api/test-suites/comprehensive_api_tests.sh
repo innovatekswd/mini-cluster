@@ -89,12 +89,13 @@ check_response "$RESPONSE" "200" "Get all apps"
 # ============================================
 # 3. VARIABLE GROUPS - CREATE
 # ============================================
-print_test "3" "Create Variable Group"
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/variables/groups" \
+print_test "3" "Create Environment"
+ENV_NAME="TestVars"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/envs" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "TestVars",
-    "description": "Test variable group",
+    "name": "'$ENV_NAME'",
+    "description": "Test environment",
     "variables": {
       "JAVA_HOME": "/usr/lib/jvm/java-11",
       "APP_PORT": "8080",
@@ -102,30 +103,29 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/variables/groups" 
     },
     "isActive": true
   }')
-if check_response "$RESPONSE" "201" "Create variable group"; then
-    VAR_GROUP_ID=$(echo "$RESPONSE" | sed '$d' | jq -r '.id')
-    echo "Variable Group ID: $VAR_GROUP_ID"
+if check_response "$RESPONSE" "201" "Create environment"; then
+    echo "Environment Name: $ENV_NAME"
 fi
 
 # ============================================
 # 4. VARIABLE GROUPS - GET ALL
 # ============================================
-print_test "4" "Get All Variable Groups"
-RESPONSE=$(curl -s -w "\n%{http_code}" "$BASE_URL/api/variables/groups")
-check_response "$RESPONSE" "200" "Get all variable groups"
+print_test "4" "Get All Environments"
+RESPONSE=$(curl -s -w "\n%{http_code}" "$BASE_URL/api/envs")
+check_response "$RESPONSE" "200" "Get all environments"
 
 # ============================================
 # 5. VARIABLE GROUPS - GET VARIABLES
 # ============================================
 print_test "5" "Get Variables from Group"
-RESPONSE=$(curl -s -w "\n%{http_code}" "$BASE_URL/api/variables/groups/$VAR_GROUP_ID/variables")
+RESPONSE=$(curl -s -w "\n%{http_code}" "$BASE_URL/api/envs/$ENV_NAME/variables")
 check_response "$RESPONSE" "200" "Get variables from group"
 
 # ============================================
 # 6. VARIABLE GROUPS - UPDATE VARIABLES
 # ============================================
 print_test "6" "Update Variables in Group"
-RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "$BASE_URL/api/variables/groups/$VAR_GROUP_ID/variables" \
+RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "$BASE_URL/api/envs/$ENV_NAME/variables" \
   -H "Content-Type: application/json" \
   -d '{
     "JAVA_HOME": "/usr/lib/jvm/java-11",
@@ -428,10 +428,10 @@ print_test "31" "Import Configuration"
 # Create a test import file
 cat > /tmp/minicluster_import.json << 'EOF'
 {
-  "VariableGroups": [
+  "Environments": [
     {
       "name": "ImportedVars",
-      "description": "Imported variable group",
+      "description": "Imported environment",
       "variables": {
         "IMPORTED_VAR": "imported_value"
       },
@@ -486,11 +486,11 @@ for APP_ID in $ECHO_APP_ID $PING_APP_ID $INVALID_APP_ID; do
 done
 
 # ============================================
-# 34. CLEANUP - Delete Variable Group
+# 34. CLEANUP - Delete Environment
 # ============================================
-print_test "34" "Cleanup: Delete Variable Group"
-RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "$BASE_URL/api/variables/groups/$VAR_GROUP_ID")
-check_response "$RESPONSE" "204" "Delete variable group"
+print_test "34" "Cleanup: Delete Environment"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "$BASE_URL/api/envs/$ENV_NAME")
+check_response "$RESPONSE" "204" "Delete environment"
 
 # ============================================
 # SUMMARY

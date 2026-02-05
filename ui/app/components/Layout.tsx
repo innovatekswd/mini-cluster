@@ -133,11 +133,11 @@ export const Layout = ({ children, appStats, onMenuToggle, isSidebarOpen, isSide
               <FaCubes className="text-lg" aria-hidden="true" />
             </Link>
 
-            {/* Variable Groups link */}
+            {/* Environments link */}
             <Link
-              to="/variables"
+              to="/environments"
               className="icon-btn"
-              aria-label="Variable Groups"
+              aria-label="Environments"
             >
               <FaSlidersH className="text-lg" aria-hidden="true" />
             </Link>

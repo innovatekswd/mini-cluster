@@ -10,7 +10,7 @@ import { ConnectionProvider } from "~/context/ConnectionContext";
 import { LogProvider } from "~/context/LogContext";
 import { SignalRConnectionProvider } from "~/context/SignalRConnectionContext";
 import { AppStatusProvider } from "~/context/AppStatusContext";
-import { VariableGroupProvider } from "~/context/VariableGroupContext";
+import { EnvironmentProvider } from "~/context/EnvironmentContext";
 
 interface AppProvidersProps {
   children: React.ReactNode;
@@ -30,7 +30,7 @@ interface AppProvidersProps {
  * 7. LogProvider - Log streaming
  * 8. SignalRConnectionProvider - Real-time connections
  * 9. AppStatusProvider - App/service status tracking
- * 10. VariableGroupProvider - Environment variable groups
+ * 10. EnvironmentProvider - Environment variable management
  */
 export function AppProviders({ children }: AppProvidersProps) {
   return (
@@ -43,9 +43,9 @@ export function AppProviders({ children }: AppProvidersProps) {
                 <LogProvider>
                   <SignalRConnectionProvider>
                     <AppStatusProvider>
-                      <VariableGroupProvider>
+                      <EnvironmentProvider>
                         {children}
-                      </VariableGroupProvider>
+                      </EnvironmentProvider>
                     </AppStatusProvider>
                   </SignalRConnectionProvider>
                 </LogProvider>

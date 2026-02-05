@@ -73,7 +73,7 @@ pwsh api_test_suite.ps1
 
 ### Controllers Tested
 - ✅ **Apps Controller** - CRUD operations, lifecycle
-- ✅ **Variable Groups** - CRUD, activation, variables management
+- ✅ **Environments** - CRUD, activation, variables management
 - ✅ **Environment Variables** - Get/Update per app
 - ✅ **Arguments** - Get/Update per app
 - ✅ **Execution Control** - Start/Stop/Status
@@ -134,7 +134,7 @@ Failed: 2
 ```
 
 ### Known Minor Issues
-1. **Variable Group DELETE** - May return HTML instead of JSON (MapFallback routing)
+1. **Environment DELETE** - May return HTML instead of JSON (MapFallback routing)
 2. **Echo App Logs** - Very short-lived processes may not capture logs
 
 ## 🔧 Running Tests in CI/CD

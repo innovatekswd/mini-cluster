@@ -23,7 +23,7 @@ public class ImportController(AppDbContext dbContext, IMapper mapper, IVariableR
 
     public class ImportRequest
     {
-        public List<CreateVariableGroupDto> VariableGroups { get; set; } = new();
+        public List<CreateEnvironmentDto> Environments { get; set; } = new();
         public List<ServiceBase> Services { get; set; } = new();
     }
 
@@ -64,32 +64,32 @@ public class ImportController(AppDbContext dbContext, IMapper mapper, IVariableR
                 transaction = await _dbContext.Database.BeginTransactionAsync();
             }
 
-            // Import VariableGroups
-            foreach (var groupDto in importRequest.VariableGroups)
+            // Import Environments
+            foreach (var envDto in importRequest.Environments)
         {
-            // Check if the VariableGroup already exists based on the Name
-            var existingGroup = await _dbContext.VariableGroups
-                .FirstOrDefaultAsync(vg => vg.Name == groupDto.Name);
+            // Check if the Environment already exists based on the Name
+            var existingEnv = await _dbContext.Environments
+                .FirstOrDefaultAsync(e => e.Name == envDto.Name);
 
-            if (existingGroup == null)
+            if (existingEnv == null)
             {
-                // Create a new VariableGroup if it doesn't exist
-                var newGroup = new VariableGroup
+                // Create a new Environment if it doesn't exist
+                var newEnv = new Environment
                 {
                     Id = Guid.NewGuid(),
-                    Name = groupDto.Name,
-                    Description = groupDto.Description,
-                    Variables = groupDto.Variables,
-                    IsActive = groupDto.IsActive
+                    Name = envDto.Name,
+                    Description = envDto.Description,
+                    Variables = envDto.Variables,
+                    IsActive = envDto.IsActive
                 };
-                _dbContext.VariableGroups.Add(newGroup);
+                _dbContext.Environments.Add(newEnv);
             }
             else
             {
-                // Update the existing VariableGroup
-                existingGroup.Description = groupDto.Description;
-                existingGroup.Variables = groupDto.Variables;
-                existingGroup.IsActive = groupDto.IsActive;
+                // Update the existing Environment
+                existingEnv.Description = envDto.Description;
+                existingEnv.Variables = envDto.Variables;
+                existingEnv.IsActive = envDto.IsActive;
             }
         }
 
@@ -104,12 +104,12 @@ public class ImportController(AppDbContext dbContext, IMapper mapper, IVariableR
 
             if (resolveVariables)
             {
-                // Ensure VariableGroups exist before resolving
-                if (importRequest.VariableGroups.Count == 0)
-                    return BadRequest("Variable resolution requested but no variable groups provided.");
+                // Ensure Environments exist before resolving
+                if (importRequest.Environments.Count == 0)
+                    return BadRequest("Variable resolution requested but no environments provided.");
 
                 // Resolve variables for the service
-                var variableResolver = variableResolverFactory.CreateResolver(importRequest.VariableGroups.First().Variables);
+                var variableResolver = variableResolverFactory.CreateResolver(importRequest.Environments.First().Variables);
 
                 var (executablePath, isCircular1, circularVar1) = await variableResolver.ResolveVariablesAsync(svc.ExecutablePath);
                 if (isCircular1)
@@ -172,7 +172,7 @@ public class ImportController(AppDbContext dbContext, IMapper mapper, IVariableR
                 await transaction.CommitAsync();
             }
 
-            return Ok(new { Message = "Services and VariableGroups imported successfully." });
+            return Ok(new { Message = "Services and Environments imported successfully." });
         }
         catch (Exception ex)
         {
@@ -180,7 +180,7 @@ public class ImportController(AppDbContext dbContext, IMapper mapper, IVariableR
             {
                 await transaction.RollbackAsync();
             }
-            _logger.LogError(ex, "Failed to import services and variable groups");
+            _logger.LogError(ex, "Failed to import services and environments");
             return StatusCode(500, new { Message = "Import failed. Database rolled back.", Error = ex.Message });
         }
         finally
@@ -195,7 +195,7 @@ public class ImportController(AppDbContext dbContext, IMapper mapper, IVariableR
     {
         try
         {
-            var variableGroups = await _dbContext.VariableGroups.ToListAsync();
+            var environments = await _dbContext.Environments.ToListAsync();
             var services = await _dbContext.Services.ToListAsync();
 
             var exportData = new ConfigExportDto
@@ -203,12 +203,12 @@ public class ImportController(AppDbContext dbContext, IMapper mapper, IVariableR
                 Version = "1.0",
                 ExportedAt = DateTime.UtcNow,
                 ExportedBy = "MiniCluster",
-                VariableGroups = variableGroups,
+                Environments = environments,
                 Services = services,
                 Metadata = new ExportMetadata
                 {
                     TotalServices = services.Count,
-                    TotalVariableGroups = variableGroups.Count
+                    TotalEnvironments = environments.Count
                 }
             };
 

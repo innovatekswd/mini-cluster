@@ -60,19 +60,16 @@ Test-Endpoint "Health Check" "GET" "$BASE_URL/api/health"
 
 $result = Test-Endpoint "Get All Apps" "GET" "$BASE_URL/api/apps"
 
+$ENV_NAME = "QuickTestVars"
 $varBody = @{
-    name = "QuickTestVars"
+    name = $ENV_NAME
     description = "Quick test"
     variables = @{ TEST_VAR = "value" }
     isActive = $true
 }
-$result = Test-Endpoint "Create Variable Group" "POST" "$BASE_URL/api/variables/groups" -Body $varBody
-if ($result) {
-    $varGroup = $result | ConvertFrom-Json
-    $VAR_ID = $varGroup.id
-}
+$result = Test-Endpoint "Create Environment" "POST" "$BASE_URL/api/envs" -Body $varBody
 
-Test-Endpoint "Get Variable Groups" "GET" "$BASE_URL/api/variables/groups"
+Test-Endpoint "Get Environments" "GET" "$BASE_URL/api/envs"
 
 $appBody = @{
     name = "Quick Test App"
@@ -110,8 +107,8 @@ Test-Endpoint "Export Config" "GET" "$BASE_URL/api/apps/export"
 
 Test-Endpoint "Delete App" "DELETE" "$BASE_URL/api/apps/$APP_ID"
 
-if ($VAR_ID) {
-    Test-Endpoint "Delete Variable Group" "DELETE" "$BASE_URL/api/variables/groups/$VAR_ID"
+if ($ENV_NAME) {
+    Test-Endpoint "Delete Environment" "DELETE" "$BASE_URL/api/envs/$ENV_NAME"
 }
 
 # Summary

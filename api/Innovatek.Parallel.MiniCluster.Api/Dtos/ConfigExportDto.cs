@@ -7,7 +7,7 @@ public class ConfigExportDto
     public string Version { get; set; } = "1.0";
     public DateTime ExportedAt { get; set; }
     public string ExportedBy { get; set; } = "MiniCluster";
-    public List<VariableGroup> VariableGroups { get; set; } = new();
+    public List<Environment> Environments { get; set; } = new();
     public List<Service> Services { get; set; } = new();
     public ExportMetadata Metadata { get; set; } = new();
 }
@@ -15,5 +15,5 @@ public class ConfigExportDto
 public class ExportMetadata
 {
     public int TotalServices { get; set; }
-    public int TotalVariableGroups { get; set; }
+    public int TotalEnvironments { get; set; }
 }

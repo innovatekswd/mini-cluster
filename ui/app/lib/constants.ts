@@ -181,7 +181,7 @@ export const QUERY_KEYS = {
   appsWithStats: ["appsWithStats"] as const,
   services: ["services"] as const,
   machines: ["machines"] as const,
-  variableGroups: ["variableGroups"] as const,
+  environments: ["environments"] as const,
   files: ["files"] as const,
   health: ["health"] as const,
 } as const;
@@ -194,7 +194,7 @@ export const API_ENDPOINTS = {
   apps: "/api/apps",
   services: "/api/services",
   machines: "/api/machines",
-  variableGroups: "/api/variablegroups",
+  environments: "/api/env",
   files: "/api/files",
   health: "/api/health",
   auth: {

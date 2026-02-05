@@ -28,10 +28,10 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.ModifiedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
             .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
 
-        // Variable group mappings
-        CreateMap<VariableGroup, VariableGroupDto>();
-        CreateMap<CreateVariableGroupDto, VariableGroup>();
-        CreateMap<UpdateVariableGroupDto, VariableGroup>();
+        // Environment mappings
+        CreateMap<Environment, EnvironmentDto>();
+        CreateMap<CreateEnvironmentDto, Environment>();
+        CreateMap<UpdateEnvironmentDto, Environment>();
 
         // Proxy route mappings
         CreateMap<CreateProxyRouteDto, ProxyRoute>()

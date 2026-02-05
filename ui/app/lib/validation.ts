@@ -68,7 +68,7 @@ export type ServiceConfigFormData = z.infer<typeof serviceConfigSchema>;
 export type CreateServiceFormData = z.infer<typeof createServiceSchema>;
 
 // ============================================================
-// Variable Group Schemas
+// Environment Schemas
 // ============================================================
 
 export const variableSchema = z.object({
@@ -77,14 +77,14 @@ export const variableSchema = z.object({
   isSecret: z.boolean().default(false),
 });
 
-export const variableGroupSchema = z.object({
+export const environmentSchema = z.object({
   name: nonEmptyString.max(100, "Name must be 100 characters or less"),
   description: z.string().max(500, "Description must be 500 characters or less").optional(),
   variables: z.record(z.string(), z.string()).default({}),
 });
 
 export type VariableFormData = z.infer<typeof variableSchema>;
-export type VariableGroupFormData = z.infer<typeof variableGroupSchema>;
+export type EnvironmentFormData = z.infer<typeof environmentSchema>;
 
 // ============================================================
 // Auth Schemas

@@ -2,7 +2,7 @@ import axios from "axios";
 import apiClient from "~/lib/apiClient";
 import { type Service, type ServiceFormData } from "~/types/Service";
 import { ApiError, isAxiosApiError } from "~/types/ApiError";
-import { type VariableGroup } from "~/types/VariableGroup";
+import { type Environment } from "~/types/Environment";
 
 export interface HealthStatus {
   status: string;
@@ -22,11 +22,11 @@ export interface ConfigExport {
   version: string;
   exportedAt: string;
   exportedBy: string;
-  variableGroups: VariableGroup[];
+  environments: Environment[];
   services: Service[];
   metadata: {
     totalServices: number;
-    totalVariableGroups: number;
+    totalEnvironments: number;
   };
 }
 

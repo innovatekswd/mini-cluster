@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using System.IO;
+using System.IO.Compression;
 using System.Threading.Tasks;
 using System.Collections.Generic; // Add this to resolve List<T> used in FolderUploadForm
 
@@ -50,24 +51,70 @@ namespace Innovatek.Parallel.MiniCluster.Api.Controllers
 
         // GET: api/files/download?folder=somefolder&fileName=somefile.txt
         [HttpGet("download")]
-        public async Task<IActionResult> DownloadFile([FromQuery] string folder, [FromQuery] string fileName)
+        public async Task<IActionResult> DownloadFile([FromQuery] string folder, [FromQuery] string? fileName = null)
         {
-            if (string.IsNullOrWhiteSpace(folder) || string.IsNullOrWhiteSpace(fileName))
-                return BadRequest("Folder and fileName are required.");
+            if (string.IsNullOrWhiteSpace(folder))
+                return BadRequest("Folder is required.");
 
             var sanitizedFolder = folder.Replace("..", "").TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            var filePath = Path.Combine(_basePath, sanitizedFolder, fileName);
+            var targetPath = Path.Combine(_basePath, sanitizedFolder);
 
-            if (!System.IO.File.Exists(filePath))
-                return NotFound("File not found.");
-
-            var memory = new MemoryStream();
-            using (var stream = new FileStream(filePath, FileMode.Open))
+            // If fileName is provided, download the specific file
+            if (!string.IsNullOrWhiteSpace(fileName))
             {
-                await stream.CopyToAsync(memory);
+                var filePath = Path.Combine(targetPath, fileName);
+
+                if (!System.IO.File.Exists(filePath))
+                    return NotFound("File not found.");
+
+                var memory = new MemoryStream();
+                using (var stream = new FileStream(filePath, FileMode.Open))
+                {
+                    await stream.CopyToAsync(memory);
+                }
+                memory.Position = 0;
+                return File(memory, "application/octet-stream", fileName);
             }
-            memory.Position = 0;
-            return File(memory, "application/octet-stream", fileName);
+            else
+            {
+                // No fileName provided, download the entire folder as a zip
+                if (!Directory.Exists(targetPath))
+                    return NotFound("Folder not found.");
+
+                var zipMemory = new MemoryStream();
+                using (var archive = new ZipArchive(zipMemory, ZipArchiveMode.Create, true))
+                {
+                    await AddDirectoryToZip(archive, targetPath, sanitizedFolder);
+                }
+                zipMemory.Position = 0;
+
+                var zipFileName = Path.GetFileName(sanitizedFolder) + ".zip";
+                return File(zipMemory, "application/zip", zipFileName);
+            }
+        }
+
+        // Helper method to recursively add directory contents to zip
+        private async Task AddDirectoryToZip(ZipArchive archive, string sourceDir, string relativePath)
+        {
+            var dirInfo = new DirectoryInfo(sourceDir);
+            
+            foreach (var file in dirInfo.GetFiles())
+            {
+                var entryName = Path.Combine(relativePath, file.Name).Replace('\\', '/');
+                var entry = archive.CreateEntry(entryName);
+                
+                using (var entryStream = entry.Open())
+                using (var fileStream = file.OpenRead())
+                {
+                    await fileStream.CopyToAsync(entryStream);
+                }
+            }
+
+            foreach (var subDir in dirInfo.GetDirectories())
+            {
+                var subRelativePath = Path.Combine(relativePath, subDir.Name);
+                await AddDirectoryToZip(archive, subDir.FullName, subRelativePath);
+            }
         }
 
         [HttpPost("upload-folder")]

@@ -18,7 +18,11 @@ using Yarp.ReverseProxy.Configuration;
 var builder = WebApplication.CreateBuilder(args);
 
 // Ensure data directory exists for SQLite databases
-var dataDirectory = Path.Combine(Directory.GetCurrentDirectory(), "data");
+// Use platform-specific data directory
+var dataDirectory = OperatingSystem.IsWindows() 
+    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "MiniCluster")
+    : "/var/lib/minicluster";
+
 if (!Directory.Exists(dataDirectory))
 {
     Directory.CreateDirectory(dataDirectory);
@@ -174,8 +178,8 @@ builder.Services.AddSignalR(options =>
 builder.Services.AddAutoMapper(typeof(Program));
 
 // Variable resolution services (from branch)
-builder.Services.AddScoped<IVariableGroupService, VariableGroupService>();
-builder.Services.AddScoped<IVariableResolver, VariableGroupResolver>();
+builder.Services.AddScoped<IEnvironmentService, EnvironmentService>();
+builder.Services.AddScoped<IVariableResolver, EnvironmentResolver>();
 builder.Services.AddScoped<IVariableResolverFactory, DefaultVariableResolverFactory>();
 
 builder.Services.AddSwaggerGen();

@@ -116,25 +116,24 @@ $result = Test-Api "Health Check" "GET" "$BASE_URL/api/health" -ExpectedCode 200
 # 2. Get All Apps (Empty)
 $result = Test-Api "Get All Apps (Empty)" "GET" "$BASE_URL/api/apps" -ExpectedCode 200
 
-# 3. Create Variable Group
+# 3. Create Environment
+$script:ENV_NAME = "TestVars"
 $varGroupBody = @{
-    name = "TestVars"
-    description = "Test variable group"
+    name = $ENV_NAME
+    description = "Test environment"
     variables = @{
         VAR1 = "value1"
         VAR2 = "value2"
     }
     isActive = $true
 }
-$result = Test-Api "Create Variable Group" "POST" "$BASE_URL/api/variables/groups" -Body $varGroupBody -ExpectedCode 201
+$result = Test-Api "Create Environment" "POST" "$BASE_URL/api/envs" -Body $varGroupBody -ExpectedCode 201
 if ($result) {
-    $varGroup = $result | ConvertFrom-Json
-    $script:VAR_GROUP_ID = $varGroup.id
-    Write-Host "Variable Group ID: $VAR_GROUP_ID" -ForegroundColor Magenta
+    Write-Host "Environment Name: $ENV_NAME" -ForegroundColor Magenta
 }
 
-# 4. Get Variable Groups
-$result = Test-Api "Get Variable Groups" "GET" "$BASE_URL/api/variables/groups" -ExpectedCode 200
+# 4. Get Environments
+$result = Test-Api "Get Environments" "GET" "$BASE_URL/api/envs" -ExpectedCode 200
 
 # 5. Create Echo App
 $echoAppBody = @{
@@ -283,7 +282,7 @@ $result = Test-Api "Export Configuration" "GET" "$BASE_URL/api/apps/export" -Exp
 Write-TestHeader $script:TestNumber "Import Configuration"
 $script:TestNumber++
 $importData = @{
-    VariableGroups = @(
+    Environments = @(
         @{
             name = "ImportedVars"
             description = "Test import"
@@ -361,8 +360,8 @@ if ($script:INVALID_APP_ID) {
     $result = Test-Api "Delete Invalid App" "DELETE" "$BASE_URL/api/apps/$INVALID_APP_ID" -ExpectedCode 204
 }
 
-if ($script:VAR_GROUP_ID) {
-    $result = Test-Api "Delete Variable Group" "DELETE" "$BASE_URL/api/variables/groups/$VAR_GROUP_ID" -ExpectedCode 204
+if ($script:ENV_NAME) {
+    $result = Test-Api "Delete Environment" "DELETE" "$BASE_URL/api/envs/$ENV_NAME" -ExpectedCode 204
 }
 
 # Summary

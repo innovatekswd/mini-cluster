@@ -42,7 +42,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
                 {
                     Id = Id,
                     Name = "TestGroup",
-                    Description = "A test variable group",
+                    Description = "A test environment",
                     Variables = new Dictionary<string, string>
                               {
                                   { "Key1", "Value1" },
@@ -64,7 +64,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
                 // Assert
                 savedGroup.Should().NotBeNull();
                 savedGroup!.Name.Should().Be("TestGroup");
-                savedGroup.Description.Should().Be("A test variable group");
+                savedGroup.Description.Should().Be("A test environment");
                 savedGroup.Variables.Should().ContainKey("Key1").WhoseValue.Should().Be("Value1"); // Corrected method
                 savedGroup.Variables.Should().ContainKey("Key2").WhoseValue.Should().Be("Value2"); // Corrected method
                 savedGroup.IsActive.Should().BeTrue();
@@ -79,7 +79,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
                 // Assert
                 savedGroup.Should().NotBeNull();
                 savedGroup!.Name.Should().Be("TestGroup");
-                savedGroup.Description.Should().Be("A test variable group");
+                savedGroup.Description.Should().Be("A test environment");
                 savedGroup.Variables.Should().ContainKey("Key1").WhoseValue.Should().Be("Value1"); // Corrected method
                 savedGroup.Variables.Should().ContainKey("Key2").WhoseValue.Should().Be("Value2"); // Corrected method
                 savedGroup.IsActive.Should().BeTrue();

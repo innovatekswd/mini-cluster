@@ -64,14 +64,14 @@ test_api "1. Health Check" "GET" "$BASE/api/health" "" "200"
 # 2. Get all apps (empty)
 test_api "2. Get All Apps (Empty)" "GET" "$BASE/api/apps" "" "200"
 
-# 3. Create Variable Group
-test_api "3. Create Variable Group" "POST" "$BASE/api/variables/groups" \
-    '{"name":"TestVars","description":"Test vars","variables":{"VAR1":"value1"},"isActive":true}' "201"
-VAR_GROUP_ID=$(jq -r '.id' /tmp/response.json)
-echo "Variable Group ID: $VAR_GROUP_ID"
+# 3. Create Environment
+ENV_NAME="TestVars"
+test_api "3. Create Environment" "POST" "$BASE/api/envs" \
+    '{"name":"'$ENV_NAME'","description":"Test vars","variables":{"VAR1":"value1"},"isActive":true}' "201"
+echo "Environment Name: $ENV_NAME"
 
-# 4. Get Variable Groups
-test_api "4. Get Variable Groups" "GET" "$BASE/api/variables/groups" "" "200"
+# 4. Get Environments
+test_api "4. Get Environments" "GET" "$BASE/api/envs" "" "200"
 
 # 5. Create Valid App
 test_api "5. Create Echo App" "POST" "$BASE/api/apps" \
@@ -191,7 +191,7 @@ test_api "29. Export Configuration" "GET" "$BASE/api/apps/export" "" "200"
 echo -e "\n${BLUE}TEST: 30. Import Configuration${NC}"
 cat > /tmp/import_test.json << 'EOF'
 {
-  "VariableGroups": [{
+  "Environments": [{
     "name": "ImportedVars",
     "description": "Test import",
     "variables": {"IMP_VAR": "imp_value"},
@@ -225,7 +225,7 @@ test_api "31. Verify Imported App" "GET" "$BASE/api/apps" "" "200"
 test_api "32. Delete Echo App" "DELETE" "$BASE/api/apps/$ECHO_APP_ID" "" "204"
 test_api "33. Delete Ping App" "DELETE" "$BASE/api/apps/$PING_APP_ID" "" "204"
 test_api "34. Delete Invalid App" "DELETE" "$BASE/api/apps/$INVALID_APP_ID" "" "204"
-test_api "35. Delete Variable Group" "DELETE" "$BASE/api/variables/groups/$VAR_GROUP_ID" "" "204"
+test_api "35. Delete Environment" "DELETE" "$BASE/api/envs/$ENV_NAME" "" "204"
 
 echo ""
 echo "═══════════════════════════════════════"

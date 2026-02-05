@@ -54,26 +54,27 @@ run_test() {
 
 echo "=== Basic Endpoint Tests ==="
 run_test "GET /api/apps" "curl -s -f $BASE_URL/api/apps" 200
-run_test "GET /api/variables/groups" "curl -s -f $BASE_URL/api/variables/groups" 200
+run_test "GET /api/envs" "curl -s -f $BASE_URL/api/envs" 200
 run_test "GET /health" "curl -s -f $BASE_URL/health" 200
 run_test "GET /logs/stats" "curl -s -f $BASE_URL/api/logs/stats" 200
 
 echo ""
-echo "=== Variable Groups Tests ==="
-# Create variable group
-GROUP_ID=$(curl -s -X POST $BASE_URL/api/variables/groups \
+echo "=== Environments Tests ==="
+# Create environment
+ENV_NAME="TestEnv"
+curl -s -X POST $BASE_URL/api/envs \
   -H "Content-Type: application/json" \
-  -d '{"name":"TestGroup","description":"Test","variables":{"VAR1":"value1"},"isActive":true}' \
-  | jq -r '.id' 2>/dev/null)
+  -d '{"name":"'$ENV_NAME'","description":"Test","variables":{"VAR1":"value1"},"isActive":true}' \
+  > /dev/null 2>&1
 
-if [ ! -z "$GROUP_ID" ] && [ "$GROUP_ID" != "null" ]; then
-    echo -e "${GREEN}PASS${NC}: Created variable group: $GROUP_ID"
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}PASS${NC}: Created environment: $ENV_NAME"
     ((PASSED++))
     
-    run_test "GET variable group by ID" "curl -s -f $BASE_URL/api/variables/groups/$GROUP_ID" 200
-    run_test "GET active variable group" "curl -s -f $BASE_URL/api/variables/groups/active" 200
+    run_test "GET environment by name" "curl -s -f $BASE_URL/api/envs/$ENV_NAME" 200
+    run_test "GET active environment" "curl -s -f $BASE_URL/api/envs/active" 200
 else
-    echo -e "${RED}FAIL${NC}: Failed to create variable group"
+    echo -e "${RED}FAIL${NC}: Failed to create environment"
     ((FAILED++))
 fi
 
@@ -136,9 +137,9 @@ echo "=== Log Management Tests ==="
 run_test "GET log stats" "curl -s -f $BASE_URL/api/logs/stats" 200
 run_test "POST cleanup old logs" "curl -s -f -X POST $BASE_URL/api/logs/cleanup" 200
 
-# Cleanup variable group
-if [ ! -z "$GROUP_ID" ] && [ "$GROUP_ID" != "null" ]; then
-    curl -s -X DELETE $BASE_URL/api/variables/groups/$GROUP_ID > /dev/null 2>&1
+# Cleanup environment
+if [ ! -z "$ENV_NAME" ]; then
+    curl -s -X DELETE $BASE_URL/api/envs/$ENV_NAME > /dev/null 2>&1
 fi
 
 echo ""
