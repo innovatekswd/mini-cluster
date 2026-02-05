@@ -1,0 +1,17 @@
+Source: minicluster-cli
+Section: utils
+Priority: optional
+Maintainer: Innovatek <support@innovatek.com>
+Build-Depends: debhelper (>= 10)
+Standards-Version: 4.1.3
+Homepage: https://innovatek.com
+
+Package: minicluster-cli
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: MiniCluster CLI - Command-line tool for MiniCluster
+ MiniCluster CLI enables DevOps automation, CI/CD integration,
+ and zero-downtime deployments from the terminal.
+ .
+ This package contains only the CLI tool (mc command).
+ For the full server installation, use minicluster-server package.

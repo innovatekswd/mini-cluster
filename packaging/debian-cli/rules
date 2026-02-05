@@ -1,0 +1,25 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	# Binary is already built, nothing to do
+
+override_dh_auto_install:
+	# Install CLI binary
+	install -D -m 0755 $(CURDIR)/cli/build/mc $(CURDIR)/debian/minicluster-cli/usr/bin/mc
+	
+	# Install shell completions
+	install -D -m 0644 $(CURDIR)/cli/completions/bash/mc.bash $(CURDIR)/debian/minicluster-cli/usr/share/bash-completion/completions/mc || true
+	install -D -m 0644 $(CURDIR)/cli/completions/zsh/_mc $(CURDIR)/debian/minicluster-cli/usr/share/zsh/site-functions/_mc || true
+	install -D -m 0644 $(CURDIR)/cli/completions/fish/mc.fish $(CURDIR)/debian/minicluster-cli/usr/share/fish/vendor_completions.d/mc.fish || true
+
+override_dh_installdeb:
+	dh_installdeb
+
+override_dh_shlibdeps:
+	dh_shlibdeps
+
+override_dh_strip:
+	# Don't strip Go binaries

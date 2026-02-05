@@ -1,0 +1,9 @@
+minicluster-cli (1.0.11) stable; urgency=medium
+
+  * Initial CLI package release
+  * Command-line interface for MiniCluster API
+  * Support for service and app management
+  * Shell completions for bash, zsh, fish
+  * Multiple output formats (table, json, yaml)
+
+ -- Innovatek <support@innovatek.com>  Wed, 05 Feb 2026 00:00:00 +0000

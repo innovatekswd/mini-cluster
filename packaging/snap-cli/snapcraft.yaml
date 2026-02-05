@@ -1,0 +1,32 @@
+name: minicluster-cli
+base: core22
+version: '1.0.11'
+summary: MiniCluster CLI - Command-line tool for MiniCluster
+description: |
+  MiniCluster CLI enables DevOps automation, CI/CD integration,
+  and zero-downtime deployments from the terminal.
+  
+  This snap contains only the CLI tool (mc command).
+  For the full server installation, use minicluster snap.
+
+grade: stable
+confinement: strict
+
+apps:
+  mc:
+    command: bin/mc
+    plugs:
+      - network
+      - home
+      - removable-media
+
+parts:
+  minicluster-cli:
+    plugin: dump
+    source: .
+    organize:
+      cli/build/mc: bin/mc
+    stage:
+      - bin/mc
+    prime:
+      - bin/mc

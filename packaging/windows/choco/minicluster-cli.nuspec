@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>minicluster-cli</id>
+    <version>1.0.11</version>
+    <title>MiniCluster CLI</title>
+    <authors>Innovatek</authors>
+    <owners>Innovatek</owners>
+    <projectUrl>https://innovatek.com/minicluster</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>MiniCluster CLI enables DevOps automation, CI/CD integration, and zero-downtime deployments from the terminal. This package contains only the CLI tool (mc command).</description>
+    <summary>Command-line interface for MiniCluster</summary>
+    <tags>minicluster cli devops automation cicd</tags>
+    <copyright>Copyright 2026 Innovatek</copyright>
+    <licenseUrl>https://innovatek.com/license</licenseUrl>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

@@ -1,0 +1,10 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: minicluster-cli
+Upstream-Contact: Innovatek <support@innovatek.com>
+Source: https://dev.azure.com/innovatekswd/InnovatekTools
+
+Files: *
+Copyright: 2026 Innovatek
+License: Proprietary
+ This software is proprietary and confidential.
+ Unauthorized copying, distribution, or use is strictly prohibited.
