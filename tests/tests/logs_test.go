@@ -19,7 +19,7 @@ func TestServiceLogs(t *testing.T) {
 		"name":           "test-logs-service",
 		"executablePath": "bash",
 		"arguments":      "-c \"for i in 1 2 3 4 5; do echo \\\"Log line $i\\\"; sleep 0.5; done\"",
-		"captureOutput":  true,
+		"captureOutput":  1,
 	}, nil)
 
 	// Start the service
@@ -53,7 +53,7 @@ func TestServiceLogsMultipleSources(t *testing.T) {
 		"name":           "test-logs-mixed",
 		"executablePath": "bash",
 		"arguments":      "-c \"echo STDOUT_LINE; echo STDERR_LINE >&2; sleep 2\"",
-		"captureOutput":  true,
+		"captureOutput":  1,
 	}, nil)
 
 	// Start and wait for output
@@ -86,7 +86,7 @@ func TestServiceLogsTail(t *testing.T) {
 		"name":           "test-logs-tail",
 		"executablePath": "bash",
 		"arguments":      "-c \"for i in $(seq 1 50); do echo \\\"Line $i\\\"; done; sleep 1\"",
-		"captureOutput":  true,
+		"captureOutput":  1,
 	}, nil)
 
 	// Start and wait for output
@@ -128,7 +128,7 @@ func TestPythonHTTPServer(t *testing.T) {
 		"executablePath":   "python3",
 		"arguments":        "-m http.server 18080",
 		"workingDirectory": "/tmp",
-		"captureOutput":    true,
+		"captureOutput":    1,
 		"description":      "Test Python HTTP server",
 	}, nil)
 
@@ -169,7 +169,7 @@ func TestPingService(t *testing.T) {
 		"name":           "test-ping-service",
 		"executablePath": "ping",
 		"arguments":      "-c 5 127.0.0.1",
-		"captureOutput":  true,
+		"captureOutput":  1,
 		"description":    "Ping localhost test",
 	}, nil)
 

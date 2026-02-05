@@ -135,11 +135,11 @@ public class ServicesController : ControllerBase
         var status = _processManager.GetStatus(service.Id);
         var statusString = status switch
         {
-            ServiceRuntimeStatus.Running => "running",
-            ServiceRuntimeStatus.Starting => "starting",
-            ServiceRuntimeStatus.Stopping => "stopping",
-            ServiceRuntimeStatus.Failed => "failed",
-            _ => "stopped"
+            ServiceRuntimeStatus.Running => "Running",
+            ServiceRuntimeStatus.Starting => "Starting",
+            ServiceRuntimeStatus.Stopping => "Stopping",
+            ServiceRuntimeStatus.Failed => "Failed",
+            _ => "Stopped"
         };
 
         return new ServiceResponseDto

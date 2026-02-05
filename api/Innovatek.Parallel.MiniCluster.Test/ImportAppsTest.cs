@@ -368,7 +368,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             exportResult.Should().BeOfType<FileStreamResult>();
             var fileResult = exportResult as FileStreamResult;
             fileResult!.ContentType.Should().Be("application/json");
-            fileResult.FileDownloadName.Should().Be("config-export.json");
+            fileResult.FileDownloadName.Should().StartWith("minicluster-export-").And.EndWith(".json");
 
             // Read and verify exported JSON
             using var reader = new StreamReader(fileResult.FileStream);

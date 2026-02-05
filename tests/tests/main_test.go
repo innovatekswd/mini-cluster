@@ -27,6 +27,8 @@ func TestMain(m *testing.M) {
 	}
 
 	apiClient = testutil.NewAPIClient(testEnv.APIServerURL)
+	// Set auth token from testEnv
+	apiClient.AuthToken = testEnv.AuthToken
 
 	// Run tests
 	code := m.Run()

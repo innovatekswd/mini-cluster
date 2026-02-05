@@ -21,6 +21,44 @@ public class LogsController : ControllerBase
         _resolver = resolver;
     }
 
+    [HttpGet]
+    public async Task<IActionResult> GetLogs(string identifier, [FromQuery] int tail = 100, CancellationToken cancellationToken = default)
+    {
+        var result = await _resolver.ResolveServiceAsync(identifier);
+        if (!result.Success)
+        {
+            if (result.AmbiguousMatches != null)
+                return BadRequest(new { error = result.Error, matches = result.AmbiguousMatches });
+            return NotFound(result.Error);
+        }
+
+        // Get the most recent session
+        var lastSession = await _logsDb.ServiceSessions
+            .Where(s => s.ServiceId == result.Value)
+            .OrderByDescending(s => s.StartTimestamp)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (lastSession == null)
+        {
+            return Ok(new { lines = Array.Empty<string>() });
+        }
+
+        // Get last N log lines
+        var logs = await _logsDb.SessionLogs
+            .Where(l => l.SessionId == lastSession.SessionId)
+            .OrderByDescending(l => l.Timestamp)
+            .Take(tail)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        // Reverse to show in chronological order
+        logs.Reverse();
+
+        var lines = logs.Select(l => $"[{l.Timestamp:yyyy-MM-dd HH:mm:ss}] [{l.LogType}] {l.Line}").ToList();
+
+        return Ok(new { lines });
+    }
+
     [HttpGet("search")]
     public async Task<IActionResult> SearchLogs(string identifier, [FromQuery] LogSearchRequest request, CancellationToken cancellationToken = default)
     {

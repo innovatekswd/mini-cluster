@@ -25,7 +25,7 @@ type ServiceDto struct {
 	IsExternal           bool              `json:"isExternal"`
 	UseShellExecute      bool              `json:"useShellExecute"`
 	CreateNoWindow       bool              `json:"createNoWindow"`
-	CaptureOutput        bool              `json:"captureOutput"`
+	CaptureOutput        int               `json:"captureOutput"`
 	Description          string            `json:"description"`
 	OrderIndex           int               `json:"orderIndex"`
 	AppID                *string           `json:"appId"`
@@ -318,7 +318,7 @@ func runServiceLogs(cmd *cobra.Command, args []string) error {
 	var logs struct {
 		Lines []string `json:"lines"`
 	}
-	path := fmt.Sprintf("/api/logs/%s?tail=%d", service, tail)
+	path := fmt.Sprintf("/api/services/%s/logs?tail=%d", service, tail)
 	if err := client.Get(ctx, path, &logs); err != nil {
 		return fmt.Errorf("failed to get logs: %w", err)
 	}
