@@ -96,12 +96,12 @@ func (e *TestEnv) StartAPIServer(ctx context.Context) error {
 	}
 
 	fmt.Println("API server ready")
-	
+
 	// Login with default credentials
 	if err := e.Login(ctx, "admin", "admin"); err != nil {
 		fmt.Printf("Warning: Failed to login with default credentials: %v\n", err)
 	}
-	
+
 	return nil
 }
 
@@ -161,54 +161,54 @@ func (e *TestEnv) Cleanup() {
 // Login authenticates with the API server and stores the token
 func (e *TestEnv) Login(ctx context.Context, username, password string) error {
 	loginURL := e.APIServerURL + "/api/auth/login"
-	
+
 	loginData := map[string]string{
 		"username": username,
 		"password": password,
 	}
-	
+
 	data, err := json.Marshal(loginData)
 	if err != nil {
 		return fmt.Errorf("failed to marshal login data: %w", err)
 	}
-	
+
 	req, err := http.NewRequestWithContext(ctx, "POST", loginURL, bytes.NewReader(data))
 	if err != nil {
 		return fmt.Errorf("failed to create login request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send login request: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("login failed with status %d: %s", resp.StatusCode, string(body))
 	}
-	
+
 	var result struct {
 		Success     bool   `json:"success"`
 		AccessToken string `json:"accessToken"`
 		Error       string `json:"error"`
 	}
-	
+
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return fmt.Errorf("failed to parse login response: %w", err)
 	}
-	
+
 	if !result.Success {
 		return fmt.Errorf("login failed: %s", result.Error)
 	}
-	
+
 	e.AuthToken = result.AccessToken
 	if e.Verbose {
 		fmt.Printf("Logged in successfully as %s\n", username)
 	}
-	
+
 	return nil
 }
 
@@ -238,12 +238,12 @@ func (e *TestEnv) RunCLIWithEnv(env map[string]string, args ...string) CLIResult
 
 	// Set environment
 	cmd.Env = os.Environ()
-	
+
 	// Add auth token if available
 	if e.AuthToken != "" {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("MC_AUTH_TOKEN=%s", e.AuthToken))
 	}
-	
+
 	for k, v := range env {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
 	}
@@ -316,7 +316,7 @@ func (c *APIClient) Get(ctx context.Context, path string, result interface{}) er
 	if err != nil {
 		return err
 	}
-	
+
 	// Add auth token if available
 	if c.AuthToken != "" {
 		req.Header.Set("Authorization", "Bearer "+c.AuthToken)
@@ -355,7 +355,7 @@ func (c *APIClient) Post(ctx context.Context, path string, body interface{}, res
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	// Add auth token if available
 	if c.AuthToken != "" {
 		req.Header.Set("Authorization", "Bearer "+c.AuthToken)
@@ -384,7 +384,7 @@ func (c *APIClient) Delete(ctx context.Context, path string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Add auth token if available
 	if c.AuthToken != "" {
 		req.Header.Set("Authorization", "Bearer "+c.AuthToken)
