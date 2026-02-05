@@ -3,7 +3,7 @@ using Innovatek.Parallel.MiniCluster.Core.Entities;
 
 namespace Innovatek.Parallel.MiniCluster.Api.Dtos
 {
-    [AutoMap(typeof(Environment))]
+    [AutoMap(typeof(Core.Entities.Environment))]
     public class CreateEnvironmentDto
     {
         public required string Name { get; set; }
@@ -14,12 +14,12 @@ namespace Innovatek.Parallel.MiniCluster.Api.Dtos
     }
 
 
-    [AutoMap(typeof(Environment))]
+    [AutoMap(typeof(Core.Entities.Environment))]
     public class UpdateEnvironmentDto : CreateEnvironmentDto
     {
     }
 
-    [AutoMap(typeof(Environment))]
+    [AutoMap(typeof(Core.Entities.Environment))]
 
     public class EnvironmentDto
     {

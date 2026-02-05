@@ -562,7 +562,7 @@ public class ServiceProcessManager : IServiceProcessManager
         }
 
         // Get PATH environment variable
-        var pathEnv = Environment.GetEnvironmentVariable("PATH");
+        var pathEnv = System.Environment.GetEnvironmentVariable("PATH");
         if (string.IsNullOrWhiteSpace(pathEnv))
         {
             return null;

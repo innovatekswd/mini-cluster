@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -428,4 +429,259 @@ func extractZipFile(file *zip.File, destPath string) error {
 
 	_, err = io.Copy(destFile, srcFile)
 	return err
+}
+
+// FileSystemItem represents a file or directory on the server
+type FileSystemItem struct {
+	Name     string    `json:"name"`
+	Type     string    `json:"type"` // "file" or "directory"
+	Size     int64     `json:"size"`
+	Modified time.Time `json:"modified"`
+	Path     string    `json:"path"`
+}
+
+// ListFilesResponse represents the response from the list endpoint
+type ListFilesResponse struct {
+	Folder string           `json:"folder"`
+	Items  []FileSystemItem `json:"items"`
+}
+
+// ListFiles lists files and directories in a folder
+func (c *Client) ListFiles(ctx context.Context, folder string) (*ListFilesResponse, error) {
+	params := url.Values{}
+	params.Add("folder", folder)
+
+	path := "/api/files/list?" + params.Encode()
+
+	var result ListFilesResponse
+	if err := c.Get(ctx, path, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// ProgressCallback is called during file upload/download to report progress
+type ProgressCallback func(current, total int64)
+
+// progressReader wraps an io.Reader and calls a callback with progress updates
+type progressReader struct {
+	reader   io.Reader
+	total    int64
+	current  int64
+	callback ProgressCallback
+	mu       sync.Mutex
+}
+
+func (pr *progressReader) Read(p []byte) (int, error) {
+	n, err := pr.reader.Read(p)
+	if n > 0 {
+		pr.mu.Lock()
+		pr.current += int64(n)
+		if pr.callback != nil {
+			pr.callback(pr.current, pr.total)
+		}
+		pr.mu.Unlock()
+	}
+	return n, err
+}
+
+// UploadFileWithProgress uploads a file and reports progress
+func (c *Client) UploadFileWithProgress(ctx context.Context, file io.Reader, fileName, folder string, fileSize int64, progress ProgressCallback) (map[string]interface{}, error) {
+	// Wrap reader with progress tracking
+	progressFile := &progressReader{
+		reader:   file,
+		total:    fileSize,
+		callback: progress,
+	}
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	// Add file field
+	part, err := writer.CreateFormFile("File", fileName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create form file: %w", err)
+	}
+
+	_, err = io.Copy(part, progressFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to copy file content: %w", err)
+	}
+
+	// Add folder field
+	err = writer.WriteField("Folder", folder)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write folder field: %w", err)
+	}
+
+	err = writer.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+
+	// Create request
+	url := c.baseURL + "/api/files/upload"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set headers
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("User-Agent", "minicluster-cli/1.0")
+
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+
+	if c.debug {
+		fmt.Printf("[DEBUG] POST %s\n", url)
+	}
+
+	// Execute request
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if c.debug {
+		fmt.Printf("[DEBUG] Response: %d %s\n", resp.StatusCode, resp.Status)
+	}
+
+	// Read response body
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	// Check for error status codes
+	if resp.StatusCode >= 400 {
+		return nil, parseAPIError(resp.StatusCode, respBody)
+	}
+
+	// Parse response
+	var result map[string]interface{}
+	if len(respBody) > 0 {
+		if err := json.Unmarshal(respBody, &result); err != nil {
+			return nil, fmt.Errorf("failed to parse response: %w", err)
+		}
+	}
+
+	return result, nil
+}
+
+// UploadMultipleFiles uploads multiple files to the same folder
+func (c *Client) UploadMultipleFiles(ctx context.Context, files []string, folder string, progress ProgressCallback) (map[string]interface{}, error) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	// Calculate total size for progress
+	var totalSize int64
+	for _, filePath := range files {
+		info, err := os.Stat(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to stat %s: %w", filePath, err)
+		}
+		totalSize += info.Size()
+	}
+
+	var currentSize int64
+
+	// Add files
+	for _, filePath := range files {
+		file, err := os.Open(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open %s: %w", filePath, err)
+		}
+		defer file.Close()
+
+		fileName := filepath.Base(filePath)
+		part, err := writer.CreateFormFile("Files", fileName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create form file: %w", err)
+		}
+
+		// Copy with progress
+		if progress != nil {
+			fileInfo, _ := file.Stat()
+			pr := &progressReader{
+				reader:   file,
+				total:    totalSize,
+				current:  currentSize,
+				callback: progress,
+			}
+			_, err = io.Copy(part, pr)
+			currentSize += fileInfo.Size()
+		} else {
+			_, err = io.Copy(part, file)
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to copy file content: %w", err)
+		}
+	}
+
+	// Add folder field
+	err := writer.WriteField("Folder", folder)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write folder field: %w", err)
+	}
+
+	err = writer.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+
+	// Create request
+	url := c.baseURL + "/api/files/upload-multiple"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set headers
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("User-Agent", "minicluster-cli/1.0")
+
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+
+	if c.debug {
+		fmt.Printf("[DEBUG] POST %s\n", url)
+	}
+
+	// Execute request
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if c.debug {
+		fmt.Printf("[DEBUG] Response: %d %s\n", resp.StatusCode, resp.Status)
+	}
+
+	// Read response body
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	// Check for error status codes
+	if resp.StatusCode >= 400 {
+		return nil, parseAPIError(resp.StatusCode, respBody)
+	}
+
+	// Parse response
+	var result map[string]interface{}
+	if len(respBody) > 0 {
+		if err := json.Unmarshal(respBody, &result); err != nil {
+			return nil, fmt.Errorf("failed to parse response: %w", err)
+		}
+	}
+
+	return result, nil
 }

@@ -4,6 +4,7 @@
 export interface App {
   id: string;
   name: string;
+  slug: string; // URL-friendly identifier
   description?: string;
   icon?: string; // Emoji or icon name
   color?: string; // Hex color for visual identity

@@ -38,7 +38,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             var Id = Guid.NewGuid();
             using (var context = new AppDbContext(options))
             {
-                var variableGroup = new VariableGroup
+                var variableGroup = new Core.Entities.Environment
                 {
                     Id = Id,
                     Name = "TestGroup",
@@ -52,14 +52,14 @@ namespace Innovatek.Parallel.MiniCluster.Test
                 };
 
                 // Act
-                context.VariableGroups.Add(variableGroup);
+                context.Environments.Add(variableGroup);
                 await context.SaveChangesAsync();
             }
             using (var context = new AppDbContext(options))
             {
 
                 // Retrieve the saved entity
-                var savedGroup = await context.VariableGroups.FindAsync(Id);
+                var savedGroup = await context.Environments.FindAsync(Id);
 
                 // Assert
                 savedGroup.Should().NotBeNull();
@@ -74,7 +74,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             {
 
                 // Retrieve the saved entity
-                var savedGroup = (await context.VariableGroups.ToListAsync()).Find(vg=>vg.Id==Id);
+                var savedGroup = (await context.Environments.ToListAsync()).Find(vg=>vg.Id==Id);
 
                 // Assert
                 savedGroup.Should().NotBeNull();

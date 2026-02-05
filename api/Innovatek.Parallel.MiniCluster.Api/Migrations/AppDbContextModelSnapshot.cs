@@ -15,9 +15,90 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.3");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.0");
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.App", b =>
+            modelBuilder.Entity("Innovatek.Parallel.Identity.Entities.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ReplacedByToken")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("Innovatek.Parallel.Identity.Entities.User", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Operator");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Username")
+                        .IsUnique();
+
+                    b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.App", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -46,19 +127,28 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Name");
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
 
                     b.HasIndex("SortOrder");
 
                     b.ToTable("Apps");
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.AppSettings", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.AppSettings", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -95,11 +185,38 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                             MetricsAggregationIntervalSeconds = 60,
                             MetricsCollectionIntervalSeconds = 5,
                             MetricsRetentionHours = 24,
-                            ModifiedAt = new DateTime(2026, 2, 1, 9, 0, 16, 288, DateTimeKind.Utc).AddTicks(6333)
+                            ModifiedAt = new DateTime(2026, 2, 5, 17, 36, 49, 623, DateTimeKind.Utc).AddTicks(4831)
                         });
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.GroupVariable", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.Environment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Variables")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("Environments");
+                });
+
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.GroupVariable", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -132,7 +249,7 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                     b.ToTable("GroupVariables");
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.ProxyRoute", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.ProxyRoute", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -231,7 +348,7 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                     b.ToTable("ProxyRoutes");
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.ProxySettings", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.ProxySettings", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -271,49 +388,11 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                             DefaultRequireAuth = true,
                             PortRangeEnd = 5099,
                             PortRangeStart = 5001,
-                            UpdatedAt = new DateTime(2026, 2, 1, 9, 0, 16, 294, DateTimeKind.Utc).AddTicks(8972)
+                            UpdatedAt = new DateTime(2026, 2, 5, 17, 36, 49, 631, DateTimeKind.Utc).AddTicks(4890)
                         });
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.RefreshToken", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsRevoked")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ReplacedByToken")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("RevokedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Token")
-                        .IsUnique();
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("RefreshTokens");
-                });
-
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.Service", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.Service", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -364,6 +443,11 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                     b.Property<int>("OrderIndex")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("UseShellExecute")
                         .HasColumnType("INTEGER");
 
@@ -378,10 +462,16 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
 
                     b.HasIndex("Name");
 
+                    b.HasIndex("AppId", "Name")
+                        .IsUnique();
+
+                    b.HasIndex("AppId", "Slug")
+                        .IsUnique();
+
                     b.ToTable("ControlledApps", (string)null);
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.ServiceFile", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.ServiceFile", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -411,7 +501,7 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                     b.ToTable("AppFiles", (string)null);
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.ServiceGroup", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.ServiceGroup", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -451,7 +541,7 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                     b.ToTable("AppGroups", (string)null);
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.ServiceGroupAssignment", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.ServiceGroupAssignment", b =>
                 {
                     b.Property<Guid>("ServiceId")
                         .HasColumnType("TEXT");
@@ -469,90 +559,9 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                     b.ToTable("AppGroupAssignments", (string)null);
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.User", b =>
+            modelBuilder.Entity("Innovatek.Parallel.Identity.Entities.RefreshToken", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(255)
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("LastLoginAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("PasswordHash")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue("User");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Username")
-                        .IsUnique();
-
-                    b.ToTable("Users");
-                });
-
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.VariableGroup", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Variables")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name");
-
-                    b.ToTable("VariableGroups");
-                });
-
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.GroupVariable", b =>
-                {
-                    b.HasOne("Innovatek.ControlCenter.Core.Entities.ServiceGroup", "Group")
-                        .WithMany()
-                        .HasForeignKey("GroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Group");
-                });
-
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.RefreshToken", b =>
-                {
-                    b.HasOne("Innovatek.ControlCenter.Core.Entities.User", "User")
+                    b.HasOne("Innovatek.Parallel.Identity.Entities.User", "User")
                         .WithMany("RefreshTokens")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -561,9 +570,20 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.Service", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.GroupVariable", b =>
                 {
-                    b.HasOne("Innovatek.ControlCenter.Core.Entities.App", "App")
+                    b.HasOne("Innovatek.Parallel.MiniCluster.Core.Entities.ServiceGroup", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.Service", b =>
+                {
+                    b.HasOne("Innovatek.Parallel.MiniCluster.Core.Entities.App", "App")
                         .WithMany("Services")
                         .HasForeignKey("AppId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -571,9 +591,9 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                     b.Navigation("App");
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.ServiceGroup", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.ServiceGroup", b =>
                 {
-                    b.HasOne("Innovatek.ControlCenter.Core.Entities.ServiceGroup", "ParentGroup")
+                    b.HasOne("Innovatek.Parallel.MiniCluster.Core.Entities.ServiceGroup", "ParentGroup")
                         .WithMany("ChildGroups")
                         .HasForeignKey("ParentGroupId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -581,15 +601,15 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                     b.Navigation("ParentGroup");
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.ServiceGroupAssignment", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.ServiceGroupAssignment", b =>
                 {
-                    b.HasOne("Innovatek.ControlCenter.Core.Entities.ServiceGroup", "Group")
+                    b.HasOne("Innovatek.Parallel.MiniCluster.Core.Entities.ServiceGroup", "Group")
                         .WithMany("ServiceAssignments")
                         .HasForeignKey("GroupId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Innovatek.ControlCenter.Core.Entities.Service", "Service")
+                    b.HasOne("Innovatek.Parallel.MiniCluster.Core.Entities.Service", "Service")
                         .WithMany()
                         .HasForeignKey("ServiceId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -600,21 +620,21 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                     b.Navigation("Service");
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.App", b =>
+            modelBuilder.Entity("Innovatek.Parallel.Identity.Entities.User", b =>
+                {
+                    b.Navigation("RefreshTokens");
+                });
+
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.App", b =>
                 {
                     b.Navigation("Services");
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.ServiceGroup", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.ServiceGroup", b =>
                 {
                     b.Navigation("ChildGroups");
 
                     b.Navigation("ServiceAssignments");
-                });
-
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.User", b =>
-                {
-                    b.Navigation("RefreshTokens");
                 });
 #pragma warning restore 612, 618
         }

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Innovatek.Parallel.MiniCluster.Api.Data;
 using Innovatek.Parallel.MiniCluster.Api.Dtos;
+using Innovatek.Parallel.MiniCluster.Api.Helpers;
 using Innovatek.Parallel.MiniCluster.Core.Entities;
 using Innovatek.Parallel.MiniCluster.Api.Services;
 
@@ -57,6 +58,7 @@ public class AppsController : ControllerBase
                 {
                     Id = app.Id,
                     Name = app.Name,
+                    Slug = app.Slug,
                     Description = app.Description,
                     Icon = app.Icon,
                     Color = app.Color,
@@ -124,6 +126,12 @@ public class AppsController : ControllerBase
             var app = _mapper.Map<App>(createDto);
             app.Id = Guid.NewGuid();
             
+            // Generate unique slug from name
+            app.Slug = SlugHelper.GenerateUniqueSlug(
+                app.Name,
+                slug => _context.Apps.Any(a => a.Slug == slug)
+            );
+            
             // Set sort order to the end
             var maxSortOrder = await _context.Apps.MaxAsync(a => (int?)a.SortOrder) ?? 0;
             app.SortOrder = maxSortOrder + 1;
@@ -132,9 +140,9 @@ public class AppsController : ControllerBase
             await _context.SaveChangesAsync();
 
             var appDto = _mapper.Map<ApplicationDto>(app);
-            _logger.LogInformation("Created app {AppName} with ID {AppId}", app.Name, app.Id);
+            _logger.LogInformation("Created app {AppName} with slug {Slug} and ID {AppId}", app.Name, app.Slug, app.Id);
 
-            return CreatedAtAction(nameof(GetApp), new { identifier = app.Name }, appDto);
+            return CreatedAtAction(nameof(GetApp), new { identifier = app.Slug }, appDto);
         }
         catch (Exception ex)
         {
@@ -168,8 +176,18 @@ public class AppsController : ControllerBase
                 return NotFound($"App '{identifier}' not found");
             }
 
+            var oldName = app.Name;
             _mapper.Map(updateDto, app);
             app.ModifiedAt = DateTime.UtcNow;
+            
+            // Regenerate slug if name changed
+            if (!string.IsNullOrEmpty(updateDto.Name) && updateDto.Name != oldName)
+            {
+                app.Slug = SlugHelper.GenerateUniqueSlug(
+                    app.Name,
+                    slug => _context.Apps.Any(a => a.Slug == slug && a.Id != app.Id)
+                );
+            }
 
             await _context.SaveChangesAsync();
 
@@ -285,11 +303,16 @@ public class AppsController : ControllerBase
                 return NotFound($"App '{identifier}' not found");
             }
 
-            // Create cloned app
+            // Create cloned app with unique slug
+            var clonedAppName = $"{originalApp.Name} (Copy)";
             var clonedApp = new App
             {
                 Id = Guid.NewGuid(),
-                Name = $"{originalApp.Name} (Copy)",
+                Name = clonedAppName,
+                Slug = SlugHelper.GenerateUniqueSlug(
+                    clonedAppName,
+                    slug => _context.Apps.Any(a => a.Slug == slug)
+                ),
                 Description = originalApp.Description,
                 Icon = originalApp.Icon,
                 Color = originalApp.Color,
@@ -303,10 +326,15 @@ public class AppsController : ControllerBase
             // Clone all services
             foreach (var service in originalApp.Services)
             {
+                var clonedServiceName = $"{service.Name} (Copy)";
                 var clonedService = new Service
                 {
                     Id = Guid.NewGuid(),
-                    Name = $"{service.Name} (Copy)",
+                    Name = clonedServiceName,
+                    Slug = SlugHelper.GenerateUniqueSlug(
+                        clonedServiceName,
+                        slug => _context.Services.Any(s => s.Slug == slug && s.AppId == clonedApp.Id)
+                    ),
                     ExecutablePath = service.ExecutablePath,
                     Arguments = service.Arguments,
                     EnvironmentVariables = service.EnvironmentVariables,
@@ -353,12 +381,12 @@ public class AppsController : ControllerBase
 
             var apps = new[]
             {
-                new App { Id = Guid.NewGuid(), Name = "E-Commerce Platform", Description = "Online shopping services", Icon = "🛒", Color = "#3b82f6", SortOrder = 1, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
-                new App { Id = Guid.NewGuid(), Name = "Analytics Dashboard", Description = "Data visualization and reporting", Icon = "📊", Color = "#10b981", SortOrder = 2, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
-                new App { Id = Guid.NewGuid(), Name = "Monitoring Services", Description = "System health and alerting", Icon = "📈", Color = "#f59e0b", SortOrder = 3, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
-                new App { Id = Guid.NewGuid(), Name = "Developer Tools", Description = "Build and deployment tools", Icon = "🔧", Color = "#8b5cf6", SortOrder = 4, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
-                new App { Id = Guid.NewGuid(), Name = "API Gateway", Description = "API management and routing", Icon = "🚪", Color = "#ec4899", SortOrder = 5, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
-                new App { Id = Guid.NewGuid(), Name = "ML Pipeline", Description = "Machine learning workflows", Icon = "🤖", Color = "#14b8a6", SortOrder = 6, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow }
+                new App { Id = Guid.NewGuid(), Name = "E-Commerce Platform", Slug = SlugHelper.GenerateSlug("E-Commerce Platform"), Description = "Online shopping services", Icon = "🛒", Color = "#3b82f6", SortOrder = 1, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
+                new App { Id = Guid.NewGuid(), Name = "Analytics Dashboard", Slug = SlugHelper.GenerateSlug("Analytics Dashboard"), Description = "Data visualization and reporting", Icon = "📊", Color = "#10b981", SortOrder = 2, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
+                new App { Id = Guid.NewGuid(), Name = "Monitoring Services", Slug = SlugHelper.GenerateSlug("Monitoring Services"), Description = "System health and alerting", Icon = "📈", Color = "#f59e0b", SortOrder = 3, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
+                new App { Id = Guid.NewGuid(), Name = "Developer Tools", Slug = SlugHelper.GenerateSlug("Developer Tools"), Description = "Build and deployment tools", Icon = "🔧", Color = "#8b5cf6", SortOrder = 4, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
+                new App { Id = Guid.NewGuid(), Name = "API Gateway", Slug = SlugHelper.GenerateSlug("API Gateway"), Description = "API management and routing", Icon = "🚪", Color = "#ec4899", SortOrder = 5, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
+                new App { Id = Guid.NewGuid(), Name = "ML Pipeline", Slug = SlugHelper.GenerateSlug("ML Pipeline"), Description = "Machine learning workflows", Icon = "🤖", Color = "#14b8a6", SortOrder = 6, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow }
             };
 
             await _context.Apps.AddRangeAsync(apps);
@@ -367,32 +395,32 @@ public class AppsController : ControllerBase
             var services = new[]
             {
                 // E-Commerce Platform services
-                new Service { Id = Guid.NewGuid(), Name = "Storefront API", ExecutablePath = "node", Arguments = "server.js", WorkingDirectory = "/apps/storefront", Description = "Customer-facing API", OrderIndex = 0, AppId = apps[0].Id, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
-                new Service { Id = Guid.NewGuid(), Name = "Payment Service", ExecutablePath = "dotnet", Arguments = "PaymentService.dll", WorkingDirectory = "/apps/payments", Description = "Payment processing", OrderIndex = 1, AppId = apps[0].Id, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
-                new Service { Id = Guid.NewGuid(), Name = "Order Worker", ExecutablePath = "python", Arguments = "worker.py", WorkingDirectory = "/apps/orders", Description = "Background order processing", OrderIndex = 2, AppId = apps[0].Id, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
+                new Service { Id = Guid.NewGuid(), Name = "Storefront API", Slug = SlugHelper.GenerateSlug("Storefront API"), ExecutablePath = "node", Arguments = "server.js", WorkingDirectory = "/apps/storefront", Description = "Customer-facing API", OrderIndex = 0, AppId = apps[0].Id, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
+                new Service { Id = Guid.NewGuid(), Name = "Payment Service", Slug = SlugHelper.GenerateSlug("Payment Service"), ExecutablePath = "dotnet", Arguments = "PaymentService.dll", WorkingDirectory = "/apps/payments", Description = "Payment processing", OrderIndex = 1, AppId = apps[0].Id, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
+                new Service { Id = Guid.NewGuid(), Name = "Order Worker", Slug = SlugHelper.GenerateSlug("Order Worker"), ExecutablePath = "python", Arguments = "worker.py", WorkingDirectory = "/apps/orders", Description = "Background order processing", OrderIndex = 2, AppId = apps[0].Id, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
                 
                 // Analytics Dashboard services
-                new Service { Id = Guid.NewGuid(), Name = "Analytics Processor", ExecutablePath = "python", Arguments = "analytics.py", WorkingDirectory = "/apps/analytics", Description = "Data processing engine", OrderIndex = 0, AppId = apps[1].Id, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
-                new Service { Id = Guid.NewGuid(), Name = "Dashboard UI", ExecutablePath = "npm", Arguments = "start", WorkingDirectory = "/apps/dashboard", Description = "Web dashboard", OrderIndex = 1, AppId = apps[1].Id, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
+                new Service { Id = Guid.NewGuid(), Name = "Analytics Processor", Slug = SlugHelper.GenerateSlug("Analytics Processor"), ExecutablePath = "python", Arguments = "analytics.py", WorkingDirectory = "/apps/analytics", Description = "Data processing engine", OrderIndex = 0, AppId = apps[1].Id, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
+                new Service { Id = Guid.NewGuid(), Name = "Dashboard UI", Slug = SlugHelper.GenerateSlug("Dashboard UI"), ExecutablePath = "npm", Arguments = "start", WorkingDirectory = "/apps/dashboard", Description = "Web dashboard", OrderIndex = 1, AppId = apps[1].Id, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
                 
                 // Monitoring Services
-                new Service { Id = Guid.NewGuid(), Name = "Prometheus", ExecutablePath = "prometheus", Arguments = "--config.file=/etc/prometheus/prometheus.yml", WorkingDirectory = "/apps/monitoring", Description = "Metrics collection", OrderIndex = 0, AppId = apps[2].Id, IsExternal = true, AccessLink = "http://localhost:9090", CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
-                new Service { Id = Guid.NewGuid(), Name = "Grafana", ExecutablePath = "grafana-server", Arguments = "", WorkingDirectory = "/apps/monitoring", Description = "Metrics visualization", OrderIndex = 1, AppId = apps[2].Id, IsExternal = true, AccessLink = "http://localhost:3000", CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
+                new Service { Id = Guid.NewGuid(), Name = "Prometheus", Slug = SlugHelper.GenerateSlug("Prometheus"), ExecutablePath = "prometheus", Arguments = "--config.file=/etc/prometheus/prometheus.yml", WorkingDirectory = "/apps/monitoring", Description = "Metrics collection", OrderIndex = 0, AppId = apps[2].Id, IsExternal = true, AccessLink = "http://localhost:9090", CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
+                new Service { Id = Guid.NewGuid(), Name = "Grafana", Slug = SlugHelper.GenerateSlug("Grafana"), ExecutablePath = "grafana-server", Arguments = "", WorkingDirectory = "/apps/monitoring", Description = "Metrics visualization", OrderIndex = 1, AppId = apps[2].Id, IsExternal = true, AccessLink = "http://localhost:3000", CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
                 
                 // Developer Tools
-                new Service { Id = Guid.NewGuid(), Name = "Jenkins", ExecutablePath = "java", Arguments = "-jar jenkins.war", WorkingDirectory = "/apps/jenkins", Description = "CI/CD automation", OrderIndex = 0, AppId = apps[3].Id, IsExternal = true, AccessLink = "http://localhost:8080", CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
-                new Service { Id = Guid.NewGuid(), Name = "Build Agent", ExecutablePath = "dotnet", Arguments = "build-agent.dll", WorkingDirectory = "/apps/build", Description = "Build executor", OrderIndex = 1, AppId = apps[3].Id, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
+                new Service { Id = Guid.NewGuid(), Name = "Jenkins", Slug = SlugHelper.GenerateSlug("Jenkins"), ExecutablePath = "java", Arguments = "-jar jenkins.war", WorkingDirectory = "/apps/jenkins", Description = "CI/CD automation", OrderIndex = 0, AppId = apps[3].Id, IsExternal = true, AccessLink = "http://localhost:8080", CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
+                new Service { Id = Guid.NewGuid(), Name = "Build Agent", Slug = SlugHelper.GenerateSlug("Build Agent"), ExecutablePath = "dotnet", Arguments = "build-agent.dll", WorkingDirectory = "/apps/build", Description = "Build executor", OrderIndex = 1, AppId = apps[3].Id, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
                 
                 // API Gateway
-                new Service { Id = Guid.NewGuid(), Name = "Gateway Service", ExecutablePath = "node", Arguments = "gateway.js", WorkingDirectory = "/apps/gateway", Description = "API gateway", OrderIndex = 0, AppId = apps[4].Id, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
+                new Service { Id = Guid.NewGuid(), Name = "Gateway Service", Slug = SlugHelper.GenerateSlug("Gateway Service"), ExecutablePath = "node", Arguments = "gateway.js", WorkingDirectory = "/apps/gateway", Description = "API gateway", OrderIndex = 0, AppId = apps[4].Id, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
                 
                 // ML Pipeline
-                new Service { Id = Guid.NewGuid(), Name = "Training Service", ExecutablePath = "python", Arguments = "train.py", WorkingDirectory = "/apps/ml", Description = "Model training", OrderIndex = 0, AppId = apps[5].Id, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
-                new Service { Id = Guid.NewGuid(), Name = "Inference API", ExecutablePath = "python", Arguments = "serve.py", WorkingDirectory = "/apps/ml", Description = "Model serving", OrderIndex = 1, AppId = apps[5].Id, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
+                new Service { Id = Guid.NewGuid(), Name = "Training Service", Slug = SlugHelper.GenerateSlug("Training Service"), ExecutablePath = "python", Arguments = "train.py", WorkingDirectory = "/apps/ml", Description = "Model training", OrderIndex = 0, AppId = apps[5].Id, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
+                new Service { Id = Guid.NewGuid(), Name = "Inference API", Slug = SlugHelper.GenerateSlug("Inference API"), ExecutablePath = "python", Arguments = "serve.py", WorkingDirectory = "/apps/ml", Description = "Model serving", OrderIndex = 1, AppId = apps[5].Id, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
                 
                 // Unassigned services
-                new Service { Id = Guid.NewGuid(), Name = "Legacy Database", ExecutablePath = "postgres", Arguments = "-D /data/postgres", WorkingDirectory = "/apps/legacy", Description = "Old database", OrderIndex = 0, AppId = null, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
-                new Service { Id = Guid.NewGuid(), Name = "Legacy Cache", ExecutablePath = "redis-server", Arguments = "/etc/redis/redis.conf", WorkingDirectory = "/apps/legacy", Description = "Old cache", OrderIndex = 1, AppId = null, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow }
+                new Service { Id = Guid.NewGuid(), Name = "Legacy Database", Slug = SlugHelper.GenerateSlug("Legacy Database"), ExecutablePath = "postgres", Arguments = "-D /data/postgres", WorkingDirectory = "/apps/legacy", Description = "Old database", OrderIndex = 0, AppId = null, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow },
+                new Service { Id = Guid.NewGuid(), Name = "Legacy Cache", Slug = SlugHelper.GenerateSlug("Legacy Cache"), ExecutablePath = "redis-server", Arguments = "/etc/redis/redis.conf", WorkingDirectory = "/apps/legacy", Description = "Old cache", OrderIndex = 1, AppId = null, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow }
             };
 
             await _context.Services.AddRangeAsync(services);

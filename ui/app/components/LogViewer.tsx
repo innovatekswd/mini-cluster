@@ -23,7 +23,7 @@ interface DbSearchResponse {
 }
 
 export const LogViewer: React.FC<LogViewerProps> = ({ appId, miniView = false }) => {
-  const { logs, clearLogs } = useLogContext();
+  const { logs, clearLogs, addLog } = useLogContext();
   const appLogs = logs[appId] || [];
   const [search, setSearch] = useState("");
   const [searchMode, setSearchMode] = useState<"live" | "db">("live");
@@ -33,6 +33,43 @@ export const LogViewer: React.FC<LogViewerProps> = ({ appId, miniView = false })
   const [dbSearchPage, setDbSearchPage] = useState(1);
   const [dbSearchQuery, setDbSearchQuery] = useState("");
   const [logType, setLogType] = useState<"all" | "stdout" | "stderr">("all");
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
+
+  // Load recent logs from DB on mount when live logs are empty
+  useEffect(() => {
+    if (!appId || initialLoadDone || appLogs.length > 0) return;
+    
+    const loadRecentLogs = async () => {
+      try {
+        const params = new URLSearchParams();
+        params.append("page", "1");
+        params.append("pageSize", "200");
+        
+        const response = await apiClient.get<DbSearchResponse>(
+          `/api/services/${appId}/logs/search?${params.toString()}`
+        );
+        
+        if (response.data.results && response.data.results.length > 0) {
+          // Sort by timestamp and add to log context
+          const sortedLogs = response.data.results
+            .filter(r => r && r.timestamp && r.line !== undefined)
+            .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+          
+          sortedLogs.forEach(r => {
+            const time = new Date(r.timestamp).toLocaleTimeString();
+            const type = r.logType === "stderr" ? "[ERR]" : "[OUT]";
+            addLog(appId, `${time} ${type} ${r.line}`);
+          });
+        }
+      } catch (error) {
+        console.error("Error loading recent logs:", error);
+      } finally {
+        setInitialLoadDone(true);
+      }
+    };
+    
+    loadRecentLogs();
+  }, [appId, initialLoadDone, appLogs.length, addLog]);
 
   // Search DB logs
   const searchDbLogs = useCallback(async (query: string, page: number = 1) => {
@@ -47,7 +84,7 @@ export const LogViewer: React.FC<LogViewerProps> = ({ appId, miniView = false })
       params.append("pageSize", "500");
       
       const response = await apiClient.get<DbSearchResponse>(
-        `/api/apps/${appId}/logs/search?${params.toString()}`
+        `/api/services/${appId}/logs/search?${params.toString()}`
       );
       
       setDbSearchResults(response.data.results);

@@ -9,6 +9,13 @@ namespace Innovatek.Parallel.MiniCluster.Core.Entities
     public class ServiceBase
     {
         public string Name { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// URL-friendly identifier derived from Name. Lowercase, alphanumeric with hyphens.
+        /// Used for routing and API paths instead of encoded names. Must be unique within an app.
+        /// </summary>
+        public required string Slug { get; set; }
+        
         public string ExecutablePath { get; set; } = string.Empty;
         public string? Arguments { get; set; }
         public Dictionary<string, string> EnvironmentVariables { get; set; } = new();

@@ -5,6 +5,7 @@ import {
   useSetActiveEnvironmentMutation,
 } from "~/hooks/useEnvironmentQueries";
 import { useError } from "./ErrorProvider";
+import { useAuth } from "./AuthContext";
 
 type EnvironmentContextType = {
   activeEnvironment: Environment | null;
@@ -19,9 +20,12 @@ const EnvironmentContext = createContext<EnvironmentContextType | null>(
 
 export function EnvironmentProvider({ children }: { children: ReactNode }) {
   const { showError } = useError();
+  const { isAuthenticated } = useAuth();
 
-  // Use React Query for active environment
-  const { data: activeEnvironment = null, isLoading } = useActiveEnvironmentQuery();
+  // Use React Query for active environment - only when authenticated
+  const { data: activeEnvironment = null, isLoading } = useActiveEnvironmentQuery({
+    enabled: isAuthenticated,
+  });
 
   // Use mutation to set active environment
   const setActiveEnvironmentMutation = useSetActiveEnvironmentMutation();

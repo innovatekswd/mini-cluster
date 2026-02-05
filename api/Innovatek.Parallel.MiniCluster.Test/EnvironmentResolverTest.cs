@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using EnvironmentEntity = Innovatek.Parallel.MiniCluster.Core.Entities.Environment;
 
 namespace Innovatek.Parallel.MiniCluster.Test
 {
@@ -17,7 +18,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
         public async Task ResolveVariables_ShouldResolveUsingActiveEnvironment()
         {
             // Arrange
-            var activeEnvironment = new Environment
+            var activeEnvironment = new EnvironmentEntity
             {
                 Id = Guid.NewGuid(),
                 Name = "ActiveEnvironment",
@@ -53,7 +54,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             var mockEnvironmentService = new Mock<IEnvironmentService>();
             mockEnvironmentService
                 .Setup(service => service.GetActiveEnvironmentAsync())
-                .ReturnsAsync((Environment?)null);
+                .ReturnsAsync((EnvironmentEntity?)null);
 
             var resolver = new EnvironmentResolver(mockEnvironmentService.Object);
             var input = "Path: {BasePath}";
@@ -71,7 +72,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
         public async Task ResolveVariables_ShouldDetectCircularReferences()
         {
             // Arrange
-            var activeEnvironment = new Environment
+            var activeEnvironment = new EnvironmentEntity
             {
                 Id = Guid.NewGuid(),
                 Name = "ActiveEnvironment",
@@ -103,7 +104,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
         public async Task ResolveVariables_ShouldHandlePartiallyResolvedVariables()
         {
             // Arrange
-            var activeEnvironment = new Environment
+            var activeEnvironment = new EnvironmentEntity
             {
                 Id = Guid.NewGuid(),
                 Name = "ActiveEnvironment",
@@ -135,7 +136,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
         public async Task ResolveVariables_ShouldHandleEmptyInput()
         {
             // Arrange
-            var activeEnvironment = new Environment
+            var activeEnvironment = new EnvironmentEntity
             {
                 Id = Guid.NewGuid(),
                 Name = "ActiveEnvironment",

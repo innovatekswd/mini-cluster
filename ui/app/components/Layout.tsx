@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useLocation } from "react-router";
-import { FaCubes, FaBars, FaTimes, FaCog, FaDesktop, FaTerminal, FaFolder, FaGlobe, FaSlidersH, FaSync } from "react-icons/fa";
+import { FaCubes, FaBars, FaTimes, FaCog, FaDesktop, FaTerminal, FaFolder, FaGlobe, FaSlidersH, FaSync, FaTachometerAlt } from "react-icons/fa";
 import { useToast, type NotificationHistoryItem, type ToastType } from "~/components/Toast";
 import { useConnection } from "~/context/ConnectionContext";
 import { useAppStatusContext } from "~/context/AppStatusContext";
@@ -124,11 +124,20 @@ export const Layout = ({ children, appStats, onMenuToggle, isSidebarOpen, isSide
 
           {/* Right side actions */}
           <div className="flex items-center gap-2">
-            {/* Dashboard/Services link */}
+            {/* Dashboard link */}
             <Link
               to="/"
               className="icon-btn"
-              aria-label="Dashboard / Services"
+              aria-label="Dashboard"
+            >
+              <FaTachometerAlt className="text-lg" aria-hidden="true" />
+            </Link>
+
+            {/* Applications link */}
+            <Link
+              to="/apps"
+              className="icon-btn"
+              aria-label="Applications"
             >
               <FaCubes className="text-lg" aria-hidden="true" />
             </Link>

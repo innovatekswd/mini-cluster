@@ -114,7 +114,16 @@ public class IdentifierResolver : IIdentifierResolver
             }
         }
 
-        // 3. Name match (exact, case-insensitive)
+        // 3. Slug match (exact)
+        var bySlug = await _db.Apps
+            .AsNoTracking()
+            .Where(a => a.Slug == identifier.ToLower())
+            .FirstOrDefaultAsync();
+
+        if (bySlug != null)
+            return ResolveResult<Guid>.Ok(bySlug.Id);
+
+        // 4. Name match (exact, case-insensitive)
         var byName = await _db.Apps
             .AsNoTracking()
             .Where(a => a.Name.ToLower() == identifier.ToLower())
@@ -123,7 +132,7 @@ public class IdentifierResolver : IIdentifierResolver
         if (byName.Count == 1)
             return ResolveResult<Guid>.Ok(byName[0].Id);
 
-        // 4. Partial name match
+        // 5. Partial name match
         var partialMatches = await _db.Apps
             .AsNoTracking()
             .Where(a => a.Name.ToLower().Contains(identifier.ToLower()))
@@ -174,12 +183,20 @@ public class IdentifierResolver : IIdentifierResolver
                 return ResolveResult<Guid>.NotFound($"App '{appIdentifier}' not found");
             }
 
-            // Find service by name within that app
+            // Find service by slug or name within that app
             var services = await _db.Services
                 .AsNoTracking()
                 .Where(s => s.AppId == appResult.Value)
                 .ToListAsync();
 
+            // Try slug match first
+            var slugMatch = services.FirstOrDefault(s => 
+                s.Slug.Equals(serviceIdentifier, StringComparison.OrdinalIgnoreCase));
+            
+            if (slugMatch != null)
+                return ResolveResult<Guid>.Ok(slugMatch.Id);
+
+            // Then try exact name match
             var exactMatch = services.FirstOrDefault(s => 
                 s.Name.Equals(serviceIdentifier, StringComparison.OrdinalIgnoreCase));
             
@@ -238,7 +255,16 @@ public class IdentifierResolver : IIdentifierResolver
             }
         }
 
-        // 4. Name match (exact, case-insensitive)
+        // 4. Slug match (exact)
+        var bySlug = await _db.Services
+            .AsNoTracking()
+            .Where(s => s.Slug == identifier.ToLower())
+            .FirstOrDefaultAsync();
+
+        if (bySlug != null)
+            return ResolveResult<Guid>.Ok(bySlug.Id);
+
+        // 5. Name match (exact, case-insensitive)
         var byName = await _db.Services
             .AsNoTracking()
             .Include(s => s.App)
@@ -260,7 +286,7 @@ public class IdentifierResolver : IIdentifierResolver
             return ResolveResult<Guid>.Ambiguous(identifier, ambiguous);
         }
 
-        // 5. Partial name match
+        // 6. Partial name match
         var partialNameMatches = await _db.Services
             .AsNoTracking()
             .Include(s => s.App)

@@ -7,7 +7,7 @@ public class ConfigExportDto
     public string Version { get; set; } = "1.0";
     public DateTime ExportedAt { get; set; }
     public string ExportedBy { get; set; } = "MiniCluster";
-    public List<Environment> Environments { get; set; } = new();
+    public List<Core.Entities.Environment> Environments { get; set; } = new();
     public List<Service> Services { get; set; } = new();
     public ExportMetadata Metadata { get; set; } = new();
 }

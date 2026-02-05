@@ -148,6 +148,23 @@ export interface SystemProcessInfo {
   isResponding: boolean;
 }
 
+export interface SystemMetricsHistory {
+  timestamp: string;
+  cpuUsagePercent: number;
+  memoryUsagePercent: number;
+  totalPhysicalMemory: number;
+  usedPhysicalMemory: number;
+  networkBytesSent: number;
+  networkBytesReceived: number;
+  networkSendRate: number;
+  networkReceiveRate: number;
+  totalDiskSpace: number;
+  usedDiskSpace: number;
+  diskUsagePercent: number;
+  totalProcesses: number;
+  totalThreads: number;
+}
+
 export const metricsService = {
   async getLiveMetrics(): Promise<Record<string, ProcessMetricsSnapshot>> {
     const res = await apiClient.get("/api/metrics/live");
@@ -156,6 +173,20 @@ export const metricsService = {
 
   async getSystemMetrics(): Promise<SystemMetricsSnapshot> {
     const res = await apiClient.get("/api/metrics/system");
+    return res.data;
+  },
+
+  async getSystemMetricsHistory(
+    from?: Date,
+    to?: Date,
+    limit?: number
+  ): Promise<SystemMetricsHistory[]> {
+    const params = new URLSearchParams();
+    if (from) params.append("from", from.toISOString());
+    if (to) params.append("to", to.toISOString());
+    if (limit) params.append("limit", limit.toString());
+
+    const res = await apiClient.get(`/api/metrics/system/history?${params.toString()}`);
     return res.data;
   },
 

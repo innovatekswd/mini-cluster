@@ -60,6 +60,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             {
                 Id = Guid.NewGuid(),
                 Name = "TestService",
+                Slug = "test-service",
                 ExecutablePath = "C:\\TestService\\service.exe",
                 CreatedAt = DateTime.UtcNow,
                 ModifiedAt = DateTime.UtcNow
@@ -130,6 +131,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             {
                 Id = Guid.NewGuid(),
                 Name = "TestService",
+                Slug = "test-service",
                 ExecutablePath = "C:\\TestService\\service.exe",
                 CreatedAt = DateTime.UtcNow,
                 ModifiedAt = DateTime.UtcNow
@@ -177,6 +179,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             {
                 Id = Guid.NewGuid(),
                 Name = "TestService",
+                Slug = "test-service",
                 ExecutablePath = "C:\\TestService\\service.exe",
                 CreatedAt = DateTime.UtcNow,
                 ModifiedAt = DateTime.UtcNow
@@ -212,6 +215,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             {
                 Id = Guid.NewGuid(),
                 Name = "TestService",
+                Slug = "test-service",
                 ExecutablePath = "C:\\TestService\\service.exe",
                 CreatedAt = DateTime.UtcNow,
                 ModifiedAt = DateTime.UtcNow

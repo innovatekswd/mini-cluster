@@ -109,21 +109,25 @@ export function useDashboardData(): UseDashboardDataReturn {
 
   const deleteServiceMutation = useDeleteAppMutation();
 
-  // Resolve app name from route to app ID
+  // Resolve app slug from route to app ID
   const selectedAppId = useMemo(() => {
     if (!appNameFromRoute || apps.length === 0) return null;
-    const decodedName = decodeURIComponent(appNameFromRoute);
-    const app = apps.find(a => a.name.toLowerCase() === decodedName.toLowerCase());
+    const decodedSlug = decodeURIComponent(appNameFromRoute).toLowerCase();
+    // First try to match by slug, then fall back to name for backward compatibility
+    const app = apps.find(a => a.slug === decodedSlug) 
+              || apps.find(a => a.name.toLowerCase() === decodedSlug);
     return app?.id || null;
   }, [appNameFromRoute, apps]);
 
-  // Resolve service name from route to service ID
+  // Resolve service slug from route to service ID
   const selectedServiceId = useMemo(() => {
     if (!serviceNameFromRoute || !selectedAppId || services.length === 0) return null;
-    const decodedName = decodeURIComponent(serviceNameFromRoute);
+    const decodedSlug = decodeURIComponent(serviceNameFromRoute).toLowerCase();
+    // First try to match by slug, then fall back to name for backward compatibility
     const service = services.find(s => 
-      s.appId === selectedAppId && 
-      s.name.toLowerCase() === decodedName.toLowerCase()
+      s.appId === selectedAppId && s.slug === decodedSlug
+    ) || services.find(s => 
+      s.appId === selectedAppId && s.name.toLowerCase() === decodedSlug
     );
     return service?.id || null;
   }, [serviceNameFromRoute, selectedAppId, services]);
@@ -182,12 +186,12 @@ export function useDashboardData(): UseDashboardDataReturn {
     navigate('/dashboard');
   }, [navigate]);
 
-  const navigateToApp = useCallback((appName: string) => {
-    navigate(`/dashboard/${encodeURIComponent(appName)}`);
+  const navigateToApp = useCallback((appSlug: string) => {
+    navigate(`/dashboard/${encodeURIComponent(appSlug)}`);
   }, [navigate]);
 
-  const navigateToService = useCallback((appName: string, serviceName: string) => {
-    navigate(`/dashboard/${encodeURIComponent(appName)}/${encodeURIComponent(serviceName)}`);
+  const navigateToService = useCallback((appSlug: string, serviceSlug: string) => {
+    navigate(`/dashboard/${encodeURIComponent(appSlug)}/${encodeURIComponent(serviceSlug)}`);
   }, [navigate]);
 
   // Actions
@@ -200,7 +204,7 @@ export function useDashboardData(): UseDashboardDataReturn {
       // Find the app for this service
       const app = apps.find(a => a.id === service.appId);
       if (app) {
-        navigateToService(app.name, service.name);
+        navigateToService(app.slug || app.name, service.slug || service.name);
       } else {
         // Service without app - just show in current view
         setMode("view");
@@ -239,7 +243,7 @@ export function useDashboardData(): UseDashboardDataReturn {
     } else if (appIds.length === 1) {
       const app = apps.find(a => a.id === appIds[0]);
       if (app) {
-        navigateToApp(app.name);
+        navigateToApp(app.slug || app.name);
       }
     }
     // For multiple apps, we stay on dashboard (multi-app filter not supported in path routing)
@@ -253,7 +257,7 @@ export function useDashboardData(): UseDashboardDataReturn {
       }
       const app = apps.find(a => a.id === serviceToEdit.appId);
       if (app) {
-        navigateToService(app.name, serviceToEdit.name);
+        navigateToService(app.slug || app.name, serviceToEdit.slug || serviceToEdit.name);
         setActiveTab("config");
       }
       setMode("view");
@@ -272,7 +276,7 @@ export function useDashboardData(): UseDashboardDataReturn {
     } else {
       const app = apps.find(a => a.id === id);
       if (app) {
-        navigateToApp(app.name);
+        navigateToApp(app.slug || app.name);
       }
     }
   }, [apps, navigateToDashboard, navigateToApp]);

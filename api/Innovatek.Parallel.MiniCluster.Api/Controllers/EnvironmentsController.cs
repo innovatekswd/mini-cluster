@@ -51,7 +51,7 @@ public class EnvironmentsController : ControllerBase
         }
 
         // Map the DTO to the entity
-        var _env = _mapper.Map<Environment>(env);
+        var _env = _mapper.Map<Core.Entities.Environment>(env);
         _env.Id = Guid.NewGuid();
 
         // Add the environment to the database
@@ -63,6 +63,7 @@ public class EnvironmentsController : ControllerBase
     }
 
     [HttpGet("active")]
+    [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Client)]
     public async Task<ActionResult<EnvironmentDto>> GetActive()
     {
         var env = await _dbContext.Environments
@@ -101,7 +102,7 @@ public class EnvironmentsController : ControllerBase
         return new OkObjectResult(_mapper.Map<EnvironmentDto>(existingEnv));
     }
 
-    private void MarkVariablesAsModified(Environment? existingEnv)
+    private void MarkVariablesAsModified(Innovatek.Parallel.MiniCluster.Core.Entities.Environment? existingEnv)
     {
         if (existingEnv != null)
         {

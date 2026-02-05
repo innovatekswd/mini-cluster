@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/innovatek/minicluster-cli/internal/auth"
 	"github.com/spf13/viper"
 )
 
@@ -106,6 +107,15 @@ func GetActiveConfig() *ActiveConfig {
 
 	// Expand environment variables in token
 	cfg.Token = expandEnv(cfg.Token)
+
+	// If no token from config, try to load from credentials store
+	if cfg.Token == "" && cfg.ServerURL != "" {
+		if store, err := auth.NewStore(); err == nil {
+			if creds, err := store.Load(cfg.ServerURL); err == nil {
+				cfg.Token = creds.Token
+			}
+		}
+	}
 
 	// Ensure timeout has a default
 	if cfg.Timeout == 0 {

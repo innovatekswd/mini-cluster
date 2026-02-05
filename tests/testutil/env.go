@@ -30,12 +30,25 @@ type TestEnv struct {
 func DefaultEnv() *TestEnv {
 	baseDir := os.Getenv("MINICLUSTER_TEST_BASE")
 	if baseDir == "" {
-		// Assume we're in tests
-		baseDir = filepath.Join("..", "")
+		// Assume we're in tests - check if we need to go up two levels
+		// (when running from tests/ subdir vs root tests/)
+		if _, err := os.Stat("../cli/build/mc"); err == nil {
+			baseDir = ".."
+		} else if _, err := os.Stat("../../cli/build/mc"); err == nil {
+			baseDir = filepath.Join("..", "..")
+		} else {
+			baseDir = ".."
+		}
+	}
+
+	// Allow environment variable to override API URL for testing
+	apiURL := os.Getenv("MINICLUSTER_API_URL")
+	if apiURL == "" {
+		apiURL = "http://localhost:5148" // Use dev server port for tests
 	}
 
 	return &TestEnv{
-		APIServerURL: "http://localhost:5147",
+		APIServerURL: apiURL,
 		CLIPath:      filepath.Join(baseDir, "cli", "build", "mc"),
 		APIPath:      filepath.Join(baseDir, "api"),
 		WorkDir:      filepath.Join(baseDir, "tests", ".testdata"),

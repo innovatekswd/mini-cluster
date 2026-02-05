@@ -122,7 +122,7 @@ export default function AppsPage() {
               <div
                 key={app.id}
                 className="card-elevated hover:scale-105 transition-transform cursor-pointer group relative"
-                onClick={() => navigate(`/dashboard/${encodeURIComponent(app.name)}`)}
+                onClick={() => navigate(`/dashboard/${encodeURIComponent(app.slug || app.name)}`)}
               >
                 {/* Action buttons (show on hover) */}
                 <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">

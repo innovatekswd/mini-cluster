@@ -263,3 +263,161 @@ func TestFolderDownload(t *testing.T) {
 
 	_ = ctx
 }
+
+func TestFileList(t *testing.T) {
+	ctx := context.Background()
+
+	// Create a unique folder for this test
+	folderName := "list-test-" + randomString(8)
+
+	// Upload some files
+	file1 := filepath.Join(os.TempDir(), "list-file-1.txt")
+	defer os.Remove(file1)
+	err := os.WriteFile(file1, []byte("Content 1"), 0644)
+	require.NoError(t, err, "Failed to create temp file 1")
+
+	result := testEnv.RunCLI("file", "upload", file1, folderName)
+	require.Equal(t, 0, result.ExitCode, "Failed to upload file 1: %s", result.Stderr)
+
+	file2 := filepath.Join(os.TempDir(), "list-file-2.json")
+	defer os.Remove(file2)
+	err = os.WriteFile(file2, []byte(`{"test": true}`), 0644)
+	require.NoError(t, err, "Failed to create temp file 2")
+
+	result = testEnv.RunCLI("file", "upload", file2, folderName)
+	require.Equal(t, 0, result.ExitCode, "Failed to upload file 2: %s", result.Stderr)
+
+	// Create a subdirectory with a file
+	file3 := filepath.Join(os.TempDir(), "list-file-3.csv")
+	defer os.Remove(file3)
+	err = os.WriteFile(file3, []byte("a,b,c\n1,2,3"), 0644)
+	require.NoError(t, err, "Failed to create temp file 3")
+
+	result = testEnv.RunCLI("file", "upload", file3, folderName+"/subdir")
+	require.Equal(t, 0, result.ExitCode, "Failed to upload file 3: %s", result.Stderr)
+
+	// Now list the folder
+	result = testEnv.RunCLI("file", "list", folderName)
+	require.Equal(t, 0, result.ExitCode, "File list should succeed: %s", result.Stderr)
+
+	// Verify output contains file names
+	assert.Contains(t, result.Stdout, "list-file-1.txt", "File 1 should be in list")
+	assert.Contains(t, result.Stdout, "list-file-2.json", "File 2 should be in list")
+	assert.Contains(t, result.Stdout, "subdir", "Subdirectory should be in list")
+	assert.Contains(t, result.Stdout, "TYPE", "Should have table header")
+	assert.Contains(t, result.Stdout, "Total:", "Should have total count")
+
+	// List the subdirectory
+	result = testEnv.RunCLI("file", "list", folderName+"/subdir")
+	require.Equal(t, 0, result.ExitCode, "Subdir list should succeed: %s", result.Stderr)
+	assert.Contains(t, result.Stdout, "list-file-3.csv", "File 3 should be in subdir list")
+
+	// List root (no argument)
+	result = testEnv.RunCLI("file", "list")
+	require.Equal(t, 0, result.ExitCode, "Root list should succeed: %s", result.Stderr)
+	assert.Contains(t, result.Stdout, folderName, "Test folder should be in root list")
+
+	_ = ctx
+}
+
+func TestFileUploadBulk(t *testing.T) {
+	ctx := context.Background()
+
+	// Create multiple files with a pattern
+	tmpDir := filepath.Join(os.TempDir(), "bulk-test-"+randomString(8))
+	err := os.MkdirAll(tmpDir, 0755)
+	require.NoError(t, err, "Failed to create temp directory")
+	defer os.RemoveAll(tmpDir)
+
+	// Create test files
+	files := []string{"test1.json", "test2.json", "test3.json", "test4.txt"}
+	for _, name := range files {
+		filePath := filepath.Join(tmpDir, name)
+		err := os.WriteFile(filePath, []byte("test content: "+name), 0644)
+		require.NoError(t, err, "Failed to create test file: "+name)
+	}
+
+	// Use bulk upload with glob pattern for JSON files
+	folderName := "bulk-upload-" + randomString(8)
+	pattern := filepath.Join(tmpDir, "*.json")
+
+	result := testEnv.RunCLI("file", "upload-bulk", pattern, folderName)
+	require.Equal(t, 0, result.ExitCode, "Bulk upload should succeed: %s", result.Stderr)
+	assert.Contains(t, result.Stdout, "uploaded successfully", "Should show success message")
+	assert.Contains(t, result.Stdout, "3", "Should upload 3 JSON files")
+
+	// Verify files were uploaded by listing
+	result = testEnv.RunCLI("file", "list", folderName)
+	require.Equal(t, 0, result.ExitCode, "List should succeed")
+	assert.Contains(t, result.Stdout, "test1.json", "File 1 should be uploaded")
+	assert.Contains(t, result.Stdout, "test2.json", "File 2 should be uploaded")
+	assert.Contains(t, result.Stdout, "test3.json", "File 3 should be uploaded")
+	assert.NotContains(t, result.Stdout, "test4.txt", "TXT file should not be uploaded")
+
+	_ = ctx
+}
+
+func TestFileUploadBulkNoMatch(t *testing.T) {
+	// Try bulk upload with pattern that matches nothing
+	pattern := "/tmp/nonexistent-pattern-*.xyz"
+	result := testEnv.RunCLI("file", "upload-bulk", pattern, "test-folder")
+	require.NotEqual(t, 0, result.ExitCode, "Should fail when no files match pattern")
+	assert.Contains(t, result.Stderr, "no files match", "Should have error about no matches")
+}
+
+func TestFileUploadWithNoProgress(t *testing.T) {
+	ctx := context.Background()
+
+	// Create a file to upload
+	tmpFile := filepath.Join(os.TempDir(), "no-progress-test-"+randomString(8)+".txt")
+	defer os.Remove(tmpFile)
+
+	content := "Test file for no-progress flag"
+	err := os.WriteFile(tmpFile, []byte(content), 0644)
+	require.NoError(t, err, "Failed to create temp file")
+
+	// Upload with --no-progress flag
+	folderName := "no-progress-" + randomString(8)
+	result := testEnv.RunCLI("file", "upload", "--no-progress", tmpFile, folderName)
+	require.Equal(t, 0, result.ExitCode, "Upload with --no-progress should succeed: %s", result.Stderr)
+	assert.Contains(t, result.Stdout, "uploaded successfully", "Should show success message")
+
+	// Verify no progress bar was shown (progress bars use \r)
+	assert.NotContains(t, result.Stdout, "\r", "Should not show progress bar with --no-progress")
+
+	_ = ctx
+}
+
+func TestFileBulkUploadWithNoProgress(t *testing.T) {
+	ctx := context.Background()
+
+	// Create multiple files
+	tmpDir := filepath.Join(os.TempDir(), "bulk-noprogress-"+randomString(8))
+	err := os.MkdirAll(tmpDir, 0755)
+	require.NoError(t, err, "Failed to create temp directory")
+	defer os.RemoveAll(tmpDir)
+
+	for i := 1; i <= 3; i++ {
+		filePath := filepath.Join(tmpDir, "file"+string(rune('0'+i))+".dat")
+		err := os.WriteFile(filePath, []byte("data"), 0644)
+		require.NoError(t, err, "Failed to create test file")
+	}
+
+	// Bulk upload with --no-progress
+	folderName := "bulk-noprogress-" + randomString(8)
+	pattern := filepath.Join(tmpDir, "*.dat")
+
+	result := testEnv.RunCLI("file", "upload-bulk", "--no-progress", pattern, folderName)
+	require.Equal(t, 0, result.ExitCode, "Bulk upload with --no-progress should succeed: %s", result.Stderr)
+	assert.Contains(t, result.Stdout, "uploaded successfully", "Should show success message")
+
+	_ = ctx
+}
+
+func TestFileListEmptyFolder(t *testing.T) {
+	// Try to list a non-existent folder
+	result := testEnv.RunCLI("file", "list", "nonexistent-folder-"+randomString(16))
+	// Should return error for non-existent folder
+	require.Equal(t, 1, result.ExitCode, "List non-existent folder should return error")
+	assert.Contains(t, result.Stderr, "Not Found", "Should indicate folder not found")
+}

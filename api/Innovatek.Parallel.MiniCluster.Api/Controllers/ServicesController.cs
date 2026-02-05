@@ -1,6 +1,7 @@
 using AutoMapper;
 using Innovatek.Parallel.MiniCluster.Api.Data;
 using Innovatek.Parallel.MiniCluster.Api.Dtos;
+using Innovatek.Parallel.MiniCluster.Api.Helpers;
 using Innovatek.Parallel.MiniCluster.Api.Services;
 using Innovatek.Parallel.MiniCluster.Core.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -146,6 +147,7 @@ public class ServicesController : ControllerBase
         {
             Id = service.Id,
             Name = service.Name,
+            Slug = service.Slug,
             ExecutablePath = service.ExecutablePath,
             Arguments = service.Arguments,
             EnvironmentVariables = service.EnvironmentVariables,
@@ -175,6 +177,7 @@ public class ServicesController : ControllerBase
         {
             Id = Guid.NewGuid(),
             Name = input.Name,
+            Slug = SlugHelper.GenerateSlug(input.Name), // Initial slug, will be made unique below
             ExecutablePath = input.ExecutablePath,
             Arguments = input.Arguments,
             EnvironmentVariables = input.EnvironmentVariables ?? new(),
@@ -192,6 +195,12 @@ public class ServicesController : ControllerBase
             ModifiedAt = DateTime.UtcNow
         };
 
+        // Generate unique slug from name (unique per app)
+        service.Slug = SlugHelper.GenerateUniqueSlug(
+            service.Name,
+            slug => _db.Services.Any(s => s.Slug == slug && s.AppId == service.AppId)
+        );
+
         // Set default working directory if not provided
         if (string.IsNullOrWhiteSpace(service.WorkingDirectory))
         {
@@ -201,9 +210,9 @@ public class ServicesController : ControllerBase
         _db.Services.Add(service);
         await _db.SaveChangesAsync();
         
-        _logger.LogInformation("Created service {Name} ({Id})", service.Name, service.Id);
+        _logger.LogInformation("Created service {Name} with slug {Slug} ({Id})", service.Name, service.Slug, service.Id);
         
-        return CreatedAtAction(nameof(GetById), new { identifier = service.Name }, MapToDto(service));
+        return CreatedAtAction(nameof(GetById), new { identifier = service.Slug }, MapToDto(service));
     }
 
     [HttpPut("{identifier}")]
@@ -227,6 +236,8 @@ public class ServicesController : ControllerBase
 
         try
         {
+            var oldName = existing.Name;
+            
             // Update properties
             if (updated.Name != null) existing.Name = updated.Name;
             if (updated.ExecutablePath != null) existing.ExecutablePath = updated.ExecutablePath;
@@ -243,6 +254,15 @@ public class ServicesController : ControllerBase
             if (updated.OrderIndex.HasValue) existing.OrderIndex = updated.OrderIndex.Value;
             
             existing.ModifiedAt = DateTime.UtcNow;
+            
+            // Regenerate slug if name changed
+            if (updated.Name != null && updated.Name != oldName)
+            {
+                existing.Slug = SlugHelper.GenerateUniqueSlug(
+                    existing.Name,
+                    slug => _db.Services.Any(s => s.Slug == slug && s.AppId == existing.AppId && s.Id != existing.Id)
+                );
+            }
 
             // Set default working directory if not provided
             if (string.IsNullOrWhiteSpace(existing.WorkingDirectory))
@@ -419,11 +439,16 @@ public class ServicesController : ControllerBase
                 return NotFound($"Service '{identifier}' not found");
             }
 
-            // Create cloned service
+            // Create cloned service with unique slug
+            var clonedServiceName = $"{originalService.Name} (Copy)";
             var clonedService = new Service
             {
                 Id = Guid.NewGuid(),
-                Name = $"{originalService.Name} (Copy)",
+                Name = clonedServiceName,
+                Slug = SlugHelper.GenerateUniqueSlug(
+                    clonedServiceName,
+                    slug => _db.Services.Any(s => s.Slug == slug && s.AppId == originalService.AppId)
+                ),
                 ExecutablePath = originalService.ExecutablePath,
                 Arguments = originalService.Arguments,
                 EnvironmentVariables = originalService.EnvironmentVariables,

@@ -13,6 +13,7 @@ public class LogsDbContext : DbContext
     public DbSet<ServiceLifecycleEvent> LifecycleEvents => Set<ServiceLifecycleEvent>();
     public DbSet<ProcessMetrics> ProcessMetrics => Set<ProcessMetrics>();
     public DbSet<ProcessMetricsAggregated> ProcessMetricsAggregated => Set<ProcessMetricsAggregated>();
+    public DbSet<SystemMetrics> SystemMetrics => Set<SystemMetrics>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -62,6 +63,16 @@ public class LogsDbContext : DbContext
             entity.HasIndex(m => m.Timestamp);
             entity.HasIndex(m => new { m.ServiceId, m.Timestamp, m.IntervalSeconds }); // Composite for aggregated queries
             entity.HasIndex(m => m.IntervalSeconds);
+        });
+
+        modelBuilder.Entity<SystemMetrics>(entity =>
+        {
+            entity.HasKey(m => m.Id);
+            entity.HasIndex(m => m.Timestamp);
+            // Store TimeSpan as ticks
+            entity.Property(m => m.SystemUptime).HasConversion(
+                v => v.Ticks,
+                v => TimeSpan.FromTicks(v));
         });
     }
 }

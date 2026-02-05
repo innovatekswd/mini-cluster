@@ -51,6 +51,52 @@ public class MetricsController : ControllerBase
     }
 
     /// <summary>
+    /// Get historical system metrics for charts
+    /// </summary>
+    [HttpGet("system/history")]
+    public async Task<ActionResult<List<SystemMetricsHistory>>> GetSystemMetricsHistory(
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] int limit = 100)
+    {
+        try
+        {
+            var fromDate = from ?? DateTime.UtcNow.AddMinutes(-5);
+            var toDate = to ?? DateTime.UtcNow;
+
+            var metrics = await _logsDb.SystemMetrics
+                .Where(m => m.Timestamp >= fromDate && m.Timestamp <= toDate)
+                .OrderBy(m => m.Timestamp)
+                .Take(limit)
+                .Select(m => new SystemMetricsHistory
+                {
+                    Timestamp = m.Timestamp,
+                    CpuUsagePercent = m.CpuUsagePercent,
+                    MemoryUsagePercent = m.MemoryUsagePercent,
+                    TotalPhysicalMemory = m.TotalPhysicalMemory,
+                    UsedPhysicalMemory = m.UsedPhysicalMemory,
+                    NetworkBytesSent = m.NetworkBytesSent,
+                    NetworkBytesReceived = m.NetworkBytesReceived,
+                    NetworkSendRate = m.NetworkSendRate,
+                    NetworkReceiveRate = m.NetworkReceiveRate,
+                    TotalDiskSpace = m.TotalDiskSpace,
+                    UsedDiskSpace = m.UsedDiskSpace,
+                    DiskUsagePercent = m.DiskUsagePercent,
+                    TotalProcesses = m.TotalProcesses,
+                    TotalThreads = m.TotalThreads
+                })
+                .ToListAsync();
+
+            return Ok(metrics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting system metrics history");
+            return StatusCode(500, new { message = "Failed to get system metrics history" });
+        }
+    }
+
+    /// <summary>
     /// Get all running system processes
     /// </summary>
     [HttpGet("processes")]
@@ -456,4 +502,22 @@ public class SystemProcessInfo
     public int ThreadCount { get; set; }
     public DateTime? StartTime { get; set; }
     public bool IsResponding { get; set; }
+}
+
+public class SystemMetricsHistory
+{
+    public DateTime Timestamp { get; set; }
+    public double CpuUsagePercent { get; set; }
+    public double MemoryUsagePercent { get; set; }
+    public long TotalPhysicalMemory { get; set; }
+    public long UsedPhysicalMemory { get; set; }
+    public long NetworkBytesSent { get; set; }
+    public long NetworkBytesReceived { get; set; }
+    public long NetworkSendRate { get; set; }
+    public long NetworkReceiveRate { get; set; }
+    public long TotalDiskSpace { get; set; }
+    public long UsedDiskSpace { get; set; }
+    public double DiskUsagePercent { get; set; }
+    public int TotalProcesses { get; set; }
+    public int TotalThreads { get; set; }
 }

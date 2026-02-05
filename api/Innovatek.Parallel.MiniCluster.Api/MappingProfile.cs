@@ -29,9 +29,9 @@ public class MappingProfile : Profile
             .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
 
         // Environment mappings
-        CreateMap<Environment, EnvironmentDto>();
-        CreateMap<CreateEnvironmentDto, Environment>();
-        CreateMap<UpdateEnvironmentDto, Environment>();
+        CreateMap<Innovatek.Parallel.MiniCluster.Core.Entities.Environment, EnvironmentDto>();
+        CreateMap<CreateEnvironmentDto, Innovatek.Parallel.MiniCluster.Core.Entities.Environment>();
+        CreateMap<UpdateEnvironmentDto, Innovatek.Parallel.MiniCluster.Core.Entities.Environment>();
 
         // Proxy route mappings
         CreateMap<CreateProxyRouteDto, ProxyRoute>()

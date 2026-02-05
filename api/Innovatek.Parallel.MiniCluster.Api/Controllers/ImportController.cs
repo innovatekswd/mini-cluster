@@ -74,7 +74,7 @@ public class ImportController(AppDbContext dbContext, IMapper mapper, IVariableR
             if (existingEnv == null)
             {
                 // Create a new Environment if it doesn't exist
-                var newEnv = new Environment
+                var newEnv = new Core.Entities.Environment
                 {
                     Id = Guid.NewGuid(),
                     Name = envDto.Name,

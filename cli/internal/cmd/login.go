@@ -94,8 +94,8 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	client := api.NewClient(server, "", timeout, debug)
 
 	var authResp struct {
-		Token     string    `json:"token"`
-		ExpiresAt time.Time `json:"expiresAt,omitempty"`
+		AccessToken string    `json:"accessToken"`
+		ExpiresAt   time.Time `json:"expiresAt,omitempty"`
 	}
 
 	err := client.Post(ctx, "/api/auth/login", map[string]string{
@@ -106,7 +106,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("authentication failed: %w", err)
 	}
 
-	return saveToken(server, authResp.Token, username, formatter)
+	return saveToken(server, authResp.AccessToken, username, formatter)
 }
 
 func saveToken(server, token, username string, formatter output.Formatter) error {

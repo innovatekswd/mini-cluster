@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { FaTimes } from "react-icons/fa";
 import { fileService } from "~/services/fileService";
-import { useVariableGroup } from "~/context/VariableGroupContext";
 
 interface NewFileFormProps {
   appId: string;
@@ -14,7 +13,6 @@ export const NewFileForm: React.FC<NewFileFormProps> = ({ appId, onClose, onFile
   const [filePath, setFilePath] = useState("");
   const [initialContent, setInitialContent] = useState("");
   const [loading, setLoading] = useState(false);
-  const { activeGroup } = useVariableGroup();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,7 +75,6 @@ export const NewFileForm: React.FC<NewFileFormProps> = ({ appId, onClose, onFile
             </label>
             <p className="text-xs text-gray-400 mb-2">
               You can use variables like {"{BaseDirectory}"} that will be resolved at runtime.
-              {activeGroup ? ` Currently using: ${activeGroup.name}` : ""}
             </p>
             <input
               type="text"

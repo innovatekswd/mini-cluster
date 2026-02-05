@@ -17,7 +17,7 @@ public class AppDbContext : DbContext, IIdentityDbContext
     // Apps - for grouping services
     public DbSet<App> Apps { get; set; }
     
-    public DbSet<Environment> Environments { get; set; }
+    public DbSet<Core.Entities.Environment> Environments { get; set; }
     public DbSet<ServiceFile> ServiceFiles { get; set; }
     public DbSet<AppSettings> AppSettings { get; set; }
     
@@ -59,8 +59,10 @@ public class AppDbContext : DbContext, IIdentityDbContext
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.Name).IsUnique(); // Unique app names
+            entity.HasIndex(e => e.Slug).IsUnique(); // Unique app slugs
             entity.HasIndex(e => e.SortOrder);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Slug).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.Icon).HasMaxLength(50);
             entity.Property(e => e.Color).HasMaxLength(20);
@@ -78,6 +80,8 @@ public class AppDbContext : DbContext, IIdentityDbContext
             entity.HasIndex(e => e.AutoStart);
             entity.HasIndex(e => e.AppId);
             entity.HasIndex(e => new { e.AppId, e.Name }).IsUnique(); // Unique service names per app
+            entity.HasIndex(e => new { e.AppId, e.Slug }).IsUnique(); // Unique service slugs per app
+            entity.Property(e => e.Slug).IsRequired().HasMaxLength(200);
             
             // Configure relationship with App
             entity.HasOne(e => e.App)
@@ -86,7 +90,7 @@ public class AppDbContext : DbContext, IIdentityDbContext
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
-        modelBuilder.Entity<Environment>(entity =>
+        modelBuilder.Entity<Core.Entities.Environment>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Variables)

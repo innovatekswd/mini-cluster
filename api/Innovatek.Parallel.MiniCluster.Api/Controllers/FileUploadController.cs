@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
+using System;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Threading.Tasks;
-using System.Collections.Generic; // Add this to resolve List<T> used in FolderUploadForm
+using System.Collections.Generic;
 
 namespace Innovatek.Parallel.MiniCluster.Api.Controllers
 {
@@ -13,12 +15,42 @@ namespace Innovatek.Parallel.MiniCluster.Api.Controllers
     [Route("api/files")]
     public class FileUploadController : ControllerBase
     {
-        private readonly string _basePath = Path.Combine(Directory.GetCurrentDirectory(), "UploadedFiles");
+        private readonly string _basePath;
+        private readonly ILogger<FileUploadController> _logger;
 
-        public FileUploadController()
+        public FileUploadController(IConfiguration configuration, ILogger<FileUploadController> logger)
         {
+            _logger = logger;
+            
+            // Try to get from configuration, fall back to current directory
+            var configPath = configuration.GetValue<string>("FileUpload:BasePath");
+            if (!string.IsNullOrEmpty(configPath))
+            {
+                _basePath = configPath;
+            }
+            else
+            {
+                var currentDir = Directory.GetCurrentDirectory();
+                _basePath = Path.Combine(currentDir, "UploadedFiles");
+                
+                // If current directory is read-only (like /opt), use temp directory
+                try
+                {
+                    var testDir = Path.Combine(_basePath, ".writetest");
+                    Directory.CreateDirectory(testDir);
+                    Directory.Delete(testDir);
+                }
+                catch
+                {
+                    _basePath = Path.Combine(Path.GetTempPath(), "minicluster-uploads");
+                    _logger.LogWarning("Using temp directory for uploads: {Path}", _basePath);
+                }
+            }
+
             if (!Directory.Exists(_basePath))
                 Directory.CreateDirectory(_basePath);
+                
+            _logger.LogInformation("File upload directory: {Path}", _basePath);
         }
 
         // POST: api/files/upload
@@ -47,6 +79,52 @@ namespace Innovatek.Parallel.MiniCluster.Api.Controllers
             }
 
             return Ok(new { fileName = form.File.FileName, folder = sanitizedFolder, message = "File uploaded successfully." });
+        }
+
+        // POST: api/files/upload-multiple
+        [HttpPost("upload-multiple")]
+        public async Task<IActionResult> UploadMultipleFiles([FromForm] MultipleFilesUploadForm form)
+        {
+            if (form.Files == null || form.Files.Count == 0)
+                return BadRequest("No files uploaded.");
+
+            if (string.IsNullOrWhiteSpace(form.Folder))
+                return BadRequest("Target folder is required.");
+
+            var sanitizedFolder = form.Folder.Replace("..", "").TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var targetFolder = Path.Combine(_basePath, sanitizedFolder);
+
+            if (!Directory.Exists(targetFolder))
+                Directory.CreateDirectory(targetFolder);
+
+            var uploadedFiles = new List<string>();
+            var errors = new List<string>();
+
+            foreach (var file in form.Files)
+            {
+                try
+                {
+                    var filePath = Path.Combine(targetFolder, file.FileName);
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+                    uploadedFiles.Add(file.FileName);
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"{file.FileName}: {ex.Message}");
+                }
+            }
+
+            return Ok(new
+            {
+                uploaded = uploadedFiles.Count,
+                failed = errors.Count,
+                files = uploadedFiles,
+                errors = errors,
+                message = $"Uploaded {uploadedFiles.Count} of {form.Files.Count} files successfully."
+            });
         }
 
         // GET: api/files/download?folder=somefolder&fileName=somefile.txt
@@ -141,6 +219,52 @@ namespace Innovatek.Parallel.MiniCluster.Api.Controllers
 
             return Ok(new { message = "Folder uploaded successfully." });
         }
+
+        // GET: api/files/list?folder=somefolder
+        [HttpGet("list")]
+        public IActionResult ListFiles([FromQuery] string folder = "")
+        {
+            var sanitizedFolder = folder.Replace("..", "").TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var targetPath = string.IsNullOrEmpty(sanitizedFolder) ? _basePath : Path.Combine(_basePath, sanitizedFolder);
+
+            if (!Directory.Exists(targetPath))
+                return NotFound("Folder not found.");
+
+            var dirInfo = new DirectoryInfo(targetPath);
+            var items = new List<FileSystemItemDto>();
+
+            // Add directories
+            foreach (var dir in dirInfo.GetDirectories())
+            {
+                items.Add(new FileSystemItemDto
+                {
+                    Name = dir.Name,
+                    Type = "directory",
+                    Size = 0,
+                    Modified = dir.LastWriteTime,
+                    Path = string.IsNullOrEmpty(sanitizedFolder) ? dir.Name : Path.Combine(sanitizedFolder, dir.Name).Replace("\\", "/")
+                });
+            }
+
+            // Add files
+            foreach (var file in dirInfo.GetFiles())
+            {
+                items.Add(new FileSystemItemDto
+                {
+                    Name = file.Name,
+                    Type = "file",
+                    Size = file.Length,
+                    Modified = file.LastWriteTime,
+                    Path = string.IsNullOrEmpty(sanitizedFolder) ? file.Name : Path.Combine(sanitizedFolder, file.Name).Replace("\\", "/")
+                });
+            }
+
+            return Ok(new
+            {
+                folder = sanitizedFolder,
+                items = items.OrderBy(i => i.Type).ThenBy(i => i.Name).ToList()
+            });
+        }
     }
 
     // Add the missing FileUploadForm class
@@ -153,5 +277,20 @@ namespace Innovatek.Parallel.MiniCluster.Api.Controllers
     public class FolderUploadForm
     {
         public required IFormFileCollection Files { get; set; }
+    }
+
+    public class MultipleFilesUploadForm
+    {
+        public required IFormFileCollection Files { get; set; }
+        public required string Folder { get; set; }
+    }
+
+    public class FileSystemItemDto
+    {
+        public required string Name { get; set; }
+        public required string Type { get; set; } // "file" or "directory"
+        public long Size { get; set; }
+        public DateTime Modified { get; set; }
+        public required string Path { get; set; }
     }
 }

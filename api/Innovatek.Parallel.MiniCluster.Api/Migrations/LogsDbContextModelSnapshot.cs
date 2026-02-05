@@ -15,9 +15,9 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.3");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.0");
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.ProcessMetrics", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.ProcessMetrics", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -114,7 +114,7 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                     b.ToTable("ProcessMetrics");
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.ProcessMetricsAggregated", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.ProcessMetricsAggregated", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -193,7 +193,7 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                     b.ToTable("ProcessMetricsAggregated");
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.ServiceLifecycleEvent", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.ServiceLifecycleEvent", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -225,7 +225,7 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                     b.ToTable("LifecycleEvents", (string)null);
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.ServiceSession", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.ServiceSession", b =>
                 {
                     b.Property<Guid>("SessionId")
                         .ValueGeneratedOnAdd()
@@ -269,7 +269,7 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                     b.ToTable("AppSessions", (string)null);
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.SessionLogEntry", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.SessionLogEntry", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -298,9 +298,76 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                     b.ToTable("SessionLogs");
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.SessionLogEntry", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.SystemMetrics", b =>
                 {
-                    b.HasOne("Innovatek.ControlCenter.Core.Entities.ServiceSession", "ServiceSession")
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AvailableDiskSpace")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AvailablePhysicalMemory")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("CpuUsagePercent")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("DiskUsagePercent")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("MemoryUsagePercent")
+                        .HasColumnType("REAL");
+
+                    b.Property<long>("NetworkBytesReceived")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("NetworkBytesSent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("NetworkReceiveRate")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("NetworkSendRate")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ProcessorCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("SystemUptime")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("TotalDiskSpace")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("TotalPhysicalMemory")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TotalProcesses")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TotalThreads")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("UsedDiskSpace")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("UsedPhysicalMemory")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Timestamp");
+
+                    b.ToTable("SystemMetrics");
+                });
+
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.SessionLogEntry", b =>
+                {
+                    b.HasOne("Innovatek.Parallel.MiniCluster.Core.Entities.ServiceSession", "ServiceSession")
                         .WithMany("LogEntries")
                         .HasForeignKey("SessionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -309,7 +376,7 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                     b.Navigation("ServiceSession");
                 });
 
-            modelBuilder.Entity("Innovatek.ControlCenter.Core.Entities.ServiceSession", b =>
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.ServiceSession", b =>
                 {
                     b.Navigation("LogEntries");
                 });

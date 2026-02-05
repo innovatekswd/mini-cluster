@@ -2,6 +2,12 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { getStoredAccessToken, getStoredRefreshToken } from "~/context/AuthContext";
 import { authService } from "~/services/authService";
 
+// Custom event for auth state changes (localStorage events only fire in other tabs)
+export const AUTH_CLEARED_EVENT = "mc_auth_cleared";
+export function dispatchAuthCleared() {
+  window.dispatchEvent(new CustomEvent(AUTH_CLEARED_EVENT));
+}
+
 /**
  * Type-safe error message extraction from API errors
  */
@@ -99,6 +105,7 @@ apiClient.interceptors.response.use(
       localStorage.removeItem("mc_access_token");
       localStorage.removeItem("mc_refresh_token");
       localStorage.removeItem("mc_user");
+      dispatchAuthCleared();
       processQueue(new Error("No refresh token"), null);
       // Don't use window.location.href - let React AuthContext handle redirect
       return Promise.reject(error);
@@ -133,6 +140,7 @@ apiClient.interceptors.response.use(
       localStorage.removeItem("mc_access_token");
       localStorage.removeItem("mc_refresh_token");
       localStorage.removeItem("mc_user");
+      dispatchAuthCleared();
       processQueue(refreshError, null);
       isRefreshing = false;
 

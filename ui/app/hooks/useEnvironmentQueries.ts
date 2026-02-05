@@ -33,11 +33,12 @@ export function useEnvironmentQuery(name: string) {
 }
 
 // Get Active Environment Query
-export function useActiveEnvironmentQuery() {
+export function useActiveEnvironmentQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: environmentQueryKeys.active(),
     queryFn: () => environmentService.getActive(),
     staleTime: 2 * 60 * 1000, // 2 minutes
+    enabled: options?.enabled ?? true,
   });
 }
 

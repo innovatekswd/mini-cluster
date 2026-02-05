@@ -8,6 +8,7 @@ import React, {
   useRef,
 } from "react";
 import { authService, type User, type LoginCredentials } from "~/services/authService";
+import { AUTH_CLEARED_EVENT } from "~/lib/apiClient";
 
 // Token storage keys
 const ACCESS_TOKEN_KEY = "mc_access_token";
@@ -198,6 +199,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
   }, []); // Empty deps - run once on mount
+
+  // Listen for storage changes (e.g., when apiClient clears tokens on 401)
+  useEffect(() => {
+    // Custom event for same-tab auth cleared (localStorage events only fire in other tabs)
+    const handleAuthCleared = () => {
+      setAccessToken(null);
+      setUser(null);
+      if (refreshTimerRef.current) {
+        clearInterval(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+    };
+
+    // Storage events for cross-tab sync
+    const handleStorageChange = (e: StorageEvent) => {
+      // If access token was removed (by apiClient on 401), sync state
+      if (e.key === ACCESS_TOKEN_KEY && e.newValue === null) {
+        handleAuthCleared();
+      }
+      // If token was updated, sync state
+      if (e.key === ACCESS_TOKEN_KEY && e.newValue) {
+        setAccessToken(e.newValue);
+      }
+      if (e.key === USER_KEY && e.newValue) {
+        try {
+          setUser(JSON.parse(e.newValue));
+        } catch {
+          // Invalid JSON
+        }
+      }
+    };
+
+    window.addEventListener(AUTH_CLEARED_EVENT, handleAuthCleared);
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener(AUTH_CLEARED_EVENT, handleAuthCleared);
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []);
 
   return (
     <AuthContext.Provider

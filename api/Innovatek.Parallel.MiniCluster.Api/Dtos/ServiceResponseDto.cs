@@ -7,6 +7,7 @@ public class ServiceResponseDto
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = default!;
+    public string Slug { get; set; } = string.Empty;
     public string ExecutablePath { get; set; } = default!;
     public string? Arguments { get; set; }
     public Dictionary<string, string> EnvironmentVariables { get; set; } = new();

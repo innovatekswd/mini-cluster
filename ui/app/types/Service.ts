@@ -12,6 +12,7 @@ export type Service = {
   workingDirectory: string;
   environmentVariables: Record<string, string>;
   name: string;
+  slug: string; // URL-friendly identifier
   executablePath: string;
   autoStart: boolean;
   status?: string;

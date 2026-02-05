@@ -1,24 +1,41 @@
-# Welcome to React Router!
+# MiniCluster UI
 
-A modern, production-ready template for building full-stack React applications using React Router.
+Modern dashboard interface for the MiniCluster service management platform.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+## Overview
+
+MiniCluster UI provides a real-time web interface to manage and monitor your applications and services. Built with React 19, React Router 7, and TailwindCSS.
 
 ## Features
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
+- **Dashboard** - Real-time system metrics with CPU, memory, disk, and network charts
+- **Applications** - Organize services into logical application groups
+- **Services** - Start, stop, restart services with live logs
+- **System Monitor** - Task manager view showing all running processes
+- **File Explorer** - Browse and edit files on the server
+- **Terminal** - Full PTY terminal access
+- **Reverse Proxy** - Configure routing rules for services
+- **Environments** - Manage environment variables and configurations
+
+## Tech Stack
+
+- **React 19** - Latest React with concurrent features
+- **React Router 7** - File-based routing with SSR support
+- **TailwindCSS 4** - Utility-first styling
+- **TanStack Query** - Server state management with caching
+- **Recharts** - Beautiful responsive charts
+- **SignalR** - Real-time WebSocket communication
+- **Monaco Editor** - Code editing capabilities
+- **xterm.js** - Terminal emulation
 
 ## Getting Started
 
-### Installation
+### Prerequisites
 
-Install the dependencies:
+- Node.js 20+
+- MiniCluster API server running (default: http://localhost:5147)
+
+### Installation
 
 ```bash
 npm install
@@ -26,62 +43,62 @@ npm install
 
 ### Development
 
-Start the development server with HMR:
-
 ```bash
 npm run dev
 ```
 
-Your application will be available at `http://localhost:5173`.
+The UI will be available at `http://localhost:5173`
 
-## Building for Production
-
-Create a production build:
+### Production Build
 
 ```bash
 npm run build
+npm start
 ```
 
-## Deployment
+## Project Structure
 
-### Docker Deployment
+```
+app/
+├── components/     # Reusable UI components
+├── context/        # React contexts (Auth, SignalR, etc.)
+├── hooks/          # Custom React hooks
+├── routes/         # Page components (file-based routing)
+├── services/       # API service modules
+├── types/          # TypeScript type definitions
+└── utils/          # Utility functions
+```
 
-To build and run using Docker:
+## Key Routes
+
+| Route | Description |
+|-------|-------------|
+| `/` | Dashboard with system metrics |
+| `/apps` | Applications management |
+| `/services` | All services list |
+| `/dashboard/:app/:service?` | Service logs and details |
+| `/monitor` | System process monitor |
+| `/explorer` | Server file browser |
+| `/terminal` | Interactive terminal |
+| `/proxy` | Reverse proxy configuration |
+| `/environments` | Environment variables |
+| `/settings` | Application settings |
+
+## Environment Variables
+
+Create a `.env` file for custom configuration:
+
+```env
+VITE_API_URL=http://localhost:5147
+```
+
+## Docker Deployment
 
 ```bash
-docker build -t my-app .
-
-# Run the container
-docker run -p 3000:3000 my-app
+docker build -t minicluster-ui .
+docker run -p 3000:3000 minicluster-ui
 ```
 
-The containerized application can be deployed to any platform that supports Docker, including:
+## License
 
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
-
-### DIY Deployment
-
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
-
-Make sure to deploy the output of `npm run build`
-
-```
-├── package.json
-├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
-```
-
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
-
----
-
-Built with ❤️ using React Router.
+Copyright © 2024-2026 Innovatek. All rights reserved.

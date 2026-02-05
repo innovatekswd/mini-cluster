@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { FaPlus, FaCheck, FaTrash, FaLayerEnvironment, FaEdit, FaTimes } from "react-icons/fa";
+import { FaPlus, FaCheck, FaTrash, FaLayerGroup, FaEdit, FaTimes } from "react-icons/fa";
 import { EnvEditor } from "./EnvEditor";
 import {
   useEnvironmentsQuery,
@@ -257,10 +257,11 @@ const NewEnvironmentForm: React.FC<{
 
 export const EnvironmentsEditor: React.FC = () => {
   const {
-    data: environments = [],
+    data: rawEnvironments,
     isLoading,
     error: queryError,
   } = useEnvironmentsQuery();
+  const environments = Array.isArray(rawEnvironments) ? rawEnvironments : [];
   const [activeEnvironmentName, setActiveEnvironmentName] = useState<string | null>(null);
   const { showError, showSuccess } = useError();
 
@@ -410,7 +411,7 @@ export const EnvironmentsEditor: React.FC = () => {
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 
             flex items-center justify-center shadow-lg shadow-violet-500/20">
-            <FaLayerEnvironment className="text-white" />
+            <FaLayerGroup className="text-white" />
           </div>
           <div>
             <h2 className="text-2xl font-semibold text-slate-100">Variable Environments</h2>
@@ -443,7 +444,7 @@ export const EnvironmentsEditor: React.FC = () => {
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700/50 
                 flex items-center justify-center mb-4">
-                <FaLayerEnvironment className="w-8 h-8 text-slate-600" />
+                <FaLayerGroup className="w-8 h-8 text-slate-600" />
               </div>
               <p className="text-lg font-medium text-slate-400 mb-2">No Variable Environments</p>
               <p className="text-sm text-slate-500 mb-6">Create your first environment to manage environment variables</p>

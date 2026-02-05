@@ -2,5 +2,5 @@ using Innovatek.Parallel.MiniCluster.Core.Entities;
 
 public interface IEnvironmentService
 {
-    Task<Environment?> GetActiveEnvironmentAsync();
+    Task<Innovatek.Parallel.MiniCluster.Core.Entities.Environment?> GetActiveEnvironmentAsync();
 }

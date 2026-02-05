@@ -67,6 +67,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
                         new ServiceBase
                         {
                             Name = "Service1",
+                            Slug = "service1",
                             ExecutablePath = "{BasePath}/service1.exe",
                             Arguments = "--arg1",
                             EnvironmentVariables = new Dictionary<string, string>
@@ -139,7 +140,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
         public async Task ImportServices_ShouldUpdateExistingVariableGroup()
         {
             // Arrange
-            var existingGroup = new VariableGroup
+            var existingGroup = new Core.Entities.Environment
             {
                 Id = Guid.NewGuid(),
                 Name = "group1",
@@ -242,6 +243,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
                     new ServiceBase
                     {
                         Name = "Service1",
+                        Slug = "service1",
                         ExecutablePath = "/bin/service1",
                         Arguments = "--help",
                         EnvironmentVariables = new Dictionary<string, string> { { "ENV", "dev" } }
@@ -336,6 +338,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
                     new ServiceBase
                     {
                         Name = "Service1",
+                        Slug = "service1",
                         ExecutablePath = "/bin/service1",
                         Arguments = "--help",
                         EnvironmentVariables = new Dictionary<string, string> { { "ENV", "dev" } }

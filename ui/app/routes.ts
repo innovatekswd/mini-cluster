@@ -4,7 +4,8 @@ import { index, route, type RouteConfig } from "@react-router/dev/routes";
 // Path-based routing: /dashboard/:appName?/:serviceName?
 export default [
   route("login", "routes/login.tsx"), // Login page (public)
-  index("routes/apps.tsx"), // Applications page at root
+  index("routes/home.tsx"), // Dashboard/Home page at root
+  route("apps", "routes/apps.tsx"), // Applications management
   // Dashboard with optional path segments - single route file handles all variations
   route("dashboard/:appName?/:serviceName?", "routes/dashboard.tsx"),
   route("services", "routes/services.tsx"),

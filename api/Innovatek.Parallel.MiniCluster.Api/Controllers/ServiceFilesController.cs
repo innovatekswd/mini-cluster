@@ -35,7 +35,7 @@ public class ServiceFilesController : ControllerBase
 
     private async Task<IVariableResolver?> GetActiveVariableResolver()
     {
-        var defaultVariableGroup = await _dbContext.VariableGroups.FirstOrDefaultAsync(vg => vg.IsActive);
+        var defaultVariableGroup = await _dbContext.Environments.FirstOrDefaultAsync(vg => vg.IsActive);
         if (defaultVariableGroup == null)
             return null;
         return _variableResolverFactory.CreateResolver(defaultVariableGroup.Variables);

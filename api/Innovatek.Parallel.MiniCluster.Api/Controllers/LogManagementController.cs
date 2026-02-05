@@ -102,7 +102,7 @@ public class LogManagementController : ControllerBase
                 ControlDatabase = new
                 {
                     TotalServices = await _controlDb.Services.CountAsync(),
-                    TotalVariableGroups = await _controlDb.VariableGroups.CountAsync(),
+                    TotalVariableGroups = await _controlDb.Environments.CountAsync(),
                     AutoStartServices = await _controlDb.Services.CountAsync(s => s.AutoStart)
                 }
             };

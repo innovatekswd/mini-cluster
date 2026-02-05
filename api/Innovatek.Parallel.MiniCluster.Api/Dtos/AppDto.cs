@@ -7,6 +7,7 @@ public record ApplicationDto
 {
     public Guid Id { get; init; }
     public required string Name { get; init; }
+    public string Slug { get; init; } = string.Empty;
     public string? Description { get; init; }
     public string? Icon { get; init; }
     public string? Color { get; init; }

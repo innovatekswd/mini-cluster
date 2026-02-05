@@ -11,7 +11,7 @@ public class EnvironmentService : IEnvironmentService
         _dbContext = dbContext;
     }
 
-    public async Task<Environment?> GetActiveEnvironmentAsync()
+    public async Task<Innovatek.Parallel.MiniCluster.Core.Entities.Environment?> GetActiveEnvironmentAsync()
     {
         return await _dbContext.Environments.FirstOrDefaultAsync(e => e.IsActive);
     }
