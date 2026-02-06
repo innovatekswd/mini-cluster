@@ -59,7 +59,7 @@ export function useSystemMetricsHistory(): SystemMetricsHistory {
       
       if (!mountedRef.current) return;
 
-      if (historyData && historyData.length > 0) {
+      if (Array.isArray(historyData) && historyData.length > 0) {
         // Populate histories from backend data
         setCpuHistory(historyData.map(d => d.cpuUsagePercent));
         setMemoryHistory(historyData.map(d => d.memoryUsagePercent));

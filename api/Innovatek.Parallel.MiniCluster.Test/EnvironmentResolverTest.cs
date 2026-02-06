@@ -22,6 +22,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             {
                 Id = Guid.NewGuid(),
                 Name = "ActiveEnvironment",
+                Slug = "active-environment",
                 IsActive = true,
                 Variables = new Dictionary<string, string>
                     {
@@ -76,6 +77,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             {
                 Id = Guid.NewGuid(),
                 Name = "ActiveEnvironment",
+                Slug = "active-environment",
                 IsActive = true,
                 Variables = new Dictionary<string, string>
                     {
@@ -108,6 +110,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             {
                 Id = Guid.NewGuid(),
                 Name = "ActiveEnvironment",
+                Slug = "active-environment",
                 IsActive = true,
                 Variables = new Dictionary<string, string>
                     {
@@ -140,6 +143,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             {
                 Id = Guid.NewGuid(),
                 Name = "ActiveEnvironment",
+                Slug = "active-environment",
                 IsActive = true,
                 Variables = new Dictionary<string, string>
                     {

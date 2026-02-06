@@ -6,6 +6,7 @@ export interface Variable {
 export interface Environment {
   id: string;
   name: string;
+  slug: string;
   description?: string;
   variables: Record<string, string>;
   isActive: boolean;

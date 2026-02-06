@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Innovatek.Parallel.MiniCluster.Api.Data;
 using Innovatek.Parallel.MiniCluster.Api.Dtos;
+using Innovatek.Parallel.MiniCluster.Api.Helpers;
 using Innovatek.Parallel.MiniCluster.Core.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -50,9 +51,27 @@ public class EnvironmentsController : ControllerBase
             return BadRequest($"An environment with the name '{env.Name}' already exists. Please choose a unique name.");
         }
 
+        // Generate unique slug
+        var slug = SlugHelper.GenerateUniqueSlug(
+            env.Name,
+            slug => _dbContext.Environments.Any(e => e.Slug == slug)
+        );
+
+        // If this is the first environment or no active environment exists, make it active
+        var hasActiveEnvironment = await _dbContext.Environments.AnyAsync(e => e.IsActive);
+        var isFirstEnvironment = !await _dbContext.Environments.AnyAsync();
+        var shouldBeActive = isFirstEnvironment || !hasActiveEnvironment || env.IsActive;
+
         // Map the DTO to the entity
-        var _env = _mapper.Map<Core.Entities.Environment>(env);
-        _env.Id = Guid.NewGuid();
+        var _env = new Core.Entities.Environment
+        {
+            Id = Guid.NewGuid(),
+            Name = env.Name,
+            Slug = slug,
+            Description = env.Description,
+            Variables = env.Variables,
+            IsActive = shouldBeActive
+        };
 
         // Add the environment to the database
         _dbContext.Environments.Add(_env);

@@ -144,6 +144,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             {
                 Id = Guid.NewGuid(),
                 Name = "group1",
+                Slug = "group1",
                 Description = "Old description",
                 Variables = new Dictionary<string, string>
                 {

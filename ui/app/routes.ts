@@ -10,7 +10,7 @@ export default [
   route("dashboard/:appName?/:serviceName?", "routes/dashboard.tsx"),
   route("services", "routes/services.tsx"),
   route("infrastructure", "routes/infrastructure.tsx"), // Phase 5: Dual-view (Machines/Apps)
-  route("environments", "routes/settings/environments.tsx"), // Environments
+  route("envs", "routes/settings/environments.tsx"), // Environments
   route("files", "routes/files.tsx"),
   route("explorer", "routes/explorer.tsx"), // Server File Explorer
   route("settings", "routes/settings.tsx"),

@@ -93,6 +93,8 @@ public class AppDbContext : DbContext, IIdentityDbContext
         modelBuilder.Entity<Core.Entities.Environment>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Slug).IsRequired();
+            entity.HasIndex(e => e.Slug).IsUnique();
             entity.Property(e => e.Variables)
                 .HasConversion(dictConverter)
                 .Metadata.SetValueComparer(dictComparer);

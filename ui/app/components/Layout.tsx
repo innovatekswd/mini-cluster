@@ -144,7 +144,7 @@ export const Layout = ({ children, appStats, onMenuToggle, isSidebarOpen, isSide
 
             {/* Environments link */}
             <Link
-              to="/environments"
+              to="/envs"
               className="icon-btn"
               aria-label="Environments"
             >

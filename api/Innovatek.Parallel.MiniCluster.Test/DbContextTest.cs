@@ -42,6 +42,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
                 {
                     Id = Id,
                     Name = "TestGroup",
+                    Slug = "test-group",
                     Description = "A test environment",
                     Variables = new Dictionary<string, string>
                               {

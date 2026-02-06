@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { FaPlus, FaCheck, FaTrash, FaLayerGroup, FaEdit, FaTimes } from "react-icons/fa";
 import { EnvEditor } from "./EnvEditor";
+import { Modal } from "./Modal";
 import {
   useEnvironmentsQuery,
   useCreateEnvironmentMutation,
@@ -47,14 +48,15 @@ const Tabs: React.FC<TabsProps> = ({
   }, [editingTab]);
 
   const handleRename = (tabKey: string) => {
-    if (newLabel.trim()) {
-      onRenameTab(tabKey, newLabel);
-      setEditingTab(null);
-      setNewLabel("");
-    } else {
-      setEditingTab(null);
-      setNewLabel("");
+    const trimmedLabel = newLabel.trim();
+    const originalTab = tabs.find(t => t.key === tabKey);
+    const hasChanged = trimmedLabel && originalTab && trimmedLabel !== originalTab.label;
+    
+    if (hasChanged) {
+      onRenameTab(tabKey, trimmedLabel);
     }
+    setEditingTab(null);
+    setNewLabel("");
   };
 
   return (
@@ -62,15 +64,16 @@ const Tabs: React.FC<TabsProps> = ({
       {tabs.map((tab) => (
         <div 
           key={tab.key} 
+          onClick={() => !editingTab && onTabChange(tab.key)}
           className={`
-            environment flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200
+            group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 cursor-pointer
             ${activeTab === tab.key 
               ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/30' 
               : 'bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700/50'}
           `}
         >
           {editingTab === tab.key ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
               <input
                 type="text"
                 ref={inputRef}
@@ -94,6 +97,7 @@ const Tabs: React.FC<TabsProps> = ({
                   setEditingTab(null);
                   setNewLabel("");
                 }}
+                title="Cancel rename"
                 className="text-slate-500 hover:text-slate-300"
               >
                 <FaTimes size={12} />
@@ -101,49 +105,48 @@ const Tabs: React.FC<TabsProps> = ({
             </div>
           ) : (
             <>
-              <button
-                onClick={() => onTabChange(tab.key)}
-                className={`font-medium text-sm flex items-center gap-2
-                  ${activeTab === tab.key ? 'text-cyan-400' : 'text-slate-300'}
-                `}
-                onDoubleClick={() => {
-                  setEditingTab(tab.key);
-                  setNewLabel(tab.label);
-                }}
-              >
+              {/* Tab label with active indicator */}
+              <div className={`font-medium text-sm flex items-center gap-2
+                ${activeTab === tab.key ? 'text-cyan-400' : 'text-slate-300'}
+              `}>
                 {tab.isActive && (
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 )}
                 {tab.label}
-              </button>
-              <div className="flex items-center gap-1 opacity-0 environment-hover:opacity-100 transition-opacity">
+              </div>
+              
+              {/* Action buttons - visible on hover */}
+              <div 
+                className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <button
                   onClick={() => {
                     setEditingTab(tab.key);
                     setNewLabel(tab.label);
                   }}
-                  className="p-1 rounded text-slate-500 hover:text-cyan-400 hover:bg-slate-600/50"
+                  className="p-1.5 rounded text-slate-500 hover:text-cyan-400 hover:bg-slate-600/50"
                   title="Rename"
                 >
-                  <FaEdit size={10} />
+                  <FaEdit size={12} />
                 </button>
                 <button
                   onClick={() => onSetActiveTab(tab.key)}
-                  className={`p-1 rounded transition-colors ${
+                  className={`p-1.5 rounded transition-colors ${
                     tab.isActive 
                       ? "text-emerald-400" 
                       : "text-slate-500 hover:text-emerald-400 hover:bg-slate-600/50"
                   }`}
-                  title="Set Active"
+                  title="Set as Default"
                 >
-                  <FaCheck size={10} />
+                  <FaCheck size={12} />
                 </button>
                 <button
                   onClick={() => onDeleteTab(tab.key)}
-                  className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-slate-600/50"
+                  className="p-1.5 rounded text-slate-500 hover:text-rose-400 hover:bg-slate-600/50"
                   title="Delete"
                 >
-                  <FaTrash size={10} />
+                  <FaTrash size={12} />
                 </button>
               </div>
             </>
@@ -154,104 +157,96 @@ const Tabs: React.FC<TabsProps> = ({
   );
 };
 
-const NewEnvironmentForm: React.FC<{
-  open: boolean;
+interface CreateEnvironmentDialogProps {
+  isOpen: boolean;
   onClose: () => void;
-  onCreate: (data: {
-    name: string;
-    description: string;
-    variables: Record<string, string>;
-  }) => void;
-}> = ({ open, onClose, onCreate }) => {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [variables, setVariables] = useState<{ key: string; value: string }[]>(
-    []
-  );
-  const [loading, setLoading] = useState(false);
+  onSubmit: (name: string) => void;
+  isSubmitting: boolean;
+}
 
-  const handleSubmit = async (e: React.FormEvent) => {
+const CreateEnvironmentDialog: React.FC<CreateEnvironmentDialogProps> = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  isSubmitting,
+}) => {
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setName("");
+      setError(null);
+      // Focus input after modal opens
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [isOpen]);
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    await onCreate({
-      name,
-      description,
-      variables: variables.reduce((acc, { key, value }) => {
-        if (key.trim()) acc[key] = value;
-        return acc;
-      }, {} as Record<string, string>),
-    });
-    setLoading(false);
-    setName("");
-    setDescription("");
-    setVariables([]);
-    onClose();
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError("Name is required");
+      return;
+    }
+    onSubmit(trimmedName);
   };
 
-  if (!open) return null;
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-lg w-full">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Add Environment</h2>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Create Environment"
+      size="sm"
+      disableClose={isSubmitting}
+      footer={
+        <>
           <button
+            type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-white"
-            title="Close"
-            aria-label="Close form"
+            disabled={isSubmitting}
+            className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors disabled:opacity-50"
           >
-            <FaTrash />
+            Cancel
           </button>
+          <button
+            type="submit"
+            form="create-env-form"
+            disabled={isSubmitting || !name.trim()}
+            className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white transition-colors disabled:opacity-50"
+          >
+            {isSubmitting ? "Creating..." : "Create"}
+          </button>
+        </>
+      }
+    >
+      <form id="create-env-form" onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-sm">
+            {error}
+          </div>
+        )}
+        <div>
+          <label htmlFor="env-name" className="block text-sm font-medium text-slate-300 mb-1.5">
+            Name <span className="text-red-400">*</span>
+          </label>
+          <input
+            ref={inputRef}
+            type="text"
+            id="env-name"
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setError(null);
+            }}
+            placeholder="e.g., Production, Staging, Development"
+            className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:border-cyan-500 focus:ring-cyan-500"
+            disabled={isSubmitting}
+          />
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Name
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Description
-            </label>
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Variables
-            </label>
-            <EnvEditor envVars={variables} onChange={setVariables} />
-          </div>
-          <div className="flex justify-end space-x-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded disabled:opacity-50"
-            >
-              {loading ? "Adding..." : "Add Environment"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </Modal>
   );
 };
 
@@ -263,7 +258,9 @@ export const EnvironmentsEditor: React.FC = () => {
   } = useEnvironmentsQuery();
   const environments = Array.isArray(rawEnvironments) ? rawEnvironments : [];
   const [activeEnvironmentName, setActiveEnvironmentName] = useState<string | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { showError, showSuccess } = useError();
+  const autoActivatedRef = useRef(false);
 
   const createEnvironmentMutation = useCreateEnvironmentMutation();
   const updateEnvironmentMutation = useUpdateEnvironmentMutation();
@@ -279,52 +276,53 @@ export const EnvironmentsEditor: React.FC = () => {
       const backendActiveEnvironment = environments.find((g) => g.isActive);
       if (backendActiveEnvironment) {
         setActiveEnvironmentName(backendActiveEnvironment.name);
+        autoActivatedRef.current = false; // Reset since we found an active one
       } else if (environments.length > 0) {
-        // No backend active environment, default to the first environment
+        // No backend active environment, default to the first environment and activate it
         setActiveEnvironmentName(environments[0].name);
+        // Auto-activate the first environment in the backend (only once)
+        if (!autoActivatedRef.current) {
+          autoActivatedRef.current = true;
+          setActiveEnvironmentMutation.mutate(environments[0].name);
+        }
       } else {
         // No environments at all
         setActiveEnvironmentName(null);
+        autoActivatedRef.current = false;
       }
     }
     // If currentSelectionIsValid is true, this effect does nothing, preserving the current tab.
     // Explicit actions like handleSetActive, onTabChange, or handleAddEnvironment's onSuccess
     // are responsible for changing activeEnvironmentName.
-  }, [environments, activeEnvironmentName]);
+  }, [environments, activeEnvironmentName, setActiveEnvironmentMutation]);
 
   // Show error message if query fails
   useEffect(() => {
     if (queryError) {
-      showError("Failed to load variable environments", queryError);
+      showError("Failed to load environments", queryError);
     }
   }, [queryError, showError]);
 
-  const handleAddEnvironment = async () => {
-    const newName = prompt("Enter new environment name:");
-    if (newName?.trim()) {
-      try {
-        createEnvironmentMutation.mutate(
-          {
-            name: newName.trim(),
-            variables: {},
-          },
-          {
-            onSuccess: (newEnvironment) => {
-              showSuccess(`Environment "${newName}" created successfully`);
-              setActiveEnvironmentName(newEnvironment.name);
-            },
-            onError: (error) => {
-              showError("Failed to create variable environment", error);
-            },
-          }
-        );
-      } catch (error) {
-        showError("Failed to create variable environment", error);
+  const handleAddEnvironment = (name: string) => {
+    createEnvironmentMutation.mutate(
+      {
+        name,
+        variables: {},
+      },
+      {
+        onSuccess: (newEnvironment) => {
+          showSuccess(`Environment "${name}" created successfully`);
+          setActiveEnvironmentName(newEnvironment.name);
+          setIsCreateDialogOpen(false);
+        },
+        onError: (error) => {
+          showError("Failed to create environment", error);
+        },
       }
-    }
+    );
   };
   const handleUpdateEnvironment = async (
-    updatedEnvironment: VariableEnvironment,
+    updatedEnvironment: Environment,
     showToastOnSuccess = true
   ) => {
     try {
@@ -414,12 +412,12 @@ export const EnvironmentsEditor: React.FC = () => {
             <FaLayerGroup className="text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-semibold text-slate-100">Variable Environments</h2>
+            <h2 className="text-2xl font-semibold text-slate-100">Environments</h2>
             <p className="text-sm text-slate-500">Manage environment variable sets</p>
           </div>
         </div>
         <button
-          onClick={handleAddEnvironment}
+          onClick={() => setIsCreateDialogOpen(true)}
           className="btn-primary flex items-center gap-2"
         >
           <FaPlus size={14} /> Add Environment
@@ -436,7 +434,7 @@ export const EnvironmentsEditor: React.FC = () => {
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-16 gap-4">
           <div className="w-10 h-10 border-4 border-slate-700 border-t-violet-500 rounded-full animate-spin"></div>
-          <span className="text-slate-400">Loading variable environments...</span>
+          <span className="text-slate-400">Loading environments...</span>
         </div>
       ) : (
         <>
@@ -446,10 +444,10 @@ export const EnvironmentsEditor: React.FC = () => {
                 flex items-center justify-center mb-4">
                 <FaLayerGroup className="w-8 h-8 text-slate-600" />
               </div>
-              <p className="text-lg font-medium text-slate-400 mb-2">No Variable Environments</p>
+              <p className="text-lg font-medium text-slate-400 mb-2">No Environments</p>
               <p className="text-sm text-slate-500 mb-6">Create your first environment to manage environment variables</p>
               <button
-                onClick={handleAddEnvironment}
+                onClick={() => setIsCreateDialogOpen(true)}
                 className="btn-primary flex items-center gap-2"
               >
                 <FaPlus size={14} /> Create Environment
@@ -474,11 +472,11 @@ export const EnvironmentsEditor: React.FC = () => {
 
           {environments.map((environment) => (
             <div
-              key={environment.name}
+              key={environment.slug || environment.name}
               className={`card ${activeEnvironmentName === environment.name ? "fade-in" : "hidden"}`}
             >
               <EnvEditor // Use EnvEditor here
-                envVars={Object.entries(environment.variables).map(
+                envVars={Object.entries(environment.variables || {}).map(
                   ([key, value]) => ({ key, value })
                 )}
                 onChange={(vars) => {
@@ -496,6 +494,13 @@ export const EnvironmentsEditor: React.FC = () => {
           ))}
         </>
       )}
+
+      <CreateEnvironmentDialog
+        isOpen={isCreateDialogOpen}
+        onClose={() => setIsCreateDialogOpen(false)}
+        onSubmit={handleAddEnvironment}
+        isSubmitting={createEnvironmentMutation.isPending}
+      />
     </div>
   );
 };

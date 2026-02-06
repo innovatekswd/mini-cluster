@@ -10,7 +10,8 @@ namespace Innovatek.Parallel.MiniCluster.Core.Entities
     public class Environment
     {
         public Guid Id { get; set; }
-        public string Name { get; set; } = string.Empty;
+        public required string Name { get; set; }
+        public required string Slug { get; set; }
         public string? Description { get; set; }
 
         // Dictionary-based variable storage (from branch)

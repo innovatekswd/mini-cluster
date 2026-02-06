@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Innovatek.Parallel.MiniCluster.Core.Entities;
 using System.Text.Json;
 using Innovatek.Parallel.MiniCluster.Api.Data;
+using Innovatek.Parallel.MiniCluster.Api.Helpers;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -74,10 +75,15 @@ public class ImportController(AppDbContext dbContext, IMapper mapper, IVariableR
             if (existingEnv == null)
             {
                 // Create a new Environment if it doesn't exist
+                var slug = SlugHelper.GenerateUniqueSlug(
+                    envDto.Name,
+                    slug => _dbContext.Environments.Any(e => e.Slug == slug)
+                );
                 var newEnv = new Core.Entities.Environment
                 {
                     Id = Guid.NewGuid(),
                     Name = envDto.Name,
+                    Slug = slug,
                     Description = envDto.Description,
                     Variables = envDto.Variables,
                     IsActive = envDto.IsActive
