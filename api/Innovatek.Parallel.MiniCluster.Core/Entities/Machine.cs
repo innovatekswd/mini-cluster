@@ -5,6 +5,7 @@ namespace Innovatek.Parallel.MiniCluster.Core.Entities
 {
     /// <summary>
     /// Represents a physical or virtual machine where services can run.
+    /// In cluster mode, each machine runs a MiniCluster agent (same binary in --agent mode).
     /// </summary>
     public class Machine
     {
@@ -69,6 +70,45 @@ namespace Innovatek.Parallel.MiniCluster.Core.Entities
         /// Whether this is the local machine (auto-registered)
         /// </summary>
         public bool IsLocal { get; set; } = false;
+        
+        // ── Cluster / Agent fields ──────────────────────────────────────
+        
+        /// <summary>
+        /// API endpoint for agent communication (e.g., "https://192.168.1.10:5147")
+        /// </summary>
+        public string? AgentEndpoint { get; set; }
+        
+        /// <summary>
+        /// Hashed API key for authenticating with this agent
+        /// </summary>
+        public string? AgentApiKey { get; set; }
+        
+        /// <summary>
+        /// Agent version reported at last heartbeat
+        /// </summary>
+        public string? AgentVersion { get; set; }
+        
+        /// <summary>
+        /// JSON labels for targeting: {"env": "prod", "region": "us-east"}
+        /// </summary>
+        public string? Labels { get; set; }
+        
+        /// <summary>
+        /// Number of CPU cores on the machine
+        /// </summary>
+        public int? CpuCores { get; set; }
+        
+        /// <summary>
+        /// Total physical memory in bytes
+        /// </summary>
+        public long? TotalMemoryBytes { get; set; }
+        
+        /// <summary>
+        /// Total disk space in bytes
+        /// </summary>
+        public long? TotalDiskBytes { get; set; }
+        
+        // ── Timestamps ──────────────────────────────────────────────────
         
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime ModifiedAt { get; set; } = DateTime.UtcNow;

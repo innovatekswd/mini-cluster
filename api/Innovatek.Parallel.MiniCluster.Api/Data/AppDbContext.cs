@@ -26,6 +26,9 @@ public class AppDbContext : DbContext, IIdentityDbContext
     public DbSet<ServiceGroupAssignment> ServiceGroupAssignments { get; set; }
     public DbSet<GroupVariable> GroupVariables { get; set; }
     
+    // Machines (cluster nodes)
+    public DbSet<Machine> Machines => Set<Machine>();
+    
     // Proxy Routes
     public DbSet<ProxyRoute> ProxyRoutes { get; set; }
     public DbSet<ProxySettings> ProxySettings { get; set; }
@@ -177,6 +180,28 @@ public class AppDbContext : DbContext, IIdentityDbContext
                 PortRangeEnd = 5099,
                 DefaultRequireAuth = true
             });
+        });
+
+        // Machine entity
+        modelBuilder.Entity<Machine>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => e.Host);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.IsLocal);
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Host).HasMaxLength(255);
+            entity.Property(e => e.ConnectionType).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.AgentEndpoint).HasMaxLength(500);
+            entity.Property(e => e.AgentVersion).HasMaxLength(50);
+
+            entity.HasMany(e => e.Services)
+                  .WithOne()
+                  .HasForeignKey(s => s.MachineId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
 
         // User entity

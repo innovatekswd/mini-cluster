@@ -49,6 +49,27 @@ public class MappingProfile : Profile
 
         CreateMap<ProxySettings, ProxySettingsDto>();
         CreateMap<UpdateProxySettingsDto, ProxySettings>();
+
+        // Machine mappings
+        CreateMap<Machine, MachineDto>()
+            .ForMember(dest => dest.ServiceCount, opt => opt.Ignore())
+            .ForMember(dest => dest.RunningServiceCount, opt => opt.Ignore());
+        CreateMap<CreateMachineDto, Machine>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.Status, opt => opt.Ignore())
+            .ForMember(dest => dest.LastSeen, opt => opt.Ignore())
+            .ForMember(dest => dest.IsLocal, opt => opt.Ignore())
+            .ForMember(dest => dest.Metadata, opt => opt.Ignore())
+            .ForMember(dest => dest.AgentVersion, opt => opt.Ignore())
+            .ForMember(dest => dest.CpuCores, opt => opt.Ignore())
+            .ForMember(dest => dest.TotalMemoryBytes, opt => opt.Ignore())
+            .ForMember(dest => dest.TotalDiskBytes, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
+            .ForMember(dest => dest.ModifiedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
+            .ForMember(dest => dest.Services, opt => opt.Ignore());
+        CreateMap<UpdateMachineDto, Machine>()
+            .ForMember(dest => dest.ModifiedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
+            .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
     }
 
     private static PathPrefixConfigDto MapPathPrefixConfig(ProxyRoute src)

@@ -26,6 +26,15 @@ public record MachineDto
     public string? Metadata { get; init; }
     public int OrderIndex { get; init; }
     public bool IsLocal { get; init; }
+    
+    // Cluster / Agent fields
+    public string? AgentEndpoint { get; init; }
+    public string? AgentVersion { get; init; }
+    public string? Labels { get; init; }
+    public int? CpuCores { get; init; }
+    public long? TotalMemoryBytes { get; init; }
+    public long? TotalDiskBytes { get; init; }
+    
     public DateTime CreatedAt { get; init; }
     public DateTime ModifiedAt { get; init; }
     
@@ -44,6 +53,11 @@ public record CreateMachineDto
     public string? SshKeyPath { get; init; }
     public string? SshPassword { get; init; }
     public int OrderIndex { get; init; } = 0;
+    
+    // Cluster / Agent fields
+    public string? AgentEndpoint { get; init; }
+    public string? AgentApiKey { get; init; }
+    public string? Labels { get; init; }
 }
 
 public record UpdateMachineDto
@@ -56,6 +70,11 @@ public record UpdateMachineDto
     public string? SshKeyPath { get; init; }
     public string? SshPassword { get; init; }
     public int? OrderIndex { get; init; }
+    
+    // Cluster / Agent fields
+    public string? AgentEndpoint { get; init; }
+    public string? AgentApiKey { get; init; }
+    public string? Labels { get; init; }
 }
 
 public record MachineWithServicesDto : MachineDto

@@ -160,6 +160,9 @@ builder.Services.AddHostedService(provider =>
 // Terminal service for PTY/REPL support
 builder.Services.AddSingleton<ITerminalService, TerminalService>();
 
+// Machine service (cluster nodes)
+builder.Services.AddScoped<IMachineService, MachineService>();
+
 // File Explorer service
 builder.Services.Configure<ExplorerOptions>(builder.Configuration.GetSection(ExplorerOptions.SectionName));
 builder.Services.AddScoped<ExplorerService>();
@@ -221,6 +224,11 @@ using (var scope = app.Services.CreateScope())
         {
             logger.LogWarning("Created initial admin user. Username: admin, Password: admin. PLEASE CHANGE THIS PASSWORD!");
         }
+        
+        // Auto-register local machine
+        var machineService = scope.ServiceProvider.GetRequiredService<IMachineService>();
+        var localMachine = await machineService.GetOrCreateLocalAsync();
+        logger.LogInformation("Local machine: {Name} (ID: {Id})", localMachine.Name, localMachine.Id);
         
         var manager = scope.ServiceProvider.GetRequiredService<IServiceProcessManager>();
         var autoStartServices = await controlDb.Services.Where(s => s.AutoStart).ToListAsync();

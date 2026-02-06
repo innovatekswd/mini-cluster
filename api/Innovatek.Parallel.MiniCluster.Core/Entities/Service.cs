@@ -69,5 +69,11 @@ namespace Innovatek.Parallel.MiniCluster.Core.Entities
         /// Navigation property to the parent App
         /// </summary>
         public App? App { get; set; }
+        
+        /// <summary>
+        /// Optional Machine ID — which machine this service runs on.
+        /// Null means local (the machine running this MiniCluster instance).
+        /// </summary>
+        public Guid? MachineId { get; set; }
     }
 }
