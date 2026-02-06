@@ -163,6 +163,14 @@ builder.Services.AddSingleton<ITerminalService, TerminalService>();
 // Machine service (cluster nodes)
 builder.Services.AddScoped<IMachineService, MachineService>();
 
+// Cluster services
+builder.Services.AddScoped<IClusterNotificationService, ClusterNotificationService>();
+builder.Services.AddOptions<AgentOptions>()
+    .BindConfiguration(AgentOptions.SectionName)
+    .ValidateDataAnnotations();
+builder.Services.AddHostedService<HeartbeatMonitorService>();
+builder.Services.AddHostedService<AgentRegistrationService>();
+
 // File Explorer service
 builder.Services.Configure<ExplorerOptions>(builder.Configuration.GetSection(ExplorerOptions.SectionName));
 builder.Services.AddScoped<ExplorerService>();
@@ -262,6 +270,9 @@ app.UseStaticFiles();
 // Authentication & Authorization
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Agent API key auth for /api/cluster/* endpoints
+app.UseAgentApiKeyAuth();
 
 app.UseSwagger();
 app.UseSwaggerUI();
