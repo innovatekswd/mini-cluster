@@ -1,50 +1,82 @@
-# Scaling & Performance
+# Scaling & Multi-Node Cluster
 
-> **Version:** 1.0  
-> **Status:** 💡 Future  
-> **Priority:** MEDIUM  
-> **Effort:** TBD
+> **Version:** 2.0 (Revised)
+> **Status:** 📋 Spec Ready
+> **Priority:** HIGH
+> **Effort:** ~8 weeks (v1), ~14 weeks (v2)
+> **Full Spec:** [spec/010-multi-node-cluster/spec.md](../../spec/010-multi-node-cluster/spec.md)
 
 ---
 
 ## Overview
 
-Future scaling capabilities for MiniCluster to support larger deployments and higher availability requirements.
+Multi-node clustering enables managing multiple machines from a single MiniCluster controller. The agent IS MiniCluster — same binary running in `--agent` mode with its own local SQLite database.
 
 ---
 
-## 1. Multi-Node Support (💡 Future)
+## 1. Multi-Node Cluster (v1 — ~8 weeks)
 
-### Cluster Mode
-Connect multiple MiniCluster instances for distributed management.
+### Design Principles
+- **Stateful agents** — Each agent keeps its own SQLite DB, survives controller outages
+- **API-key auth** — Simple, debuggable, sufficient for v1
+- **Env-var service discovery** — No DNS server required
+- **Notification-only on failure** — No automatic rescheduling
+- **Config drift detection** — SHA256 hash-based comparison
 
-```yaml
-cluster:
-  name: production-cluster
-  nodes:
-    - name: node-1
-      address: 192.168.1.10:5147
-      role: primary
-    - name: node-2
-      address: 192.168.1.11:5147
-      role: secondary
-    - name: node-3
-      address: 192.168.1.12:5147
-      role: secondary
+### Architecture
+```
+Controller (Primary)
+  │ HTTPS + API Key
+  ├── Node A (Agent) — Own DB ✓, Own API ✓
+  ├── Node B (Agent) — Own DB ✓, Own API ✓
+  └── Node C (Agent) — Own DB ✓, Own API ✓
+
+Controller DOWN → Agents still work locally
+Controller UP   → Agents sync pending changes
 ```
 
-### Features
-- Centralized management from any node
-- Service distribution across nodes
-- Automatic failover
-- Shared configuration
-- Cross-node service discovery
+### Implementation Phases
+
+| Phase | Description | Effort |
+|-------|-------------|--------|
+| 0 | Machine entity wiring (DbSet, Controller, Service) | 1 week |
+| 1 | Agent mode, heartbeat, API key auth, offline detection | 1.5 weeks |
+| 2 | Remote execution (NodeClient, ClusterService, Polly) | 1.5 weeks |
+| 3 | Deploy to node (AppDeployment, drift, env-var discovery) | 1.5 weeks |
+| 4 | Cluster dashboard UI (nodes, deployments, drift alerts) | 1 week |
+| 5 | Cross-node operations (start/stop/restart/logs all nodes) | 1 week |
+| 6 | CLI parity (mc node, mc deploy, mc cluster) | 0.5 weeks |
+
+### Key v1 Features
+- Agent self-registration and heartbeat (30s interval)
+- Offline detection (<90s) with notification
+- Deploy apps to nodes by ID or label selector
+- Config drift detection and manual sync
+- Cross-node start/stop/restart/status/logs
+- Cluster dashboard with aggregate metrics
+- CLI: `mc node`, `mc deploy`, `mc cluster`
 
 ---
 
-## 2. Service Replication (💡 Future)
+## 2. v2 Scaling Features (Deferred)
 
-### Horizontal Scaling
+### 2.1 mTLS Authentication (2 weeks)
+Mutual TLS between controller and agents with automatic certificate rotation.
+
+### 2.2 Impersonation Contexts (2 weeks)
+Run commands as different user/credentials. Orthogonal feature, useful even single-node.
+
+### 2.3 DNS-Based Service Discovery (1-2 weeks)
+Embedded DNS server resolving `app.node.cluster.local`. Env-vars cover 90% of cases for v1.
+
+### 2.4 Automatic Failover (3-4 weeks)
+Auto-reschedule apps from offline nodes with quorum-based leader election. Deferred due to split-brain risk — needs operational experience with v1.
+
+### 2.5 Rolling & Blue-Green Deployments (2 weeks)
+Sequential node updates with health check gates. Depends on App Versioning (007).
+
+### 2.6 Service Replication (3 weeks)
+
 ```yaml
 services:
   myapp-api:
@@ -55,26 +87,14 @@ services:
         - node.memory > 4GB
 ```
 
-### Load Balancing
-```
-              ┌─────────────┐
-              │ YARP Proxy  │
-              └──────┬──────┘
-                     │
-       ┌─────────────┼─────────────┐
-       │             │             │
-  ┌────▼────┐  ┌─────▼───┐  ┌─────▼───┐
-  │ api:1   │  │ api:2   │  │ api:3   │
-  │ :5001   │  │ :5002   │  │ :5003   │
-  └─────────┘  └─────────┘  └─────────┘
-```
+Load balancing via YARP with auto-configured upstream pools.
 
 ---
 
-## 3. Database Scaling (💡 Future)
+## 3. Database Scaling (Future)
 
 ### PostgreSQL Support
-For larger deployments, SQLite can be replaced with PostgreSQL.
+For larger deployments (100+ nodes), SQLite can be replaced with PostgreSQL.
 
 ```json
 {
@@ -85,78 +105,39 @@ For larger deployments, SQLite can be replaced with PostgreSQL.
 }
 ```
 
-### Database Features
-- Connection pooling
-- Read replicas
-- Full-text search
-- JSON operations
-
 ---
 
-## 4. Message Queue Integration (💡 Future)
+## 4. Message Queue Integration (Future)
 
 ### Event-Driven Architecture
 ```yaml
 messaging:
   provider: rabbitmq      # rabbitmq, redis, nats
-  url: amqp://localhost
-  
   events:
-    - service.started
-    - service.stopped
+    - node.online
+    - node.offline
     - deployment.completed
-    - alert.triggered
+    - drift.detected
 ```
-
-### Use Cases
-- Async command processing
-- Event broadcasting to multiple consumers
-- Decoupled alerting system
-- Audit log streaming
 
 ---
 
-## 5. Caching Layer (💡 Future)
+## 5. Caching Layer (Future)
 
 ### Redis Integration
 ```yaml
 cache:
   provider: redis
   url: redis://localhost:6379
-  
   policies:
-    metrics:
-      ttl: 5s
-    serviceList:
-      ttl: 30s
+    nodeMetrics: { ttl: 5s }
+    clusterStatus: { ttl: 10s }
 ```
-
-### Cached Data
-- Service metrics
-- System metrics
-- Service list
-- User sessions
-
----
-
-## 6. Performance Optimizations
-
-### Current Optimizations (✅)
-- In-memory metric caching
-- Efficient SignalR broadcasting
-- Lazy loading in EF Core
-- Connection pooling
-
-### Planned Optimizations (📋)
-- Response compression
-- Metric aggregation
-- Batch operations API
-- Query optimization
-- Static file caching
 
 ---
 
 ## References
 
-- Architecture overview: `spec4/INDEX.md`
-- Multi-cluster is enterprise feature territory
+- Full cluster spec: [spec/010-multi-node-cluster/spec.md](../../spec/010-multi-node-cluster/spec.md)
+- Architecture overview: [spec4/INDEX.md](../INDEX.md)
+- Multi-node is the enterprise unlock — single-node is a tool, multi-node is a platform

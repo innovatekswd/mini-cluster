@@ -19,7 +19,7 @@
 | 007 | [App Versioning & Deployment](#007-app-versioning) | 📋 Spec Ready | Medium | 4-6 weeks |
 | 008 | [Hierarchical Apps & Grouping](#008-hierarchical-apps) | 📋 Spec Ready | High | 3-4 weeks |
 | 009 | [Service-Level Versioning](#009-service-versioning) | 📋 Spec Ready | Medium | 2-3 weeks |
-| 010 | [Multi-Node Cluster](#010-multi-node-cluster) | 📋 Spec Ready | High | 6-8 weeks |
+| 010 | [Multi-Node Cluster](#010-multi-node-cluster) | 📋 Spec Ready | High | ~8 weeks (v1) |
 | 011 | [Cron Scheduling](#011-cron-scheduling) | 📋 Spec Ready | Medium | 2 weeks |
 | 012 | [Plugin System](#012-plugin-system) | 📋 Spec Ready | High | 12 weeks |
 | 015 | [CLI](#015-cli) | 📋 Spec Ready | High | 6-8 weeks |
@@ -88,11 +88,12 @@
 │      └── App snapshots (atomic versions)                                    │
 │                                                                             │
 │  PHASE 8: Cluster                                                           │
-│  └── 010 Multi-Node Cluster 📋                                              │
-│      ├── Agent-based nodes                                                  │
-│      ├── API-driven control                                                 │
-│      ├── Cross-node deployment                                              │
-│      └── Impersonation contexts                                             │
+│  └── 010 Multi-Node Cluster 📋 (v2.0 Spec)                                 │
+│      ├── Stateful agents (same binary, --agent mode)                        │
+│      ├── API-key auth (mTLS deferred to v2)                                 │
+│      ├── Env-var discovery (DNS deferred to v2)                             │
+│      ├── Config drift detection (SHA256 hashing)                            │
+│      └── 7 implementation phases (0-6)                                      │
 │                                                                             │
 │  PHASE 9: Scheduling                                                        │
 │  └── 011 Cron Scheduling 📋                                                 │
@@ -331,22 +332,30 @@ Extend versioning to individual services within apps, enabling granular rollback
 ---
 
 ### 010 Multi-Node Cluster
-**Status:** 📋 Spec Ready  
-**Spec:** [010-multi-node-cluster/spec.md](010-multi-node-cluster/spec.md)
+**Status:** 📋 Spec Ready (v2.0 — Revised)  
+**Spec:** [010-multi-node-cluster/spec.md](010-multi-node-cluster/spec.md)  
+**Original:** [010-multi-node-cluster/spec-v1-original.md](010-multi-node-cluster/spec-v1-original.md)
 
 **Summary:**  
-Control multiple machines from single MiniCluster via API-based agents. Central dashboard, cross-node deployment, impersonation.
+Scale MiniCluster across machines via stateful agents. Same binary runs in `--agent` mode with its own SQLite DB. API-key auth for v1, env-var discovery, notification-only failure policy, SHA256 config drift detection.
 
-**Key Features:**
-- [ ] Agent-based node management
-- [ ] API-driven control (all operations via REST API)
-- [ ] Central dashboard for all nodes
-- [ ] Deploy apps to multiple nodes
-- [ ] Cross-node service discovery
-- [ ] Impersonation contexts (run as different user/credentials)
-- [ ] mTLS/API key authentication between nodes
+**v1 Key Features (7 Phases):**
+- [ ] Phase 0: Machine entity wiring + DB migration
+- [ ] Phase 1: Agent mode (`minicluster --agent`) with own SQLite
+- [ ] Phase 2: Controller ↔ Agent heartbeat & sync protocol
+- [ ] Phase 3: Cross-node app deployment via controller
+- [ ] Phase 4: UI cluster dashboard + multi-node views
+- [ ] Phase 5: CLI cluster commands (`mc cluster add/status/deploy`)
+- [ ] Phase 6: Config drift detection via SHA256 hashing
 
-**Estimated Effort:** 6-8 weeks
+**Deferred to v2:**
+- mTLS certificate auth (v1 uses API keys)
+- Impersonation contexts (separate spec)
+- DNS-based discovery (v1 uses env vars)
+- Auto-failover (v1 uses notification-only policy)
+- Rolling deployments & replication
+
+**Estimated Effort:** ~8 weeks (v1 scope)
 
 ---
 

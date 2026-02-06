@@ -1,199 +1,111 @@
-# 010: Multi-Node Cluster
+# 010: Multi-Node Cluster (Revised v2.0)
 
-**Status:** 📋 Spec Ready (0% Complete)  
-**Phase:** 6 - Scale & Distribute  
-**Priority:** 🟡 HIGH  
-**Effort:** 6-8 weeks  
-**Original Spec:** [../spec/010-multi-node-cluster/spec.md](../../spec/010-multi-node-cluster/spec.md)
+**Status:** 📋 Spec Ready (0% Complete)
+**Phase:** 6 - Scale & Distribute
+**Priority:** 🟡 HIGH
+**Effort:** ~8 weeks (v1), ~14 weeks (v2 additions)
+**Full Spec:** [spec/010-multi-node-cluster/spec.md](../../spec/010-multi-node-cluster/spec.md)
 
 ---
 
 ## Summary
 
-Control multiple machines from a single MiniCluster instance via API-based agents. Central dashboard, cross-node deployment, impersonation contexts. Essential for MSPs and multi-server environments.
+Control multiple machines from a single MiniCluster instance via API-based **stateful** agents. The agent IS MiniCluster — same binary in agent mode. Key design changes from v1 spec:
 
-## Key Features ⬜
+- **Stateful agents** (not stateless) — survive controller outages
+- **API-key auth for v1** — mTLS deferred to v2
+- **Env-var service discovery** — DNS deferred to v2
+- **Notification-only on failure** — auto-failover deferred to v2
+- **Impersonation deferred** — orthogonal feature
+- **Config drift detection** — hash-based comparison
 
-### 1. Agent-Based Architecture (2 weeks)
-- ⬜ **MiniCluster Agent** - Lightweight agent on each node
-- ⬜ **API-driven** - All operations via REST API
-- ⬜ **Stateless agents** - No local data, all in central DB
-- ⬜ **Auto-registration** - Agents register with controller
-- ⬜ **Heartbeat monitoring** - Detect disconnected nodes
+## v1 Implementation Phases ⬜
 
-### 2. Central Dashboard (1 week)
-- ⬜ View all nodes in single UI
-- ⬜ Per-node status (online, offline, degraded)
-- ⬜ Aggregate metrics (total CPU, memory across cluster)
-- ⬜ Per-node drill-down (apps, services, logs)
-- ⬜ Search across all nodes
+### Phase 0: Machine Entity Wiring (1 week)
+- ⬜ Wire `Machine` entity into `DbSet<Machine>` in AppDbContext
+- ⬜ Add `Service.MachineId` FK to entity
+- ⬜ Extend Machine with cluster fields (AgentEndpoint, Labels, etc.)
+- ⬜ Create `IMachineService` / `MachineService`
+- ⬜ Create `MachinesController` (CRUD + ping)
+- ⬜ Auto-register local machine on startup
 
-### 3. Cross-Node Deployment (2 weeks)
-- ⬜ **Deploy to specific nodes** - Select target machines
-- ⬜ **Deploy to groups** - Deploy to "production" group
-- ⬜ **Deploy to all** - Broadcast deployment
-- ⬜ **Rolling deployments** - Update nodes sequentially
-- ⬜ **Parallel deployments** - Update all at once
-- ⬜ **Health checks before next node** - Safe rollout
+### Phase 1: Agent Mode & Heartbeat (1.5 weeks)
+- ⬜ `--agent` flag and `Agent` config section
+- ⬜ `AgentRegistrationService` (BackgroundService)
+- ⬜ Heartbeat loop (30s interval, configurable)
+- ⬜ `HeartbeatMonitorService` on controller (detect offline >90s)
+- ⬜ `AgentApiKeyMiddleware` for cluster endpoints
+- ⬜ Offline node notification policy (SignalR + webhook)
+- ⬜ `ClusterController` (register, heartbeat, nodes)
 
-### 4. Node Management (1 week)
-- ⬜ Add/remove nodes dynamically
-- ⬜ Node labels (environment, region, customer)
-- ⬜ Node capacity planning (CPU, memory, disk)
-- ⬜ Drain node (stop accepting new apps)
-- ⬜ Quarantine node (isolate for maintenance)
+### Phase 2: Remote Execution (1.5 weeks)
+- ⬜ `INodeClient` interface (Apps, Services, Logs, Metrics, System)
+- ⬜ `NodeClient` HTTP implementation
+- ⬜ `NodeClientFactory` (create from Machine records)
+- ⬜ `IClusterService` (ExecuteOnNode, ExecuteOnAll)
+- ⬜ Polly resilience (retry, circuit breaker)
 
-### 5. Security (1-2 weeks)
-- ⬜ **mTLS authentication** - Mutual TLS between controller & agents
-- ⬜ **API key authentication** - Shared secret per node
-- ⬜ **Certificate rotation** - Automatic cert renewal
-- ⬜ **Authorization** - Which nodes can access which apps
-- ⬜ **Impersonation contexts** - Run as different user/credentials
+### Phase 3: Deploy to Node (1.5 weeks)
+- ⬜ `AppDeployment` entity (tracks what's deployed where)
+- ⬜ `ConfigHasher` (SHA256 deterministic hash)
+- ⬜ `IDeploymentService` (deploy, sync, undeploy, drift check)
+- ⬜ Deploy by machine IDs or label selector
+- ⬜ Cross-node service discovery via env-var injection
+- ⬜ `DeploymentsController`
 
-### 6. Cross-Node Service Discovery (1 week)
-- ⬜ Services can discover each other across nodes
-- ⬜ DNS-based discovery (`api.node1.cluster.local`)
-- ⬜ Environment variable injection (`NODE_API_URL`)
-- ⬜ Health check across nodes
+### Phase 4: Cluster Dashboard UI (1 week)
+- ⬜ Cluster sidebar section (Overview, Nodes, Deployments)
+- ⬜ Node cards with status, resources, app count
+- ⬜ Node detail page with metrics and deployments
+- ⬜ Deploy-to-cluster modal with label filtering
+- ⬜ Drift alert badges
+- ⬜ SignalR real-time cluster events
+- ⬜ React Query hooks for cluster data
 
-## Why This Matters
+### Phase 5: Cross-Node Operations (1 week)
+- ⬜ `ClusterAppsController` (start/stop/restart on all nodes)
+- ⬜ Per-node success/failure reporting
+- ⬜ Aggregate status view across nodes
+- ⬜ Aggregate log view with node attribution
+- ⬜ UI: cross-node status table
 
-**Single Node:**
-- ❌ Can't manage multiple servers
-- ❌ Manual SSH to each machine
-- ❌ No central visibility
-- ❌ Can't distribute workloads
+### Phase 6: CLI Parity (0.5 weeks)
+- ⬜ `mc node list/get/add/remove/ping/labels`
+- ⬜ `mc deploy <app> --to <nodes>` / `--label env=prod`
+- ⬜ `mc deploy list/status/sync/remove/drift`
+- ⬜ `mc cluster status`
+- ⬜ `mc cluster apps <app> start/stop/restart`
 
-**Multi-Node Cluster:**
-- ✅ Manage hundreds of servers from one UI
-- ✅ Deploy to multiple machines at once
-- ✅ Central dashboard and monitoring
-- ✅ Load distribution and failover
+## v2 Deferred Features
+
+| Feature | Effort | Reason Deferred |
+|---------|--------|-----------------|
+| mTLS authentication | 2 weeks | API keys sufficient for v1 |
+| Impersonation contexts | 2 weeks | Orthogonal, useful even single-node |
+| DNS-based discovery | 1-2 weeks | Env-vars cover 90% of cases |
+| Automatic failover | 3-4 weeks | Split-brain risk, needs operational experience |
+| Rolling/blue-green deploys | 2 weeks | Depends on App Versioning (007) |
+| Service replication | 3 weeks | Requires load balancer orchestration |
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                  CENTRAL CONTROLLER                     │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │
-│  │     UI      │  │     API     │  │   Database  │    │
-│  └─────────────┘  └─────────────┘  └─────────────┘    │
-└─────────────────────────┬───────────────────────────────┘
-                          │ mTLS / API Key
-          ┌───────────────┼───────────────┐
-          │               │               │
-┌─────────▼─────┐  ┌──────▼──────┐  ┌────▼──────────┐
-│   NODE 1      │  │   NODE 2    │  │   NODE 3      │
-│  (Agent)      │  │  (Agent)    │  │  (Agent)      │
-│               │  │             │  │               │
-│ ┌───────────┐ │  │ ┌─────────┐ │  │ ┌───────────┐ │
-│ │  App A    │ │  │ │ App B   │ │  │ │  App C    │ │
-│ │  App D    │ │  │ │ App E   │ │  │ │  App F    │ │
-│ └───────────┘ │  │ └─────────┘ │  │ └───────────┘ │
-└───────────────┘  └─────────────┘  └───────────────┘
-```
+Controller (Primary)
+  │ HTTPS + API Key
+  ├── Node A (Agent) — Own DB ✓, Own API ✓
+  ├── Node B (Agent) — Own DB ✓, Own API ✓
+  └── Node C (Agent) — Own DB ✓, Own API ✓
 
-## Technical Design
-
-### Database Schema
-```sql
--- Nodes
-CREATE TABLE Nodes (
-  Id INTEGER PRIMARY KEY,
-  Name VARCHAR(255),
-  Hostname VARCHAR(255),
-  IpAddress VARCHAR(50),
-  ApiKey VARCHAR(512), -- Hashed
-  CertificateThumbprint VARCHAR(128),
-  Status VARCHAR(20), -- Online, Offline, Degraded
-  LastHeartbeat DATETIME,
-  Labels TEXT, -- JSON: {env: "prod", region: "us-east"}
-  Resources TEXT -- JSON: {cpus: 8, memory: 32GB}
-);
-
--- App deployments (which app on which node)
-CREATE TABLE AppDeployments (
-  Id INTEGER PRIMARY KEY,
-  AppId INTEGER,
-  NodeId INTEGER,
-  Status VARCHAR(20), -- Pending, Running, Stopped
-  DeployedAt DATETIME,
-  FOREIGN KEY (AppId) REFERENCES Apps(Id),
-  FOREIGN KEY (NodeId) REFERENCES Nodes(Id)
-);
-```
-
-### API Endpoints
-
-**Controller API** (called by UI):
-```
-GET    /api/nodes                  - List all nodes
-POST   /api/nodes                  - Register new node
-PUT    /api/nodes/:id              - Update node
-DELETE /api/nodes/:id              - Remove node
-POST   /api/deploy                 - Deploy app to nodes
-GET    /api/cluster/status         - Cluster overview
-```
-
-**Agent API** (on each node):
-```
-POST   /agent/apps                 - Deploy app on this node
-GET    /agent/apps/:id             - App status
-POST   /agent/apps/:id/start       - Start app
-POST   /agent/apps/:id/stop        - Stop app
-GET    /agent/health               - Agent health check
-POST   /agent/heartbeat            - Report status to controller
-```
-
-## Implementation Phases
-
-| Phase | Features | Weeks |
-|-------|----------|-------|
-| 1 | Agent architecture & API | 2 |
-| 2 | Central dashboard & node listing | 1 |
-| 3 | Cross-node deployment | 2 |
-| 4 | Node management & labels | 1 |
-| 5 | mTLS/API key security | 1-2 |
-| 6 | Service discovery | 1 |
-| 7 | Impersonation contexts | 1 |
-
-**Total:** 6-8 weeks
-
-## Use Cases
-
-### MSP Managing Client Servers
-```
-Nodes:
-├── client-a-prod (Windows Server)
-├── client-a-dev (Windows Desktop)
-├── client-b-prod (Linux Server)
-└── client-b-staging (Linux VM)
-
-Deploy CRM app to client-a-prod
-Deploy Test App to all dev/staging nodes
-```
-
-### Multi-Region Deployment
-```
-Nodes:
-├── us-east-1 (4 nodes)
-├── us-west-2 (4 nodes)
-└── eu-west-1 (4 nodes)
-
-Deploy API to all regions
-Deploy Database to us-east-1 only
+Controller DOWN → Agents still work locally
+Controller UP   → Agents sync pending changes
 ```
 
 ## Dependencies
 
-- **Required:** 003 Authentication (node authentication)
+- **Required:** 003 Authentication (JWT ✅ + API keys 📋)
 - **Recommended:** 005 Reliability (health checks)
-
-## Related Features
-
-- **Enhanced by:** 007 App Versioning (version deployments per node)
-- **Enhanced by:** 011 Cron Scheduling (scheduled tasks across nodes)
+- **v2 only:** 007 App Versioning (rolling deploys)
 
 ---
 
-For complete details, see the [full multi-node cluster spec](../../spec/010-multi-node-cluster/spec.md).
+For complete implementation details, data models, API endpoints, UI components, and testing strategy, see the [full spec](../../spec/010-multi-node-cluster/spec.md).

@@ -148,7 +148,7 @@ spec4/
 #### 06 - Scaling
 | Feature | Status | Priority | Effort |
 |---------|--------|----------|--------|
-| Multi-Node Cluster | 📋 | MEDIUM | 8 weeks |
+| Multi-Node Cluster | 📋 | HIGH | ~8 weeks (v1) |
 | Container Support | 📋 | LOW | 6 weeks |
 | Cron Scheduling | 📋 | LOW | 2 weeks |
 
@@ -190,7 +190,7 @@ spec4/
 8. **Startup Plans** (2 weeks)
 
 ### Phase 4: Scale (Q3-Q4 2026) - 10 weeks
-9. **Multi-Node Cluster** (8 weeks)
+9. **Multi-Node Cluster** (~8 weeks v1, stateful agents, API-key auth)
 10. **Cron Scheduling** (2 weeks)
 
 ### Phase 5: Ecosystem (Q4 2026+) - 16 weeks
