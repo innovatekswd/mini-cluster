@@ -19,15 +19,33 @@ At the bottom it's a process manager. At the top it's a multi-node, auto-scaling
 │                                                                             │
 │  STAGE 1 — THE RUNTIME          (ship first, win PM2/Supervisor users)     │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │
-│  │  Process    │  │  Reverse    │  │  Versioning │  │  .mcpkg     │       │
-│  │  Manager    │  │  Proxy      │  │  & Rollback │  │  Packages   │       │
+│  │  Process    │  │  Reverse    │  │  Versioning │  │  Hierarchical│       │
+│  │  Manager    │  │  Proxy      │  │  & Rollback │  │  Apps        │       │
 │  │  ──────────│  │  ──────────│  │  ──────────│  │  ──────────│       │
-│  │  Run, stop, │  │  YARP, TLS, │  │  Snapshots, │  │  Bundle,    │       │
-│  │  restart,   │  │  domains,   │  │  blue-green, │  │  version,   │       │
-│  │  health chk │  │  routes     │  │  one-click  │  │  distribute │       │
+│  │  Run, stop, │  │  YARP, TLS, │  │  Snapshots, │  │  Tree view,  │       │
+│  │  restart,   │  │  domains,   │  │  blue-green, │  │  cascade,    │       │
+│  │  health chk │  │  routes     │  │  one-click  │  │  subtree ops │       │
 │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘       │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                        │
+│  │  Cron       │  │  Containers │  │  Alerting   │                        │
+│  │  Scheduling │  │  ──────────│  │  ──────────│                        │
+│  │  ──────────│  │  Docker/    │  │  Threshold  │                        │
+│  │  6-field,   │  │  Podman as  │  │  rules on   │                        │
+│  │  run history│  │  optional   │  │  CPU/memory │                        │
+│  │             │  │  runtime    │  │  /disk      │                        │
+│  └─────────────┘  └─────────────┘  └─────────────┘                        │
 │                                                                             │
-│  STAGE 2 — THE PLATFORM + CLUSTER (add a second server)                   │
+│  STAGE 2 — OBSERVABILITY        (see what your apps are doing)             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                        │
+│  │  mc-telemetry (Companion App)                   │                        │
+│  │  ──────────────────────────────────────────────│                        │
+│  │  OTLP receiver (gRPC + HTTP) │ Structured logs │                        │
+│  │  Traces & spans              │ App-level metrics│                        │
+│  │  Own SQLite DB               │ Embedded web UI  │                        │
+│  │  Forward to Seq/Grafana/Loki │ Query API        │                        │
+│  └─────────────────────────────────────────────────┘                        │
+│                                                                             │
+│  STAGE 3 — THE PLATFORM + CLUSTER (add a second server)                   │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │
 │  │  Discovery  │  │  Identity   │  │  Config     │  │  Registry   │       │
 │  │  ──────────│  │  ──────────│  │  ──────────│  │  ──────────│       │
@@ -44,20 +62,20 @@ At the bottom it's a process manager. At the top it's a multi-node, auto-scaling
 │  │  failover   │                                                           │
 │  └─────────────┘                                                           │
 │                                                                             │
-│  STAGE 3 — THE FLEET            (scale without switching)                  │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │
-│  │  Cron       │  │  Auto-      │  │  Containers │  │  Plugins    │       │
-│  │  ──────────│  │  Scaling    │  │  ──────────│  │  ──────────│       │
-│  │  Scheduled  │  │  ──────────│  │  Docker/    │  │  Open SDK,  │       │
-│  │  jobs, run  │  │  Cloud VMs, │  │  Podman as  │  │  marketplace│       │
-│  │  history    │  │  scale-to-  │  │  optional   │  │  ecosystem  │       │
-│  │             │  │  zero       │  │  runtime    │  │             │       │
-│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘       │
+│  STAGE 4 — THE FLEET            (scale without switching)                  │
+│  ┌─────────────┐  ┌─────────────┐                                          │
+│  │  Auto-      │  │  Plugins    │                                          │
+│  │  Scaling    │  │  ──────────│                                          │
+│  │  ──────────│  │  Open SDK,  │                                          │
+│  │  Cloud VMs, │  │  marketplace│                                          │
+│  │  scale-to-  │  │  ecosystem  │                                          │
+│  │  zero       │  │             │                                          │
+│  └─────────────┘  └─────────────┘                                          │
 │                                                                             │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │                    UNIFIED CONTROL PLANE                             │   │
 │  │                                                                      │   │
-│  │   Web UI  ←→  CLI  ←→  REST API  ←→  SQLite  +  TimescaleDB         │   │
+│  │   Web UI  ←→  CLI  ←→  REST API  ←→  SQLite (embedded)              │   │
 │  │                                                                      │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
@@ -70,15 +88,17 @@ At the bottom it's a process manager. At the top it's a multi-node, auto-scaling
 
 | Capability | Description |
 |------------|-------------|
-| **Hierarchical Apps** | Apps contain services (processes) and child apps. Tree structure. Cascade operations. |
-| **Versioning** | Version apps AND individual services. Rollback anything. Atomic snapshots. |
-| **Multi-Node Cluster** | Control 5, 50, or 500 servers from one dashboard. API-based agents. |
-| **Cron Scheduling** | Run jobs on schedule. Dependency chains. Missed schedule handling. |
-| **Open Plugin System** | Anyone can build plugins. Backend (.NET) + Frontend (React) SDKs. Marketplace. |
-| **Analytics & Decision Support** | Reports on memory, CPU, disk, network, errors, and trends for all apps/services. AI-powered recommendations and anomaly detection. |
-| **Integrated Observability** | Logs, metrics, health checks, traces. All built-in. |
-| **Reverse Proxy** | YARP built-in, plus plugin support for Nginx, Caddy, Traefik. |
-| **No Containers Required** | Native processes. Containers optional. Windows-first. |
+| **Hierarchical Apps** | Apps contain services (processes) and child apps. Tree structure. Cascade operations. ✅ Done |
+| **Versioning** | Version apps AND individual services. Rollback anything. Atomic snapshots. ✅ Done |
+| **Cron Scheduling** | Run jobs on schedule. 6-field expressions. Run history tracking. ✅ Done |
+| **Container Support** | Docker/Podman as optional runtime. Image, ports, volumes, labels. ✅ Done |
+| **Alerting** | Threshold rules on CPU/memory/disk/restarts. Webhook/email/SignalR notifications. 📋 Planned |
+| **Companion App Observability** | mc-telemetry: standalone OTLP receiver with own DB, UI, and query API. 📋 Planned |
+| **Multi-Node Cluster** | Control 5, 50, or 500 servers from one dashboard. API-based agents. 📋 Planned |
+| **Open Plugin System** | Anyone can build plugins. Backend (.NET) + Frontend (React) SDKs. Marketplace. 📋 Planned |
+| **Integrated Process Metrics** | Real-time CPU, memory, restarts, uptime for all services. Built-in. ✅ Done |
+| **Reverse Proxy** | YARP built-in. Domain routing, TLS, per-service proxy rules. ✅ Done |
+| **No Containers Required** | Native processes first. Containers optional. Cross-platform. ✅ Done |
 
 ---
 
@@ -190,55 +210,58 @@ MiniCluster is for teams who need Kubernetes-like orchestration but can't justif
 ### 1. Native Process First
 No container overhead. Run `.exe`, `.jar`, Python scripts, Go binaries directly. Containers are optional, not mandatory.
 
-### 2. Windows-Native
-Actually works on Windows without Docker Desktop licensing or WSL2 complexity. First-class Windows citizen.
+### 2. Cross-Platform, Windows-Native
+Actually works on Windows without Docker Desktop licensing or WSL2 complexity. First-class Windows citizen. Also runs natively on Linux and macOS.
 
 ### 3. Hierarchical Applications
-Apps contain services. Apps contain child apps. Tree structure mirrors how you think about systems. Cascade start/stop.
+Apps contain services. Apps contain child apps. Tree structure mirrors how you think about systems. Cascade start/stop. ✅ Shipped.
 
 ### 4. Versioning Everything
-Version apps. Version individual services. Rollback with one click. Atomic snapshots. No GitOps toolchain required.
+Version apps. Version individual services. Rollback with one click. Atomic snapshots. No GitOps toolchain required. ✅ Shipped.
 
-### 5. Application Package Manager
-`.mcpkg` is to MiniCluster what `.deb` is to Ubuntu. Not just a process manager — a full application package manager with its own registry, manifest format, and lifecycle.
+### 5. Companion App Architecture
+Observability, identity, config, and registry ship as **companion apps** — separate processes with their own DBs and UIs, managed by MiniCluster like any other service. Same pattern as Seq, Jaeger, or Grafana — but deeply integrated and auto-managed. No manual Docker Compose stacks.
 
-### 6. Three-Service Architecture
-Identity (OIDC), Config (desired state), Registry (packages) — all in one binary. Discovery endpoint makes everything self-configuring. Enterprise-grade auth without enterprise complexity.
+### 6. Progressive Disclosure
+Four stages, one binary. Stage 1 is a process manager. Stage 4 is a fleet orchestrator. Users only encounter the complexity they need. No migration friction between stages.
 
 ### 7. Pull-Based Deployment
 Agents pull their desired state and self-converge. No push failures, no drift, no "what if the target is offline." Same model that won for Kubernetes, Puppet, and GitOps.
 
-### 8. Auto-Scaling
-Scale infrastructure based on load. Acquire VMs from cloud providers (Hetzner, DigitalOcean, AWS), auto-install agents, expand on demand. Scale to zero when idle. Pay only for what you use.
-
-### 9. Open Plugin Ecosystem
-**Anyone can build plugins.** Backend SDK (C#/.NET). Frontend SDK (React/TypeScript). CLI for scaffolding. Marketplace for distribution.
-
-### 10. Integrated Observability
-Logs, metrics, health checks built-in. Not 5 separate tools. TimescaleDB for high-volume telemetry.
+### 8. Integrated Process Metrics & Alerting
+Real-time CPU, memory, disk, restart tracking built into the runtime. Threshold-based alerting on existing metrics — no external monitoring stack required. OTLP observability available as optional companion app.
 
 ### 9. Cron Scheduling
-Schedule jobs with UI, not YAML. Dependency chains. Missed schedule handling. Run history.
+Schedule jobs with UI, not YAML. 6-field cron expressions. Run history tracking. ✅ Shipped.
+
+### 10. Open Plugin Ecosystem
+**Anyone can build plugins.** Backend SDK (C#/.NET). Frontend SDK (React/TypeScript). CLI for scaffolding. Marketplace for distribution.
+
+### 11. SQLite-Embedded Storage
+No external database dependencies. Control DB + Logs DB + Telemetry DB — all SQLite with WAL mode. Zero infrastructure requirements beyond the binary itself.
 
 ---
 
 ## Shipping Stages
 
-MiniCluster ships in three stages. Each stage is a complete, useful product on its own.
+MiniCluster ships in **four stages**. Each stage is a complete, useful product on its own.
 Each stage expands the audience without breaking the previous one.
 
 ### Stage 1 — The Runtime ("Better PM2")
 
 **Ship first. Win the bottom of the market.**
 
-| Layer | What it replaces |
-|-------|------------------|
-| Process manager | PM2, Supervisor, systemd units |
-| Reverse proxy | nginx config, manual Caddy setup |
-| Versioning & rollback | Manual deploy scripts, rsync |
-| .mcpkg packages | tar.gz + prayers |
-| Health checks & auto-restart | Monit, custom watchdogs |
-| Web UI + CLI | SSH + PM2 CLI |
+| Layer | What it replaces | Status |
+|-------|------------------|--------|
+| Process manager | PM2, Supervisor, systemd units | ✅ Done |
+| Reverse proxy | nginx config, manual Caddy setup | ✅ Done |
+| Versioning & rollback | Manual deploy scripts, rsync | ✅ Done |
+| Health checks & auto-restart | Monit, custom watchdogs | ✅ Done |
+| Web UI + CLI | SSH + PM2 CLI | ✅ Done |
+| Hierarchical apps | Flat lists, manual grouping | ✅ Done |
+| Cron scheduling | crontab, manual scripts | ✅ Done |
+| Container support | Docker Compose (without orchestration) | ✅ Done |
+| Alerting & thresholds | External monitoring tools | 📋 Planned |
 
 **Entry story:** "Install one binary. Run `mc deploy myapp`. Get a dashboard, proxy, and health checks in 5 minutes."
 
@@ -248,36 +271,54 @@ Each stage expands the audience without breaking the previous one.
 
 ---
 
-### Stage 2 — The Platform + Cluster ("Add a second server")
+### Stage 2 — Observability ("See what your apps are doing")
+
+**Structured telemetry via a companion app — not embedded, not external.**
+
+| Layer | What it enables | Status |
+|-------|----------------|--------|
+| mc-telemetry companion app | OTLP receiver, structured logs, traces, metrics | 📋 Planned |
+| Embedded telemetry UI | Query logs/traces without external tools | 📋 Planned |
+| Forward to external backends | Seq, Grafana, Loki, Jaeger integration | 📋 Planned |
+
+**Entry story:** "Run `mc telemetry enable`. MiniCluster deploys mc-telemetry as a managed companion. Your apps send OTLP — structured logs, traces, and metrics appear instantly."
+
+**Who this reaches:** Teams ready to move beyond stdout logs. They want application-level observability without deploying Prometheus + Grafana + Loki + Jaeger + Seq. One command, zero infra.
+
+**Key property:** mc-telemetry is a **companion app** — a separate .NET process with its own SQLite DB, its own API, its own embedded UI. MiniCluster manages it like any other service but integrates deeply: service details show OTLP data, dashboard shows telemetry widgets, forwarding is configurable.
+
+**Architecture pattern:** This establishes the **companion app pattern** reused in Stage 3 for discovery, identity, config, and registry.
+
+---
+
+### Stage 3 — The Platform + Cluster ("Add a second server")
 
 **Emerge as users add their second server. Platform services and clustering ship together — they're inseparable.**
 
-| Layer | What it enables |
-|-------|----------------|
-| Discovery | Services find each other automatically |
-| Identity (OIDC) | Users, API tokens, SSO, team access control |
-| Config service | Push desired state, agents self-converge |
-| Registry | Central .mcpkg storage, versioned downloads |
-| Multi-node clustering | Heartbeat, failover, workload placement |
+| Layer | What it enables | Status |
+|-------|----------------|--------|
+| Discovery | Services find each other automatically | 📋 Planned |
+| Identity (OIDC) | Users, API tokens, SSO, team access control | 📋 Planned |
+| Config service | Push desired state, agents self-converge | 📋 Planned |
+| Registry | Central .mcpkg storage, versioned downloads | 📋 Planned |
+| Multi-node clustering | Heartbeat, failover, workload placement | 🚜 In Progress |
 
 **Entry story:** "You added a second server? Run `mc join`. The agent discovers, authenticates, pulls config, downloads packages, and converges — automatically."
 
 **Who this reaches:** Teams growing from 1→5 servers, anyone who needs auth or multi-user access, MSPs managing client servers. They discovered MiniCluster as a PM2 replacement and now need platform features.
 
-**Key property:** Zero migration. No new binary, no new config format, no retraining. The platform was always there — it just wasn't needed yet. Clustering is the reason the platform services exist.
+**Key property:** Zero migration. No new binary, no new config format, no retraining. The platform was always there — it just wasn't needed yet. Platform services ship as companion apps (same pattern as mc-telemetry).
 
 ---
 
-### Stage 3 — The Fleet ("Scale without switching")
+### Stage 4 — The Fleet ("Scale without switching")
 
 **Scale infrastructure on demand.**
 
-| Layer | What it enables |
-|-------|----------------|
-| Scheduling | Cron jobs, dependency chains, run history |
-| Auto-scaling | Cloud VMs on demand (Hetzner, DO, AWS, Azure) |
-| Containers | Docker/Podman as optional runtime type |
-| Plugin ecosystem | Open SDK, marketplace, community extensions |
+| Layer | What it enables | Status |
+|-------|----------------|--------|
+| Auto-scaling | Cloud VMs on demand (Hetzner, DO, AWS, Azure) | 📋 Planned |
+| Plugin ecosystem | Open SDK, marketplace, community extensions | 📋 Planned |
 
 **Entry story:** "Traffic spiked. MiniCluster added two Hetzner VMs, deployed your app, and routed traffic — then scaled back to zero when it was over."
 
@@ -288,12 +329,14 @@ Each stage expands the audience without breaking the previous one.
 ### The Stage Sequence Is the Strategy
 
 ```
-  Stage 1              Stage 2              Stage 3
-  ─────────           ─────────           ─────────
-  PM2 users    ──→    Multi-server teams ──→  Fleet operators
-  1 server            2-10 servers         10-500 servers
-  Solo dev            Small team           Growing org
-  mc start            mc join              mc scale
+  Stage 1              Stage 2              Stage 3                   Stage 4
+  ─────────           ─────────            ─────────                 ─────────
+  PM2 users    ──→    See everything  ──→  Multi-server teams  ──→   Fleet operators
+  1 server            1 server             2-10 servers              10-500 servers
+  Solo dev            Solo dev             Small team                Growing org
+  mc start            mc telemetry enable  mc join                   mc scale
+
+  Run             →   Watch            →   Scale                →    Fleet
 
   Same binary. Same CLI. Same UI. Same mental model.
 ```
@@ -391,4 +434,4 @@ MiniCluster wins when:
 > **Vision:** [specs/roadmap/vision.md](../../roadmap/vision.md)  
 > **Mission:** [specs/roadmap/mission.md](../../roadmap/mission.md)
 >
-> Three stages: **Runtime** → **Platform** → **Fleet**. See the roadmap for details.
+> Four stages: **Runtime** → **Observability** → **Platform + Cluster** → **Fleet**. See the roadmap for details.

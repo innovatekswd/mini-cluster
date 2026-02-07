@@ -1,12 +1,12 @@
 import { memo } from "react";
 import {
-  FileIcon,
-  FolderIcon,
-  FolderOpenIcon,
-  Edit3Icon,
-  DownloadIcon,
-  Trash2Icon,
-} from "lucide-react";
+  FaFile,
+  FaFolder,
+  FaFolderOpen,
+  FaEdit,
+  FaDownload,
+  FaTrash,
+} from "react-icons/fa";
 import type { FileSystemNode } from "./types";
 import FileTreeRecursiveList from "./FileTreeRecursiveList"; // Removed .tsx extension
 
@@ -49,8 +49,8 @@ export const FileNode = memo(function FileNode({
             id={nodeId}
             className="hidden"
           />
-          <FolderIcon className="size-4 text-sky-500 group-has-[:checked]:hidden flex-shrink-0" />
-          <FolderOpenIcon className="size-4 text-sky-500 hidden group-has-[:checked]:inline-block flex-shrink-0" />
+          <FaFolder className="size-4 text-sky-500 group-has-[:checked]:hidden flex-shrink-0" />
+          <FaFolderOpen className="size-4 text-sky-500 hidden group-has-[:checked]:inline-block flex-shrink-0" />
 
           <span
             className="text-gray-300 group-hover:text-white truncate"
@@ -83,7 +83,7 @@ export const FileNode = memo(function FileNode({
         }`}
         title={node.path} // Path on row hover
       >
-        <FileIcon className="size-4 text-gray-400 flex-shrink-0 ml-1" />
+        <FaFile className="size-4 text-gray-400 flex-shrink-0 ml-1" />
         <span
           className={`text-gray-300 group-hover:text-white truncate flex-1 cursor-pointer ${
             isSelected ? "text-blue-300 font-medium" : ""
@@ -102,7 +102,7 @@ export const FileNode = memo(function FileNode({
             title="Edit File"
             className="p-1 text-gray-400 hover:text-blue-400 rounded"
           >
-            <Edit3Icon size={14} />
+            <FaEdit size={14} />
           </button>
           <button
             onClick={(e) => {
@@ -112,7 +112,7 @@ export const FileNode = memo(function FileNode({
             title={`Download ${node.name}`}
             className="p-1 text-gray-400 hover:text-green-400 rounded"
           >
-            <DownloadIcon size={14} />
+            <FaDownload size={14} />
           </button>
           <button
             onClick={(e) => {
@@ -122,7 +122,7 @@ export const FileNode = memo(function FileNode({
             title={`Delete ${node.name}`}
             className="p-1 text-gray-400 hover:text-red-400 rounded"
           >
-            <Trash2Icon size={14} />
+            <FaTrash size={14} />
           </button>
         </div>
       </div>
