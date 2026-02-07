@@ -177,43 +177,14 @@ spec4/
 
 ---
 
-## 🎯 Recommended Implementation Order
+## 🎯 Roadmap
 
-### Phase 1: Production Ready (Q1 2026) - 8 weeks
-1. **CLI Tool** (4 weeks) - DevOps automation essential
-2. **API Keys + RBAC** (3 weeks) - Security for production
-3. **Health Checks** (1 week) - Basic reliability
+> **Canonical roadmap:** [specs/roadmap/roadmap.md](../roadmap/roadmap.md)  
+> **Vision:** [specs/roadmap/vision.md](../roadmap/vision.md)  
+> **Mission:** [specs/roadmap/mission.md](../roadmap/mission.md)
 
-### Phase 2: Reliability (Q2 2026) - 8 weeks
-4. **Auto-Restart Policies** (2 weeks)
-5. **Blue-Green Deployment** (2 weeks)
-6. **Versioning + Rollback** (4 weeks)
-
-### Phase 3: Organization (Q2-Q3 2026) - 5 weeks
-7. **Hierarchical Apps** (3 weeks)
-8. **Startup Plans** (2 weeks)
-
-### Phase 4: Scale (Q3-Q4 2026) - 19 weeks
-9. **Multi-Node Cluster** (~8 weeks v1, Phase 0+1 implemented)
-10. **Discovery & Services Architecture** (2 weeks — well-known endpoint, bootstrap)
-11. **Identity / OIDC** (3 weeks — OpenIddict, replaces custom JWT)
-12. **Config Service** (3 weeks — pull-based desired state, env vars)
-13. **Registry & Packages** (3 weeks — .mcpkg bundles, version management)
-14. **Cron Scheduling** (2 weeks)
-
-### Phase 5: Ecosystem (Q4 2026+) - 16 weeks
-11. **Plugin System** (12 weeks)
-12. **Marketplace** (4 weeks)
-
-### Phase 6: Container & Scaling (2027) - 14 weeks
-15. **Container Support** (6 weeks — docker runtime type in manifest, hybrid apps)
-16. **Auto-Scaling** (8 weeks — cloud provider plugins, rule-based scale-up/down, pay-when-needed)
-
-### Future
-- Secrets Management
-- Backup & Restore
-- Analytics & AI
-- Git Integration
+Three shipping stages: **Runtime** (PM2 killer) → **Platform** (multi-server) → **Fleet** (auto-scaling).
+See the roadmap for full phase breakdown, spec links, and effort estimates.
 
 ---
 

@@ -7,165 +7,42 @@
 
 ## 📋 Quick Status Overview
 
-| # | Feature | Status | Priority | Effort |
-|---|---------|--------|----------|--------|
-| 000 | [Product Positioning](#000-product-positioning) | 📄 Reference | - | - |
-| 001 | [File Explorer](#001-file-explorer) | ✅ Implemented | - | - |
-| 002 | [Routing & Navigation](#002-routing-navigation) | ✅ Implemented | - | - |
-| 003 | [Authentication](#003-authentication) | 🔶 Partial | High | 2 weeks |
-| 004 | [Reverse Proxy](#004-reverse-proxy) | ✅ Implemented | - | - |
-| 005 | [Reliability & Orchestration](#005-reliability-orchestration) | 📋 Spec Ready | High | 12-16 weeks |
-| 006 | [Container Support](#006-container-support) | 📋 Spec Ready | Medium | 6-8 weeks |
-| 007 | [App Versioning & Deployment](#007-app-versioning) | 📋 Spec Ready | Medium | 4-6 weeks |
-| 008 | [Hierarchical Apps & Grouping](#008-hierarchical-apps) | 📋 Spec Ready | High | 3-4 weeks |
-| 009 | [Service-Level Versioning](#009-service-versioning) | 📋 Spec Ready | Medium | 2-3 weeks |
-| 010 | [Multi-Node Cluster](#010-multi-node-cluster) | � Phase 0+1 Done | High | ~8 weeks (v1) |
-| 011 | [Cron Scheduling](#011-cron-scheduling) | 📋 Spec Ready | Medium | 2 weeks |
-| 012 | [Plugin System](#012-plugin-system) | 📋 Spec Ready | High | 12 weeks |
-| 015 | [CLI](#015-cli) | 📋 Spec Ready | High | 6-8 weeks |
-| 016 | [Discovery & Services Architecture](#016-discovery-services) | 📋 Spec Ready | High | 2 weeks |
-| 017 | [Identity / OIDC](#017-identity-oidc) | 📋 Spec Ready | High | 3 weeks |
-| 018 | [Config Service](#018-config-service) | 📋 Spec Ready | High | 3 weeks |
-| 019 | [Registry & Packages](#019-registry) | 📋 Spec Ready | High | 3 weeks |
-| 020 | [Auto-Scaling](#020-auto-scaling) | 💡 Planned | Medium | 6-8 weeks |
-| 006 | [Container Support](#006-container-support) | 📋 Spec Ready | Medium | 6-8 weeks |
+| # | Feature | Status | Effort |
+|---|---------|--------|--------|
+| 000 | [Product Positioning](#000-product-positioning) | 📄 Reference | - |
+| 001 | [File Explorer](#001-file-explorer) | ✅ Implemented | - |
+| 002 | [Routing & Navigation](#002-routing-navigation) | ✅ Implemented | - |
+| 003 | [Authentication](#003-authentication) | 🔶 Partial | 2 weeks |
+| 004 | [Reverse Proxy](#004-reverse-proxy) | ✅ Implemented | - |
+| 005 | [Reliability & Orchestration](#005-reliability-orchestration) | 📋 Spec Ready | 12-16 weeks |
+| 006 | [Container Support](#006-container-support) | 📋 Spec Ready | 6-8 weeks |
+| 007 | [App Versioning & Deployment](#007-app-versioning) | 📋 Spec Ready | 4-6 weeks |
+| 008 | [Hierarchical Apps & Grouping](#008-hierarchical-apps) | 📋 Spec Ready | 3-4 weeks |
+| 009 | [Service-Level Versioning](#009-service-versioning) | 📋 Spec Ready | 2-3 weeks |
+| 010 | [Multi-Node Cluster](#010-multi-node-cluster) | 🚧 Phase 0+1 Done | ~8 weeks |
+| 011 | [Cron Scheduling](#011-cron-scheduling) | 📋 Spec Ready | 2 weeks |
+| 012 | [Plugin System](#012-plugin-system) | 📋 Spec Ready | 12 weeks |
+| 015 | [CLI](#015-cli) | 📋 Spec Ready | 6-8 weeks |
+| 016 | [Discovery & Services Architecture](#016-discovery-services) | 📋 Spec Ready | 2 weeks |
+| 017 | [Identity / OIDC](#017-identity-oidc) | 📋 Spec Ready | 3 weeks |
+| 018 | [Config Service](#018-config-service) | 📋 Spec Ready | 3 weeks |
+| 019 | [Registry & Packages](#019-registry) | 📋 Spec Ready | 3 weeks |
+| 020 | [Auto-Scaling](#020-auto-scaling) | 📋 Spec Ready | 6-8 weeks |
 
 ### Legend
-- ✅ **Implemented** - Feature is complete and in production
-- 🔶 **Partial** - Some components implemented
-- 🚧 **In Progress** - Currently being developed
-- 📋 **Spec Ready** - Specification complete, not started
-- 💡 **Planned** - Identified but not specified
-- 📄 **Reference** - Documentation, not a feature
-
----
+- ✅ **Implemented** — Feature is complete and in production
+- 🔶 **Partial** — Some components implemented
+- 🚧 **In Progress** — Currently being developed
+- 📋 **Spec Ready** — Specification complete, not started
+- 📄 **Reference** — Documentation, not a feature
 
 ## 🎯 Product Roadmap
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           MINICLUSTER ROADMAP                                │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  VISION: "Kubernetes-like orchestration without Kubernetes complexity"      │
-│  TARGET: Windows shops, small teams (1-5), edge/IoT, SMB (5-50 servers)    │
-│                                                                             │
-│  PHASE 1: Foundation (COMPLETE)                                             │
-│  ├── 001 File Explorer ✅                                                   │
-│  ├── 002 Routing & Navigation ✅                                            │
-│  └── 004 Reverse Proxy ✅                                                   │
-│                                                                             │
-│  PHASE 2: Security                                                          │
-│  └── 003 Authentication 🔶 (JWT done, API keys pending)                     │
-│                                                                             │
-│  PHASE 3: Reliability (NEXT)                                                │
-│  └── 005 Reliability & Orchestration 📋                                     │
-│      ├── Auto-restart policies                                              │
-│      ├── Health checks                                                      │
-│      ├── App/Service/Process hierarchy                                      │
-│      ├── Startup plans & dependencies                                       │
-│      ├── OTLP & TimescaleDB observability                                   │
-│      └── Marketplace templates                                              │
-│                                                                             │
-│  PHASE 4: Containers                                                        │
-│  └── 006 Container Support 📋                                               │
-│      ├── Docker/Podman integration                                          │
-│      ├── Container lifecycle management                                     │
-│      └── Hybrid process + container apps                                    │
-│                                                                             │
-│  PHASE 5: Deployment                                                        │
-│  └── 007 App Versioning 📋                                                  │
-│      ├── Version history                                                    │
-│      ├── Rollback support                                                   │
-│      ├── Blue-green deployments                                             │
-│      └── Git integration                                                    │
-│                                                                             │
-│  PHASE 6: Hierarchy & Grouping                                              │
-│  └── 008 Hierarchical Apps 📋                                               │
-│      ├── Apps contain services (processes)                                  │
-│      ├── Apps contain child apps (tree)                                     │
-│      ├── Groups for organization                                            │
-│      └── Cascade start/stop operations                                      │
-│                                                                             │
-│  PHASE 7: Advanced Versioning                                               │
-│  └── 009 Service-Level Versioning 📋                                        │
-│      ├── Version individual services                                        │
-│      ├── Rollback single service                                            │
-│      └── App snapshots (atomic versions)                                    │
-│                                                                             │
-│  PHASE 8: Cluster                                                           │
-│  └── 010 Multi-Node Cluster � (v2.1 — Phase 0+1 Implemented)              │
-│      ├── Stateful agents (same binary, --agent mode)                        │
-│      ├── Three-service architecture (Identity, Config, Registry)            │
-│      ├── Pull-based deployment (agents pull desired state)                  │
-│      ├── Discovery model (/.well-known/minicluster-configuration)           │
-│      └── Phases 2-3 superseded by services 016-019                          │
-│                                                                             │
-│  PHASE 8.1: Services Architecture                                           │
-│  ├── 016 Discovery & Services Architecture 📋                               │
-│  │   ├── Well-known discovery endpoint                                      │
-│  │   ├── Three-service model (Identity, Config, Registry)                   │
-│  │   └── Bootstrap flows (Agent, CLI, UI)                                   │
-│  ├── 017 Identity / OIDC 📋                                                 │
-│  │   ├── OpenIddict-based OIDC provider                                     │
-│  │   ├── Authorization Code+PKCE (UI), Client Credentials (agents)          │
-│  │   ├── Device Authorization (CLI)                                         │
-│  │   └── Scopes: mc:admin, mc:operator, mc:read, mc:agent                   │
-│  ├── 018 Config Service 📋                                                  │
-│  │   ├── Per-node desired state                                             │
-│  │   ├── Pull-based convergence loop                                        │
-│  │   ├── Env var inheritance (global → app → node)                          │
-│  │   └── Label-based app placement                                          │
-│  └── 019 Registry & Packages 📋                                             │
-│      ├── .mcpkg package format (ZIP + manifest.json)                        │
-│      ├── Version management & tagging                                       │
-│      ├── Agent download with hash verification                              │
-│      └── mc registry push/pull/list CLI commands                            │
-│                                                                             │
-│  PHASE 9: Scheduling                                                        │
-│  └── 011 Cron Scheduling 📋                                                 │
-│      ├── Cron-based job execution                                           │
-│      ├── Dependency chains                                                  │
-│      └── Missed schedule handling                                           │
-│                                                                             │
-│  PHASE 10: Plugin System                                                    │
-│  └── 012 Plugin System 📋                                                   │
-│      ├── **OPEN FOR THIRD-PARTY DEVELOPERS**                               │
-│      ├── Backend SDK (.NET): IPlugin, IPluginContext                       │
-│      ├── Frontend SDK (React): FrontendPlugin, extensions                  │
-│      ├── Plugin CLI: new, build, dev, pack, publish                        │
-│      ├── Permission & sandboxing system                                    │
-│      └── Marketplace (browse, install, publish)                            │
-│                                                                             │
-│  PHASE 11: CLI & DevOps Tooling                                             │
-│  └── 015 CLI 📋                                                             │
-│      ├── Full app/service management from terminal                          │
-│      ├── Zero-downtime deployments (blue-green)                             │
-│      ├── Configuration as code (YAML export/import)                         │
-│      ├── CI/CD integration (GitHub Actions, GitLab, etc.)                   │
-│      └── Real-time log streaming                                            │
-│                                                                             │
-│  PHASE 12: Container Runtime                                                │
-│  └── 006 Container Support 📋                                               │
-│      ├── Docker/Podman as runtime type in manifest.json                     │
-│      ├── runtime.type: "docker" alongside "process"                          │
-│      ├── Same pipeline: Registry → Config → Agent → container              │
-│      └── Hybrid apps (some services = process, some = container)            │
-│                                                                             │
-│  PHASE 13: Auto-Scaling                                                     │
-│  └── 020 Auto-Scaling 💡                                                    │
-│      ├── Phase 1: One-liner agent install (curl | bash)                     │
-│      ├── Phase 2: Cloud provider plugins (Hetzner, DO, Vultr, AWS)         │
-│      ├── Phase 3: Rule-based auto-scale (CPU/mem thresholds)               │
-│      └── Pay only when needed — scale to zero on idle                      │
-│                                                                             │
-│  FUTURE                                                                     │
-│  ├── 021 Secrets Management                                                 │
-│  ├── 022 Backup & Restore                                                   │
-│  └── 023 Windows Service Integration                                        │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+> **Canonical roadmap:** [specs/roadmap/roadmap.md](../roadmap/roadmap.md)  
+> **Vision:** [specs/roadmap/vision.md](../roadmap/vision.md)  
+> **Mission:** [specs/roadmap/mission.md](../roadmap/mission.md)
+
+Three shipping stages: **Runtime** (PM2 killer) → **Platform** (multi-server) → **Fleet** (auto-scaling). See the roadmap for full phase breakdown.
 
 ---
 

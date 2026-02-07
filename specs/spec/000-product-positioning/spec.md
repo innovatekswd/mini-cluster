@@ -376,39 +376,12 @@ MiniCluster wins when:
 
 ---
 
-## Roadmap Summary
+## Roadmap
 
-### Stage 1 — The Runtime
-
-| Phase | Focus | Status |
-|-------|-------|--------|
-| 1. Foundation | File explorer, routing, proxy | ✅ Done |
-| 2. Security | Authentication, API keys | 🔶 Partial |
-| 3. Reliability | Health checks, auto-restart, dependencies | 📋 Spec |
-| 4. Deployment | App versioning, rollback, blue-green | 📋 Spec |
-| 5. Hierarchy | Apps as trees, groups, cascade ops | 📋 Spec |
-| 6. Service Versioning | Version individual services | 📋 Spec |
-| 7. Application Packages | .mcpkg format, manifest, bundling | 📋 Spec |
-
-**Milestone:** "Better PM2" — complete, self-contained process manager with UI, proxy, packages.
-
-### Stage 2 — The Platform
-
-| Phase | Focus | Status |
-|-------|-------|--------|
-| 8. Discovery | /.well-known/minicluster-configuration, service location | 📋 Spec |
-| 9. Identity & OIDC | OpenIddict, users, API tokens, SSO, scopes | 📋 Spec |
-| 10. Config Service | Pull-based desired state, convergence loop | 📋 Spec |
-| 11. Registry | .mcpkg storage, download, lifecycle, retention | 📋 Spec |
-
-**Milestone:** Multi-user, multi-server platform with zero-migration from Stage 1.
-
-### Stage 3 — The Fleet
-
-| Phase | Focus | Status |
-|-------|-------|--------|
-| 12. Cluster | Multi-node, heartbeat, failover, workload placement | 📋 Spec |
-| 13. Scheduling | Cron jobs, dependency chains, run history | 📋 Spec |
-| 14. Containers | Docker/Podman as optional runtime.type | 📋 Spec |
-| 15. Auto-Scaling | Cloud provider plugins, scaling rules, scale-to-zero | 📋 Spec |
-| 16. Plugins | Open SDK, marketplace, community ecosystem | 📋 Spec |
+> **Full roadmap with phases, specs, effort estimates, and milestones:**  
+> [specs/roadmap/roadmap.md](../../roadmap/roadmap.md)
+>
+> **Vision:** [specs/roadmap/vision.md](../../roadmap/vision.md)  
+> **Mission:** [specs/roadmap/mission.md](../../roadmap/mission.md)
+>
+> Three stages: **Runtime** → **Platform** → **Fleet**. See the roadmap for details.

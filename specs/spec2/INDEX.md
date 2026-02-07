@@ -6,54 +6,14 @@
 
 ---
 
-## 📊 Executive Summary
+## 📊 Progress & Roadmap
 
-| Metric | Value |
-|--------|-------|
-| **Total Features** | 15 |
-| **Completed** | 4 (27%) |
-| **Partially Complete** | 1 (7%) |
-| **In Progress** | 0 |
-| **Spec Ready** | 10 (66%) |
-| **Development Phases** | 8 |
-| **Estimated Total Effort** | 52-72 weeks |
+> **Canonical roadmap:** [specs/roadmap/roadmap.md](../roadmap/roadmap.md)  
+> **Vision:** [specs/roadmap/vision.md](../roadmap/vision.md)  
+> **Mission:** [specs/roadmap/mission.md](../roadmap/mission.md)
 
-### Completion by Phase
-```
-Phase 1 (Foundation):        ████████████████████ 100% (4/4 features)
-Phase 2 (Security):          ████████░░░░░░░░░░░░  40% (JWT only)
-Phase 3 (Reliability):       ░░░░░░░░░░░░░░░░░░░░   0%
-Phase 4 (Containers):        ░░░░░░░░░░░░░░░░░░░░   0%
-Phase 5 (Hierarchy):         ░░░░░░░░░░░░░░░░░░░░   0%
-Phase 6 (Scale):             ░░░░░░░░░░░░░░░░░░░░   0%
-Phase 7 (Extensibility):     ░░░░░░░░░░░░░░░░░░░░   0%
-Phase 8 (Intelligence):      ░░░░░░░░░░░░░░░░░░░░   0%
-```
-
----
-
-## 🎯 Strategic Roadmap
-
-### Implementation Priorities
-
-**🔴 CRITICAL (Must Have - Next 3 Months)**
-- [003] Authentication (API keys & RBAC)
-- [008] Hierarchical Apps & Grouping
-- [005] Reliability & Orchestration
-
-**🟡 HIGH (Should Have - 3-6 Months)**
-- [012] Plugin System  
-- [010] Multi-Node Cluster
-- [007] App Versioning & Deployment
-
-**🟢 MEDIUM (Nice to Have - 6-12 Months)**
-- [006] Container Support
-- [009] Service-Level Versioning
-- [011] Cron Scheduling
-- [013] Analytics & Decision Support
-
-**⚪ LOW (Future - 12+ Months)**
-- [014] App Update Manager
+Three shipping stages: **Runtime** (PM2 killer) → **Platform** (multi-server) → **Fleet** (auto-scaling).
+See the roadmap for full phase breakdown, spec links, and effort estimates.
 
 ---
 
