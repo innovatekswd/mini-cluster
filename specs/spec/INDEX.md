@@ -1,7 +1,7 @@
-# MiniCluster Feature Specifications Index
+# MiniCluster Feature Specifications
 
 > **Last Updated:** February 7, 2026  
-> **Product Vision:** The DevOps platform that works on Windows without containers
+> **Single source of truth for all feature specs**
 
 ---
 
@@ -22,12 +22,15 @@
 | 010 | [Multi-Node Cluster](#010-multi-node-cluster) | 🚧 Phase 0+1 Done | ~8 weeks |
 | 011 | [Cron Scheduling](#011-cron-scheduling) | 📋 Spec Ready | 2 weeks |
 | 012 | [Plugin System](#012-plugin-system) | 📋 Spec Ready | 12 weeks |
+| 013 | [Analytics & Decision Support](#013-analytics-decision-support) | 📋 Spec Ready | 6 weeks |
+| 014 | [App Update Manager](#014-app-update-manager) | 📋 Spec Ready | 4 weeks |
 | 015 | [CLI](#015-cli) | 📋 Spec Ready | 6-8 weeks |
 | 016 | [Discovery & Services Architecture](#016-discovery-services) | 📋 Spec Ready | 2 weeks |
 | 017 | [Identity / OIDC](#017-identity-oidc) | 📋 Spec Ready | 3 weeks |
 | 018 | [Config Service](#018-config-service) | 📋 Spec Ready | 3 weeks |
 | 019 | [Registry & Packages](#019-registry) | 📋 Spec Ready | 3 weeks |
 | 020 | [Auto-Scaling](#020-auto-scaling) | 📋 Spec Ready | 6-8 weeks |
+| 021 | [Simple App Tabs](#021-simple-app-tabs) | 📋 Spec Ready | 1-2 weeks |
 
 ### Legend
 - ✅ **Implemented** — Feature is complete and in production
@@ -331,6 +334,29 @@ Run apps and services on cron schedules with dependency chains and missed schedu
 
 ---
 
+### 013 Analytics & Decision Support
+**Status:** 📋 Spec Ready  
+**Spec:** [013-analytics-decision-support/spec.md](013-analytics-decision-support/spec.md)  
+**Automation:** [013-analytics-decision-support/automation.md](013-analytics-decision-support/automation.md)
+
+**Summary:**  
+Resource usage analytics, error reporting, network activity monitoring, and AI-powered decision support. Includes anomaly detection, predictive insights, and automated remediation.
+
+**Estimated Effort:** 6 weeks
+
+---
+
+### 014 App Update Manager
+**Status:** 📋 Spec Ready  
+**Spec:** [014-app-update-manager/spec.md](014-app-update-manager/spec.md)
+
+**Summary:**  
+Staged rollouts, approval workflows, update scheduling, and audit logging for application updates.
+
+**Estimated Effort:** 4 weeks
+
+---
+
 ### 015 CLI
 **Status:** 📋 Spec Ready  
 **Spec:** [015-cli/spec.md](015-cli/spec.md)  
@@ -406,23 +432,34 @@ Everything above the runtime layer stays identical: Registry stores the package,
 
 ---
 
+### 021 Simple App Tabs
+**Status:** 📋 Spec Ready  
+**Spec:** [021-simple-app-tabs/spec.md](021-simple-app-tabs/spec.md)
+
+**Summary:**  
+Group services into app tabs for visual organization. Adds App entity with tabs, drag-and-drop service assignment, cascade start/stop, and per-tab overview. Foundation for hierarchical apps.
+
+**Estimated Effort:** 1-2 weeks
+
+---
+
 ## 💡 Future Features (Not Specified)
 
-### 021 Secrets Management
+### 022 Secrets Management
 Secure storage and injection of sensitive configuration.
 - Encrypted secret storage
 - Environment variable injection
 - Secret rotation
 - Integration with external vaults (HashiCorp, Azure Key Vault)
 
-### 022 Backup & Restore
+### 023 Backup & Restore
 Protect application data and configurations.
 - Scheduled backups
 - Configuration export/import
 - Data volume backups
 - Disaster recovery
 
-### 023 Windows Service Integration
+### 024 Windows Service Integration
 Deep integration with Windows Service Control Manager.
 - Register apps as Windows Services
 - Service recovery options

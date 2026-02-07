@@ -36,6 +36,7 @@ Each stage expands the audience without breaking the previous one.
 | 6 | App Versioning & Deployment | [007](../spec/007-app-versioning/spec.md) | 📋 Spec | 4-6 weeks |
 | 7 | Hierarchical Apps & Grouping | [008](../spec/008-hierarchical-apps/spec.md) | 📋 Spec | 3-4 weeks |
 | 8 | Service-Level Versioning | [009](../spec/009-service-versioning/spec.md) | 📋 Spec | 2-3 weeks |
+| 9 | Simple App Tabs | [021](../spec/021-simple-app-tabs/spec.md) | 📋 Spec | 1-2 weeks |
 
 **What ships:** Process manager, reverse proxy, health checks, auto-restart, versioning with rollback, hierarchical apps, web UI, CLI.
 
@@ -93,7 +94,6 @@ Each stage expands the audience without breaking the previous one.
 | Backup & Restore | Scheduled config + data backups, one-click restore |
 | Windows Service Integration | Register MiniCluster apps as Windows services |
 | Analytics & Decision Support | Resource trends, anomaly detection, AI recommendations |
-| Network Policies | Inter-app communication rules, firewall management |
 
 ---
 

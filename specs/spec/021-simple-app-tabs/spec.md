@@ -1,4 +1,4 @@
-# Feature 015: Simple App Tabs
+# Feature 021: Simple App Tabs
 
 **Status:** 📋 Spec Ready  
 **Priority:** 🔴 HIGH  
