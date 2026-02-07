@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useLocation } from "react-router";
-import { FaCubes, FaBars, FaTimes, FaCog, FaDesktop, FaTerminal, FaFolder, FaGlobe, FaSlidersH, FaSync, FaTachometerAlt } from "react-icons/fa";
+import { FaCubes, FaBars, FaTimes, FaCog, FaDesktop, FaTerminal, FaFolder, FaGlobe, FaSlidersH, FaSync, FaTachometerAlt, FaClock, FaSitemap } from "react-icons/fa";
 import { useToast, type NotificationHistoryItem, type ToastType } from "~/components/Toast";
 import { useConnection } from "~/context/ConnectionContext";
 import { useAppStatusContext } from "~/context/AppStatusContext";
@@ -185,6 +185,24 @@ export const Layout = ({ children, appStats, onMenuToggle, isSidebarOpen, isSide
               aria-label="Reverse Proxy"
             >
               <FaGlobe className="text-lg" aria-hidden="true" />
+            </Link>
+
+            {/* Scheduling link */}
+            <Link
+              to="/scheduling"
+              className="icon-btn"
+              aria-label="Scheduling"
+            >
+              <FaClock className="text-lg" aria-hidden="true" />
+            </Link>
+
+            {/* Hierarchy link */}
+            <Link
+              to="/hierarchy"
+              className="icon-btn"
+              aria-label="App Hierarchy"
+            >
+              <FaSitemap className="text-lg" aria-hidden="true" />
             </Link>
 
             {/* Settings link */}

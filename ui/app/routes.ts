@@ -17,4 +17,6 @@ export default [
   route("monitor", "routes/monitor.tsx"), // Task Manager / System Monitor
   route("terminal", "routes/terminal.tsx"), // PTY Terminal / REPL
   route("proxy", "routes/proxy.tsx"), // Reverse Proxy Management
+  route("scheduling", "routes/scheduling.tsx"), // Cron Job Scheduling
+  route("hierarchy", "routes/hierarchy.tsx"), // App Hierarchy & Snapshots
 ] satisfies RouteConfig;

@@ -8,6 +8,7 @@ export interface App {
   description?: string;
   icon?: string; // Emoji or icon name
   color?: string; // Hex color for visual identity
+  parentAppId?: string; // Parent app ID for hierarchy
   createdAt: string;
   modifiedAt: string;
   sortOrder: number;
@@ -24,6 +25,7 @@ export interface CreateAppDto {
   description?: string;
   icon?: string;
   color?: string;
+  parentAppId?: string;
 }
 
 export interface UpdateAppDto {

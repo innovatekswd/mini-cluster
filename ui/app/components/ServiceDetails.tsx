@@ -8,6 +8,8 @@ import type { Service } from "~/types/Service";
 import { serviceService } from "~/services/appService";
 import { useToast } from "~/components/Toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { ContainerConfigPanel } from "~/components/ContainerConfigPanel";
+import { VersioningPanel } from "~/components/VersioningPanel";
 
 interface ServiceDetailsProps {
   service: Service;
@@ -305,6 +307,12 @@ export function ServiceDetails({ service, onUpdate, onClose }: ServiceDetailsPro
             )}
           </section>
         )}
+
+        {/* Container Config (Post-MVP) */}
+        <ContainerConfigPanel serviceId={service.id} />
+
+        {/* Versioning (Post-MVP) */}
+        <VersioningPanel serviceId={service.id} />
 
         {/* Metadata */}
         <section>
