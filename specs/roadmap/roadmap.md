@@ -34,14 +34,14 @@ Each stage expands the audience without breaking the previous one.
 | 2 | Routing & Navigation | [002](../spec/002-routing-navigation/spec.md) | ✅ Done | — |
 | 3 | Reverse Proxy (YARP) | [004](../spec/004-reverse-proxy/spec.md) | ✅ Done | — |
 | 4 | CLI | [015](../spec/015-cli/spec.md) | ✅ Done | — |
-| 5 | Authentication | [003](../spec/003-authentication/spec.md) | 🔶 Partial | 2 weeks |
-| 6 | Health Checks & Auto-Restart | [005](../spec/005-reliability-orchestration/spec.md) | 📋 MVP cut | 2-3 weeks |
+| 5 | Authentication | [003](../spec/003-authentication/spec.md) | ✅ Done | — |
+| 6 | Health Checks & Auto-Restart | [005](../spec/005-reliability-orchestration/spec.md) | ✅ Done | — |
 
 **What ships:** Process manager, reverse proxy, health checks, auto-restart, auth with API keys, web UI, CLI.
 
 **What it replaces:** PM2, Supervisor, systemd units, manual nginx config.
 
-**Milestone:** First app running in <10 minutes. ~4-5 weeks to market.
+**Milestone:** First app running in <10 minutes. MVP feature-complete.
 
 ### Post-MVP (ship after first users)
 

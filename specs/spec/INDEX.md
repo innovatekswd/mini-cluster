@@ -12,9 +12,9 @@
 | 000 | [Product Positioning](#000-product-positioning) | 📄 Reference | - |
 | 001 | [File Explorer](#001-file-explorer) | ✅ Implemented | - |
 | 002 | [Routing & Navigation](#002-routing-navigation) | ✅ Implemented | - |
-| 003 | [Authentication](#003-authentication) | 🔶 Partial | 2 weeks |
+| 003 | [Authentication](#003-authentication) | ✅ Implemented | - |
 | 004 | [Reverse Proxy](#004-reverse-proxy) | ✅ Implemented | - |
-| 005 | [Reliability & Orchestration](#005-reliability-orchestration) | 📋 Spec Ready | 12-16 weeks |
+| 005 | [Reliability & Orchestration](#005-reliability-orchestration) | � MVP Done | 10-14 weeks remaining |
 | 006 | [Container Support](#006-container-support) | 📋 Spec Ready | 6-8 weeks |
 | 007 | [App Versioning & Deployment](#007-app-versioning) | 📋 Spec Ready | 4-6 weeks |
 | 008 | [Hierarchical Apps & Grouping](#008-hierarchical-apps) | 📋 Spec Ready | 3-4 weeks |
