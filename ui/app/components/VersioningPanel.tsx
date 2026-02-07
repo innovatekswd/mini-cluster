@@ -152,17 +152,17 @@ function DeploymentConfigEditor({ serviceId }: { serviceId: string }) {
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Max Versions to Keep</label>
-                <input type="number" className="input-dark w-full text-sm" value={form.maxVersionsToKeep ?? 10} onChange={(e) => set("maxVersionsToKeep", Number(e.target.value))} />
+                <input type="number" className="input-dark w-full text-sm" placeholder="10" value={form.maxVersionsToKeep ?? 10} onChange={(e) => set("maxVersionsToKeep", Number(e.target.value))} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Health Check Timeout (s)</label>
-                <input type="number" className="input-dark w-full text-sm" value={form.healthCheckTimeoutSeconds ?? 30} onChange={(e) => set("healthCheckTimeoutSeconds", Number(e.target.value))} />
+                <input type="number" className="input-dark w-full text-sm" placeholder="30" value={form.healthCheckTimeoutSeconds ?? 30} onChange={(e) => set("healthCheckTimeoutSeconds", Number(e.target.value))} />
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Rollback Timeout (s)</label>
-                <input type="number" className="input-dark w-full text-sm" value={form.rollbackTimeoutSeconds ?? 60} onChange={(e) => set("rollbackTimeoutSeconds", Number(e.target.value))} />
+                <input type="number" className="input-dark w-full text-sm" placeholder="60" value={form.rollbackTimeoutSeconds ?? 60} onChange={(e) => set("rollbackTimeoutSeconds", Number(e.target.value))} />
               </div>
             </div>
             <div className="flex flex-wrap gap-4">

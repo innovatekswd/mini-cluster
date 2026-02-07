@@ -15,13 +15,13 @@
 | — | Console / Terminal | ✅ Implemented | - |
 | 003 | [Authentication](#003-authentication) | ✅ Implemented | - |
 | 004 | [Reverse Proxy](#004-reverse-proxy) | ✅ Implemented | - |
-| 005 | [Reliability & Orchestration](#005-reliability-orchestration) | 🔶 Part 1 Done | Parts 4+5 future |
-| 006 | [Container Support](#006-container-support) | 📋 Spec Ready | 6-8 weeks |
-| 007 | [Service Versioning & Deployment](#007-service-versioning) | 📋 Spec Ready | 3-4 weeks |
-| 008 | [Hierarchical Apps](#008-hierarchical-apps) | 📋 Spec Ready | 3-4 weeks |
+| 005 | [Reliability & Orchestration](#005-reliability-orchestration) | 🔶 Part 1 Done | Parts 4→022, 5 future |
+| 006 | [Container Support](#006-container-support) | ✅ Implemented | — |
+| 007 | [Service Versioning & Deployment](#007-service-versioning) | ✅ Implemented | — |
+| 008 | [Hierarchical Apps](#008-hierarchical-apps) | ✅ Implemented | — |
 | 009 | [~~Service-Level Versioning~~](#009-service-versioning) | ➡️ Merged → 007 | — |
 | 010 | [Multi-Node Cluster](#010-multi-node-cluster) | 🚧 Phase 0+1 Done | ~8 weeks |
-| 011 | [Cron Scheduling](#011-cron-scheduling) | 📋 Spec Ready | 2 weeks |
+| 011 | [Cron Scheduling](#011-cron-scheduling) | ✅ Implemented | — |
 | 012 | [Plugin System](#012-plugin-system) | 📋 Spec Ready | 12 weeks |
 | 013 | [Analytics & Decision Support](#013-analytics-decision-support) | 📋 Spec Ready | 6 weeks |
 | 014 | [App Update Manager](#014-app-update-manager) | 📋 Spec Ready | 4 weeks |
@@ -31,7 +31,9 @@
 | 018 | [Config Service](#018-config-service) | 📋 Spec Ready | 3 weeks |
 | 019 | [Registry & Packages](#019-registry) | 📋 Spec Ready | 3 weeks |
 | 020 | [Auto-Scaling](#020-auto-scaling) | 📋 Spec Ready | 6-8 weeks |
-| 021 | [Simple App Tabs](#021-simple-app-tabs) | 📋 Spec Ready | 1-2 weeks |
+| 021 | [Simple App Tabs](#021-simple-app-tabs) | ✅ Implemented | — |
+| 022 | [mc-telemetry (OTLP Companion)](#022-otlp-telemetry) | 📋 Spec Ready | 4-5 weeks |
+| 023 | [Alerting & Threshold Rules](#023-alerting) | 📋 Spec Ready | 2-3 weeks |
 
 ### Legend
 - ✅ **Implemented** — Feature is complete and in production
@@ -46,7 +48,7 @@
 > **Vision:** [specs/roadmap/vision.md](../roadmap/vision.md)  
 > **Mission:** [specs/roadmap/mission.md](../roadmap/mission.md)
 
-Three shipping stages: **Runtime** (PM2 killer) → **Platform** (multi-server) → **Fleet** (auto-scaling). See the roadmap for full phase breakdown.
+Four shipping stages: **Run** (PM2 killer) → **Watch** (observability) → **Scale** (multi-server) → **Fleet** (auto-scaling). See the roadmap for full phase breakdown.
 
 ---
 

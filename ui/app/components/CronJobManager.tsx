@@ -219,6 +219,7 @@ function CronJobForm({ initial, onSubmit, onCancel, isPending }: FormProps) {
           <input
             type="number"
             className="input-dark w-full"
+            placeholder="300"
             value={form.timeoutSeconds ?? 300}
             onChange={(e) => set("timeoutSeconds", Number(e.target.value))}
           />

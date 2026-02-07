@@ -7,7 +7,7 @@
 > | **Part 1: Reliability** (auto-restart, health checks) | **✅ DONE** | Implemented in MVP Phase 1. `Service` entity (table: `ControlledApps`) already has `RestartPolicy`, `MaxRestarts`, `RestartWindowSeconds`, `HealthCheckType`, `HealthCheckTarget`, etc. |
 > | **Part 2: Orchestration** (hierarchy) | **⚠️ SUPERSEDED by Spec 008** | This part's entity model conflicts with the codebase. Use [Spec 008](../008-hierarchical-apps/spec.md) instead — it adds `ParentAppId` to `App` without introducing duplicate entities. |
 > | **Part 3: Scheduled Tasks** | **⚠️ SUPERSEDED by Spec 011** | Use [Spec 011](../011-cron-scheduling/spec.md) for cron scheduling. |
-> | **Part 4: Observability** (OTLP, TimescaleDB) | **⏳ Future** | Separate roadmap item. Content below is still valid as a reference spec. |
+> | **Part 4: Observability** (OTLP, TimescaleDB) | **↗️ SPLIT → [Spec 022](../022-otlp-telemetry/spec.md)** | Standalone companion app (mc-telemetry). Own process, own DB, own UI. No TimescaleDB. |
 > | **Part 5: Marketplace** | **⏳ Future** | Separate roadmap item. Content below is still valid as a reference spec. |
 >
 > **Entity naming fixes:**

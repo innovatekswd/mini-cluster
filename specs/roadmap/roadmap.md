@@ -6,16 +6,18 @@
 
 ## Overview
 
-MiniCluster ships in **three stages**. Each stage is a complete, useful product.
+MiniCluster ships in **four stages**. Each stage is a complete, useful product.
 Each stage expands the audience without breaking the previous one.
 
 ```
-  Stage 1              Stage 2                   Stage 3
-  ─────────           ─────────                 ─────────
-  PM2 users    ──→    Multi-server teams  ──→   Fleet operators
-  1 server            2-10 servers              10-500 servers
-  Solo dev            Small team                Growing org
-  mc start            mc join                   mc scale
+  Stage 1              Stage 2              Stage 3                   Stage 4
+  ─────────           ─────────            ─────────                 ─────────
+  PM2 users    ──→    See everything  ──→  Multi-server teams  ──→   Fleet operators
+  1 server            1 server             2-10 servers              10-500 servers
+  Solo dev            Solo dev             Small team                Growing org
+  mc start            mc telemetry enable  mc join                   mc scale
+
+  Run             →   Watch            →   Scale                →    Fleet
 
   Same binary. Same CLI. Same UI. Same mental model.
 ```
@@ -53,19 +55,38 @@ Each stage expands the audience without breaking the previous one.
 | 9 | Container Support | [006](../spec/006-container-support/spec.md) | ✅ Done | — |
 | 10 | Service Versioning & Deployment | [007](../spec/007-app-versioning/spec.md) | ✅ Done | — |
 | 11 | Hierarchical Apps | [008](../spec/008-hierarchical-apps/spec.md) | ✅ Done | — |
-| 12 | Reliability (remaining) | [005](../spec/005-reliability-orchestration/spec.md) | 📋 Spec | 6-8 weeks |
+| 12 | Alerting & Threshold Rules | [023](../spec/023-alerting/spec.md) | 📋 Spec | 2-3 weeks |
 
-**What ships:** App grouping, cron scheduling, Docker/Podman containers, service versioning with rollback, hierarchical apps, OTLP observability.
+**What ships:** App grouping, cron scheduling, Docker/Podman containers, service versioning with rollback, hierarchical apps, threshold-based alerting.
 
 **What's done:** App tabs, cron scheduling (6-field with runs tracking), container config (image/ports/volumes/labels), versioning (deploy/rollback/deployment-config), hierarchical apps (tree/move/subtree/snapshots). Full API + React UI.
 
-**What's remaining:** OTLP observability (Part 4 of Spec 005). Startup Plans with dependency graphs.
+**What's remaining:**
+- **Alerting (Phase 12):** Configurable threshold rules on CPU/memory/disk/restarts using existing `ProcessMetricsCollectionService` and `SystemMetrics`. Notification channels (webhook/email/SignalR), alert history, real-time alert banner in UI. No OTLP dependency — works purely on data MiniCluster already collects.
 
 **Driven by:** User feedback from MVP. Build what users actually ask for.
 
 ---
 
-## Stage 2 — The Platform + Cluster
+## Stage 2 — Observability
+
+> **Goal:** See what your apps are doing. Structured telemetry, traces, and application-level metrics — via a companion app that MiniCluster manages.
+
+| Phase | Feature | Spec | Status | Effort |
+|-------|---------|------|--------|--------|
+| 13 | mc-telemetry (OTLP Companion App) | [022](../spec/022-otlp-telemetry/spec.md) | 📋 Spec | 4-5 weeks |
+
+**What ships:** mc-telemetry — a standalone companion app (like Seq/Jaeger) that MiniCluster deploys and manages as a first-class service. Separate .NET process with own SQLite DB, OTLP gRPC/HTTP receiver, query API, embedded web UI, forwarding to external backends.
+
+**What it enables:** Apps instrumented with OpenTelemetry SDKs send structured logs, metrics, and traces to mc-telemetry. MiniCluster integrates deeply: `mc telemetry enable`, settings UI, dashboard widgets, service-detail OTLP tab, reverse proxy access. Optionally forwards to Seq/Grafana/Loki/Jaeger.
+
+**Architecture:** Establishes the **companion app pattern** — separate process, own DB, own API, own UI, managed by MiniCluster with reserved service name and deep integration. This pattern is reused in Stage 3 for discovery, identity, config, and registry companions.
+
+**Milestone:** `mc telemetry enable` → companion deploys → apps send OTLP → structured logs, traces, and metrics visible in mc-telemetry UI and MiniCluster service details.
+
+---
+
+## Stage 3 — The Platform + Cluster
 
 > **Goal:** Add a second server with one command. Discovery, identity, config, registry, and clustering ship together — they're inseparable.
 
@@ -75,7 +96,7 @@ Each stage expands the audience without breaking the previous one.
 | 15 | Identity / OIDC | [017](../spec/017-identity-oidc/spec.md) | 📋 Spec | 3 weeks |
 | 16 | Config Service | [018](../spec/018-config-service/spec.md) | 📋 Spec | 3 weeks |
 | 17 | Registry & Packages | [019](../spec/019-registry/spec.md) | 📋 Spec | 3 weeks |
-| 18 | Multi-Node Cluster | [010](../spec/010-multi-node-cluster/spec.md) | 🚧 Phase 0+1 | ~8 weeks |
+| 18 | Multi-Node Cluster | [010](../spec/010-multi-node-cluster/spec.md) | 🚜 Phase 0+1 | ~8 weeks |
 
 **What ships:** Discovery endpoint, OIDC identity (users, tokens, SSO), pull-based config with convergence, .mcpkg registry, multi-node clustering with heartbeat/failover.
 
@@ -85,7 +106,7 @@ Each stage expands the audience without breaking the previous one.
 
 ---
 
-## Stage 3 — The Fleet
+## Stage 4 — The Fleet
 
 > **Goal:** Scale infrastructure on demand. Compete with Kubernetes on simplicity, not scope.
 
