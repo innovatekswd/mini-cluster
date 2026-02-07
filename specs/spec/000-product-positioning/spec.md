@@ -6,49 +6,51 @@
 
 ---
 
-## What MiniCluster Is Now
+## What MiniCluster Is
 
+A **self-hosted application platform** that ships as a single binary and reveals itself in stages.
 
-MiniCluster has evolved from a simple process manager into an **intelligent DevOps and analytics platform**:
+At the bottom it's a process manager. At the top it's a multi-node, auto-scaling platform runtime with its own package format, identity system, and config service. The user only encounters the complexity they need.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         MINICLUSTER PLATFORM                                 │
+│                         MINICLUSTER PLATFORM                                │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
+│  STAGE 1 — THE RUNTIME          (ship first, win PM2/Supervisor users)     │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │
-│  │  HIERARCHY  │  │  VERSIONS   │  │  CLUSTER    │  │  SCHEDULE   │       │
-│  │             │  │             │  │             │  │             │       │
-│  │  Apps       │  │  App v1.2.3 │  │  Node A     │  │  ┌──┐ Cron  │       │
-│  │  └─Services │  │  └─Rollback │  │  Node B     │  │  │░░│ Jobs  │       │
-│  │  └─Children │  │  └─Snapshot │  │  Node C     │  │  └──┘       │       │
+│  │  Process    │  │  Reverse    │  │  Versioning │  │  .mcpkg     │       │
+│  │  Manager    │  │  Proxy      │  │  & Rollback │  │  Packages   │       │
+│  │  ──────────│  │  ──────────│  │  ──────────│  │  ──────────│       │
+│  │  Run, stop, │  │  YARP, TLS, │  │  Snapshots, │  │  Bundle,    │       │
+│  │  restart,   │  │  domains,   │  │  blue-green, │  │  version,   │       │
+│  │  health chk │  │  routes     │  │  one-click  │  │  distribute │       │
 │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘       │
 │                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                    OPEN PLUGIN SYSTEM                                │   │
-│  │                                                                      │   │
-│  │   Proxy        Cache       Auth        Monitor      Database         │   │
-│  │   ├─Nginx      ├─Redis     ├─Pomerium  ├─Prometheus ├─PostgreSQL    │   │
-│  │   ├─Caddy      ├─Varnish   ├─Keycloak  ├─Grafana    ├─MySQL         │   │
-│  │   └─Traefik    └─Memcached └─Authelia  └─Seq        └─SQLite        │   │
-│  │                                                                      │   │
-│  │   + YOUR PLUGINS (Backend .NET SDK + Frontend React SDK)            │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
+│  STAGE 2 — THE PLATFORM         (emerge as users grow)                     │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │
+│  │  Discovery  │  │  Identity   │  │  Config     │  │  Registry   │       │
+│  │  ──────────│  │  ──────────│  │  ──────────│  │  ──────────│       │
+│  │  .well-     │  │  OIDC,      │  │  Pull-based │  │  .mcpkg     │       │
+│  │  known,     │  │  users,     │  │  desired    │  │  storage,   │       │
+│  │  bootstrap  │  │  SSO, API   │  │  state,     │  │  download,  │       │
+│  │             │  │  tokens     │  │  converge   │  │  lifecycle  │       │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘       │
 │                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                    ANALYTICS & DECISION SUPPORT                      │   │
-│  │                                                                      │   │
-│  │   • Resource usage trends (memory, CPU, disk, network)               │   │
-│  │   • Error/event analytics, anomaly detection                         │   │
-│  │   • AI-powered recommendations & root cause                          │   │
-│  │   • Network activity, security/compliance reports                    │   │
-│  │   • Custom/plugin metrics                                            │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
+│  STAGE 3 — THE FLEET            (scale without switching)                  │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │
+│  │  Clustering │  │  Auto-      │  │  Containers │  │  Plugins    │       │
+│  │  ──────────│  │  Scaling    │  │  ──────────│  │  ──────────│       │
+│  │  Multi-node,│  │  ──────────│  │  Docker/    │  │  Open SDK,  │       │
+│  │  heartbeat, │  │  Cloud VMs, │  │  Podman as  │  │  marketplace│       │
+│  │  failover   │  │  scale-to-  │  │  optional   │  │  ecosystem  │       │
+│  │             │  │  zero       │  │  runtime    │  │             │       │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘       │
 │                                                                             │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │                    UNIFIED CONTROL PLANE                             │   │
 │  │                                                                      │   │
-│  │   Web UI  ←→  REST API  ←→  SQLite (config)  +  TimescaleDB (logs)  │   │
+│  │   Web UI  ←→  CLI  ←→  REST API  ←→  SQLite  +  TimescaleDB         │   │
 │  │                                                                      │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
@@ -213,6 +215,87 @@ Schedule jobs with UI, not YAML. Dependency chains. Missed schedule handling. Ru
 
 ---
 
+## Shipping Stages
+
+MiniCluster ships in three stages. Each stage is a complete, useful product on its own.
+Each stage expands the audience without breaking the previous one.
+
+### Stage 1 — The Runtime ("Better PM2")
+
+**Ship first. Win the bottom of the market.**
+
+| Layer | What it replaces |
+|-------|------------------|
+| Process manager | PM2, Supervisor, systemd units |
+| Reverse proxy | nginx config, manual Caddy setup |
+| Versioning & rollback | Manual deploy scripts, rsync |
+| .mcpkg packages | tar.gz + prayers |
+| Health checks & auto-restart | Monit, custom watchdogs |
+| Web UI + CLI | SSH + PM2 CLI |
+
+**Entry story:** "Install one binary. Run `mc deploy myapp`. Get a dashboard, proxy, and health checks in 5 minutes."
+
+**Who this reaches:** Solo devs, small teams, indie hackers, anyone currently using PM2 or bare systemd. They don't need identity, config services, or clustering. They need *something better than what they have now*.
+
+**Exit criteria:** First app running in <10 minutes. No external dependencies. Works on Linux, macOS, Windows.
+
+---
+
+### Stage 2 — The Platform ("Grow without switching")
+
+**Emerge as users add their second server or second team member.**
+
+| Layer | What it enables |
+|-------|----------------|
+| Discovery | Services find each other automatically |
+| Identity (OIDC) | Users, API tokens, SSO, team access control |
+| Config service | Push desired state, agents self-converge |
+| Registry | Central .mcpkg storage, versioned downloads |
+
+**Entry story:** "You added a second server? Run `mc join`. Identity, config, and registry are already built into the binary you installed in Stage 1."
+
+**Who this reaches:** Teams growing from 1→5 servers, anyone who needs auth or multi-user access, MSPs managing client servers. They discovered MiniCluster as a PM2 replacement and now need platform features.
+
+**Key property:** Zero migration. No new binary, no new config format, no retraining. The platform was always there — it just wasn't needed yet.
+
+---
+
+### Stage 3 — The Fleet ("Scale without switching")
+
+**Scale infrastructure on demand.**
+
+| Layer | What it enables |
+|-------|----------------|
+| Multi-node clustering | Heartbeat, failover, workload placement |
+| Auto-scaling | Cloud VMs on demand (Hetzner, DO, AWS, Azure) |
+| Containers | Docker/Podman as optional runtime type |
+| Plugin ecosystem | Open SDK, marketplace, community extensions |
+| Scheduling | Cron jobs, dependency chains, run history |
+
+**Entry story:** "Traffic spiked. MiniCluster added two Hetzner VMs, deployed your app, and routed traffic — then scaled back to zero when it was over."
+
+**Who this reaches:** Teams that would otherwise evaluate Kubernetes, Nomad, or managed PaaS. They started with one server and PM2-like simplicity. Now they need fleet management. They never had to switch tools.
+
+---
+
+### The Stage Sequence Is the Strategy
+
+```
+  Stage 1              Stage 2              Stage 3
+  ─────────           ─────────           ─────────
+  PM2 users    ──→    Platform users  ──→  Fleet operators
+  1 server            2-10 servers         10-500 servers
+  Solo dev            Small team           Growing org
+  mc start            mc join              mc scale
+
+  Same binary. Same CLI. Same UI. Same mental model.
+```
+
+The product is revealed, not replaced. Users never hit a wall that requires a different tool.
+This is the competitive moat: **the zero-migration path from process manager to platform runtime**.
+
+---
+
 ## Strategic Positioning
 
 MiniCluster is NOT competing with Kubernetes head-on.
@@ -221,11 +304,11 @@ MiniCluster owns **two underserved segments simultaneously**:
 
 **Segment 1 (Bottom-up):** Teams using PM2/Supervisor/systemd who need more.
 They want a UI, clustering, proxy, health checks — but not the jump to Kubernetes.
-MiniCluster gives them everything PM2 has, plus everything PM2 doesn't.
+Stage 1 gives them everything PM2 has, plus everything PM2 doesn't.
 
 **Segment 2 (Top-down):** Teams evaluating Coolify/CapRover/Dokku who can't use Docker.
 Windows shops, edge deployments, legacy apps that can't be containerized.
-MiniCluster gives them the same deployment platform experience without Docker.
+Stage 2+3 give them the same deployment platform experience without Docker.
 
 **The bridge:** Both segments start with the same binary. Segment 1 users grow into
 Segment 2 organically — no migration, no new tool, no retraining. The platform
@@ -295,17 +378,37 @@ MiniCluster wins when:
 
 ## Roadmap Summary
 
+### Stage 1 — The Runtime
+
 | Phase | Focus | Status |
 |-------|-------|--------|
 | 1. Foundation | File explorer, routing, proxy | ✅ Done |
 | 2. Security | Authentication, API keys | 🔶 Partial |
 | 3. Reliability | Health checks, auto-restart, dependencies | 📋 Spec |
-| 4. Containers | Optional Docker/Podman support | 📋 Spec |
-| 5. Deployment | App versioning, rollback, blue-green | 📋 Spec |
-| 6. Hierarchy | Apps as trees, groups, cascade ops | 📋 Spec |
-| 7. Service Versioning | Version individual services | 📋 Spec |
-| 8. Cluster | Multi-node, API agents | 📋 Spec |
-| 9. Scheduling | Cron jobs, dependencies | 📋 Spec |
-| 10. Plugins | Open SDK, marketplace | 📋 Spec |
+| 4. Deployment | App versioning, rollback, blue-green | 📋 Spec |
+| 5. Hierarchy | Apps as trees, groups, cascade ops | 📋 Spec |
+| 6. Service Versioning | Version individual services | 📋 Spec |
+| 7. Application Packages | .mcpkg format, manifest, bundling | 📋 Spec |
 
-**Total Estimated Effort:** ~50 weeks (parallelizable)
+**Milestone:** "Better PM2" — complete, self-contained process manager with UI, proxy, packages.
+
+### Stage 2 — The Platform
+
+| Phase | Focus | Status |
+|-------|-------|--------|
+| 8. Discovery | /.well-known/minicluster-configuration, service location | 📋 Spec |
+| 9. Identity & OIDC | OpenIddict, users, API tokens, SSO, scopes | 📋 Spec |
+| 10. Config Service | Pull-based desired state, convergence loop | 📋 Spec |
+| 11. Registry | .mcpkg storage, download, lifecycle, retention | 📋 Spec |
+
+**Milestone:** Multi-user, multi-server platform with zero-migration from Stage 1.
+
+### Stage 3 — The Fleet
+
+| Phase | Focus | Status |
+|-------|-------|--------|
+| 12. Cluster | Multi-node, heartbeat, failover, workload placement | 📋 Spec |
+| 13. Scheduling | Cron jobs, dependency chains, run history | 📋 Spec |
+| 14. Containers | Docker/Podman as optional runtime.type | 📋 Spec |
+| 15. Auto-Scaling | Cloud provider plugins, scaling rules, scale-to-zero | 📋 Spec |
+| 16. Plugins | Open SDK, marketplace, community ecosystem | 📋 Spec |
