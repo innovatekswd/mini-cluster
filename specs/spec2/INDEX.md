@@ -210,20 +210,31 @@ Multi-node cluster management and distributed operations.
 
 | # | Feature | Status | Completion | Effort | Original Spec |
 |---|---------|--------|------------|--------|---------------|
-| 010 | [Multi-Node Cluster](phase-6-scale-distribute/010-multi-node-cluster.md) | 📋 Ready | 0% | 6-8 weeks | [spec/010-multi-node-cluster](../spec/010-multi-node-cluster/spec.md) |
+| 010 | [Multi-Node Cluster](phase-6-scale-distribute/010-multi-node-cluster.md) | � Phase 0+1 | 30% | 6-8 weeks | [spec/010-multi-node-cluster](../spec/010-multi-node-cluster/spec.md) |
 | 011 | [Cron Scheduling](phase-6-scale-distribute/011-cron-scheduling.md) | 📋 Ready | 0% | 2 weeks | [spec/011-cron-scheduling](../spec/011-cron-scheduling/spec.md) |
+| 016 | Discovery & Services Architecture | 📋 Ready | 0% | 2 weeks | [spec/016-discovery-services](../spec/016-discovery-services/spec.md) |
+| 017 | Identity / OIDC | 📋 Ready | 0% | 3 weeks | [spec/017-identity-oidc](../spec/017-identity-oidc/spec.md) |
+| 018 | Config Service | 📋 Ready | 0% | 3 weeks | [spec/018-config-service](../spec/018-config-service/spec.md) |
+| 019 | Registry & Packages | 📋 Ready | 0% | 3 weeks | [spec/019-registry](../spec/019-registry/spec.md) |
 
-#### 010: Multi-Node Cluster
+#### 010: Multi-Node Cluster (v2.1 — Services Architecture)
 **Key Features:**
-- ⬜ Agent-based node management
-- ⬜ API-driven control (all operations via REST)
-- ⬜ Central dashboard for all nodes
-- ⬜ Deploy apps to multiple nodes
-- ⬜ Cross-node service discovery
-- ⬜ Impersonation contexts (run as different user)
-- ⬜ mTLS/API key authentication
+- ✅ Stateful agents (same binary, --agent mode) — Phase 0
+- ✅ Machine entity, auto-registration — Phase 0
+- ✅ Heartbeat monitoring, cluster controller — Phase 1
+- ⬜ Three-service architecture (Identity, Config, Registry)
+- ⬜ Pull-based deployment (agents pull desired state)
+- ⬜ Discovery endpoint (/.well-known/minicluster-configuration)
+- ⬜ OIDC authentication (replaces API keys)
 
-**Priority:** 🟡 HIGH - Important for MSPs and multi-server environments
+**Priority:** 🔴 CRITICAL - Foundation for multi-node, MSPs, and enterprise
+
+#### 016-019: Services Architecture (NEW)
+The cluster now uses three core services (all in same binary by default):
+- **016 Discovery** — well-known endpoint, client bootstrap
+- **017 Identity** — OpenID Connect, user/agent auth
+- **018 Config** — desired state, pull-based convergence
+- **019 Registry** — .mcpkg packages, version management
 
 #### 011: Cron Scheduling
 **Key Features:**

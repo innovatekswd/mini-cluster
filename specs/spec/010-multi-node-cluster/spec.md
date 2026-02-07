@@ -1,12 +1,34 @@
 # Feature 010: Multi-Node Cluster
 
-> **Version:** 2.0 (Revised)
-> **Last Updated:** February 6, 2026
-> **Status:** 📋 Spec Ready
+> **Version:** 2.1 (Revised — Services Architecture)
+> **Last Updated:** February 7, 2026
+> **Status:** 📋 Spec Ready — Phase 0+1 Implemented
 > **Priority:** HIGH
 > **Effort:** ~8 weeks (v1), ~4 weeks (v2 additions)
-> **Dependencies:** 003 Authentication (JWT + API keys)
+> **Dependencies:** 016 Discovery, 017 Identity/OIDC, 018 Config Service, 019 Registry
 > **Previous Version:** [spec-v1-original.md](./spec-v1-original.md)
+
+---
+
+> ### ⚠️ Architecture Revision (v2.1)
+>
+> **Phases 0 and 1** are implemented and committed on `feature/cluster-phase-0`.
+>
+> **Phases 2 and 3** (NodeClient push-based deployment) are **superseded** by the
+> three-services architecture:
+>
+> | Old (Push Model) | New (Pull Model) | New Spec |
+> |---|---|---|
+> | Phase 2: NodeClient remote execution | NodeClient remains for imperative ops (start/stop/restart) but deployment is pull-based | — |
+> | Phase 3: Deploy to Node (push config) | **Config Service** — agents pull desired state | [018](../018-config-service/spec.md) |
+> | Phase 3: Config drift detection | Built into Config convergence loop | [018](../018-config-service/spec.md) |
+> | Phase 3: AppDeployment entity | Replaced by `ConfigApp` + `ConfigAppAssignment` | [018](../018-config-service/spec.md) |
+> | N/A (no package format) | **Registry Service** — versioned app bundles | [019](../019-registry/spec.md) |
+> | API key auth | **Identity Service** — OpenID Connect | [017](../017-identity-oidc/spec.md) |
+> | Manual endpoint config | **Discovery** — well-known endpoint | [016](../016-discovery-services/spec.md) |
+>
+> Phases 4-6 (Dashboard UI, Cross-Node Ops, CLI) remain valid and are updated
+> to reference the new services.
 
 ---
 
@@ -563,8 +585,13 @@ Node heartbeat missed (>90s):
 
 ## Phase 2: Remote Execution (1.5 weeks)
 
+> **⚠️ PARTIALLY SUPERSEDED** — NodeClient remains for imperative operations (start/stop/restart
+> services, get logs, get metrics). However, **deployment is no longer push-based**.
+> See [018 — Config Service](../018-config-service/spec.md) for the pull-based model.
+> See [019 — Registry](../019-registry/spec.md) for the package download model.
+
 ### Goal
-The controller can execute operations on any agent via a typed HTTP client. This is the foundation for all cross-node features.
+The controller can execute operations on any agent via a typed HTTP client. Used for imperative commands (start/stop/restart, logs, metrics) — NOT for deploying app configurations.
 
 ### 2.1 Node Client Interface
 
@@ -791,8 +818,16 @@ services.AddHttpClient("NodeAgent", client =>
 
 ## Phase 3: Deploy to Node (1.5 weeks)
 
-### Goal
-Deploy an app (with all its services) from the controller to one or more agents. Track deployments, detect config drift, and provide sync capabilities.
+> **⚠️ FULLY SUPERSEDED** — This entire phase is replaced by:
+> - [018 — Config Service](../018-config-service/spec.md) — desired state, pull-based convergence
+> - [019 — Registry](../019-registry/spec.md) — versioned app packages
+>
+> The push-based `AppDeployment` entity, `DeploymentService`, config drift detection,
+> and cross-node env-var injection are all replaced by the Config Service's declarative model.
+> Kept here for historical reference only.
+
+### Goal (SUPERSEDED)
+~~Deploy an app (with all its services) from the controller to one or more agents. Track deployments, detect config drift, and provide sync capabilities.~~
 
 ### 3.1 Deployment Data Model
 
@@ -2310,10 +2345,12 @@ These features are explicitly deferred from v1 to ship clustering faster. Each i
 
 | Dependency | Required? | Status |
 |------------|-----------|--------|
-| 003 Authentication (JWT) | Required | ✅ Done |
-| 003 Authentication (API keys) | Required for agent auth | 📋 Pending |
-| 005 Reliability (health checks) | Recommended (enhances heartbeat) | 📋 Not blocking |
-| 007 App Versioning | For v2 rolling deploys only | 📋 Not blocking v1 |
+| 016 Discovery & Services Architecture | Required | 📋 Spec Ready |
+| 017 Identity / OIDC | Required (replaces API key auth) | 📋 Spec Ready |
+| 018 Config Service | Required (pull-based deployment) | 📋 Spec Ready |
+| 019 Registry | Required (package downloads) | 📋 Spec Ready |
+| 003 Authentication (JWT) | Transitional (until OIDC) | ✅ Done |
+| 005 Reliability (health checks) | Recommended | 📋 Not blocking |
 
 ---
 

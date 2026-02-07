@@ -1,6 +1,6 @@
 # MiniCluster Feature Specifications Index
 
-> **Last Updated:** February 4, 2026  
+> **Last Updated:** February 7, 2026  
 > **Product Vision:** The DevOps platform that works on Windows without containers
 
 ---
@@ -19,10 +19,14 @@
 | 007 | [App Versioning & Deployment](#007-app-versioning) | 📋 Spec Ready | Medium | 4-6 weeks |
 | 008 | [Hierarchical Apps & Grouping](#008-hierarchical-apps) | 📋 Spec Ready | High | 3-4 weeks |
 | 009 | [Service-Level Versioning](#009-service-versioning) | 📋 Spec Ready | Medium | 2-3 weeks |
-| 010 | [Multi-Node Cluster](#010-multi-node-cluster) | 📋 Spec Ready | High | ~8 weeks (v1) |
+| 010 | [Multi-Node Cluster](#010-multi-node-cluster) | � Phase 0+1 Done | High | ~8 weeks (v1) |
 | 011 | [Cron Scheduling](#011-cron-scheduling) | 📋 Spec Ready | Medium | 2 weeks |
 | 012 | [Plugin System](#012-plugin-system) | 📋 Spec Ready | High | 12 weeks |
 | 015 | [CLI](#015-cli) | 📋 Spec Ready | High | 6-8 weeks |
+| 016 | [Discovery & Services Architecture](#016-discovery-services) | 📋 Spec Ready | High | 2 weeks |
+| 017 | [Identity / OIDC](#017-identity-oidc) | 📋 Spec Ready | High | 3 weeks |
+| 018 | [Config Service](#018-config-service) | 📋 Spec Ready | High | 3 weeks |
+| 019 | [Registry & Packages](#019-registry) | 📋 Spec Ready | High | 3 weeks |
 
 ### Legend
 - ✅ **Implemented** - Feature is complete and in production
@@ -88,12 +92,33 @@
 │      └── App snapshots (atomic versions)                                    │
 │                                                                             │
 │  PHASE 8: Cluster                                                           │
-│  └── 010 Multi-Node Cluster 📋 (v2.0 Spec)                                 │
+│  └── 010 Multi-Node Cluster � (v2.1 — Phase 0+1 Implemented)              │
 │      ├── Stateful agents (same binary, --agent mode)                        │
-│      ├── API-key auth (mTLS deferred to v2)                                 │
-│      ├── Env-var discovery (DNS deferred to v2)                             │
-│      ├── Config drift detection (SHA256 hashing)                            │
-│      └── 7 implementation phases (0-6)                                      │
+│      ├── Three-service architecture (Identity, Config, Registry)            │
+│      ├── Pull-based deployment (agents pull desired state)                  │
+│      ├── Discovery model (/.well-known/minicluster-configuration)           │
+│      └── Phases 2-3 superseded by services 016-019                          │
+│                                                                             │
+│  PHASE 8.1: Services Architecture                                           │
+│  ├── 016 Discovery & Services Architecture 📋                               │
+│  │   ├── Well-known discovery endpoint                                      │
+│  │   ├── Three-service model (Identity, Config, Registry)                   │
+│  │   └── Bootstrap flows (Agent, CLI, UI)                                   │
+│  ├── 017 Identity / OIDC 📋                                                 │
+│  │   ├── OpenIddict-based OIDC provider                                     │
+│  │   ├── Authorization Code+PKCE (UI), Client Credentials (agents)          │
+│  │   ├── Device Authorization (CLI)                                         │
+│  │   └── Scopes: mc:admin, mc:operator, mc:read, mc:agent                   │
+│  ├── 018 Config Service 📋                                                  │
+│  │   ├── Per-node desired state                                             │
+│  │   ├── Pull-based convergence loop                                        │
+│  │   ├── Env var inheritance (global → app → node)                          │
+│  │   └── Label-based app placement                                          │
+│  └── 019 Registry & Packages 📋                                             │
+│      ├── .mcpkg package format (ZIP + manifest.json)                        │
+│      ├── Version management & tagging                                       │
+│      ├── Agent download with hash verification                              │
+│      └── mc registry push/pull/list CLI commands                            │
 │                                                                             │
 │  PHASE 9: Scheduling                                                        │
 │  └── 011 Cron Scheduling 📋                                                 │
@@ -121,7 +146,7 @@
 │  FUTURE                                                                     │
 │  ├── 013 Secrets Management                                                 │
 │  ├── 014 Backup & Restore                                                   │
-│  └── 016 Windows Service Integration                                        │
+│  └── 020 Windows Service Integration                                        │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -444,33 +469,138 @@ Command-line interface for managing MiniCluster from the terminal. Enables DevOp
 
 ## 💡 Future Features (Not Specified)
 
-### 016 Secrets Management
+### 020 Secrets Management
 Secure storage and injection of sensitive configuration.
 - Encrypted secret storage
 - Environment variable injection
 - Secret rotation
 - Integration with external vaults (HashiCorp, Azure Key Vault)
 
-### 017 Backup & Restore
+### 021 Backup & Restore
 Protect application data and configurations.
 - Scheduled backups
 - Configuration export/import
 - Data volume backups
 - Disaster recovery
 
-### 018 Windows Service Integration
+### 022 Windows Service Integration
 Deep integration with Windows Service Control Manager.
 - Register apps as Windows Services
 - Service recovery options
 - Event Log integration
 - Service dependencies
 
-### 019 Auth Plugins
-Plugin architecture for authentication providers.
-- Pomerium (zero-trust)
-- Auth0 / Okta integration
-- Keycloak
-- Custom OIDC providers
+---
+
+## 🏗️ Services Architecture (NEW)
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                    MINICLUSTER — THREE-SERVICE MODEL                        │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  All three services run in the same binary by default.                     │
+│  Discovery endpoint makes splitting transparent.                           │
+│                                                                            │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────────┐              │
+│  │   Identity   │   │    Config    │   │    Registry      │              │
+│  │   (017)      │   │    (018)     │   │    (019)         │              │
+│  │              │   │              │   │                  │              │
+│  │  WHO can     │   │  WHAT should │   │  HOW to get      │              │
+│  │  do things   │   │  run WHERE   │   │  the bits        │              │
+│  │              │   │              │   │                  │              │
+│  │  • OIDC      │   │  • Desired   │   │  • .mcpkg        │              │
+│  │  • Users     │   │    state     │   │    bundles       │              │
+│  │  • JWT/JWKS  │   │  • Env vars  │   │  • Versions      │              │
+│  │  • Scopes    │   │  • Labels    │   │  • Downloads     │              │
+│  └──────────────┘   └──────────────┘   └──────────────────┘              │
+│         │                  │                    │                          │
+│         └──────────────────┼────────────────────┘                          │
+│                            ▼                                               │
+│          GET /.well-known/minicluster-configuration  (016)                 │
+│                                                                            │
+│  Clients: Agent → Client Credentials (JWT)                                 │
+│           CLI   → Device Authorization Flow                                │
+│           UI    → Authorization Code + PKCE                                │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 016 Discovery & Services Architecture
+**Status:** 📋 Spec Ready  
+**Spec:** [016-discovery-services/spec.md](016-discovery-services/spec.md)
+
+**Summary:**  
+Well-known discovery endpoint (`/.well-known/minicluster-configuration`) that exposes Identity, Config, and Registry service URLs. Agents, CLI, and UI bootstrap from a single URL. All three services run in the same binary by default but can be split to separate hosts.
+
+**Key Features:**
+- [ ] **Discovery endpoint** — single URL for all client bootstrap
+- [ ] **Three-service model** — Identity, Config, Registry (same binary by default)
+- [ ] **Service separation** — can point endpoints to different hosts
+- [ ] **Agent bootstrap** — discover → authenticate → pull config → download packages
+- [ ] **CLI/UI bootstrap** — discover → authenticate → use services
+
+**Estimated Effort:** 2 weeks
+
+---
+
+### 017 Identity / OIDC
+**Status:** 📋 Spec Ready  
+**Spec:** [017-identity-oidc/spec.md](017-identity-oidc/spec.md)
+
+**Summary:**  
+Full OpenID Connect provider built on OpenIddict. Replaces custom JWT implementation with standards-based authentication. Three OIDC flows: Authorization Code+PKCE (UI), Client Credentials (agents), Device Authorization (CLI).
+
+**Key Features:**
+- [ ] **OpenIddict integration** — standard OIDC provider
+- [ ] **Three auth flows** — Auth Code+PKCE, Client Credentials, Device Auth
+- [ ] **JWKS endpoint** — automatic key rotation
+- [ ] **Custom scopes** — mc:admin, mc:operator, mc:read, mc:agent
+- [ ] **User management API** — CRUD, password reset, roles
+- [ ] **External IdP support** — delegate to corporate OIDC (Keycloak, Entra ID)
+- [ ] **Migration path** — backward-compatible transition from custom JWT
+
+**Estimated Effort:** 3 weeks
+
+---
+
+### 018 Config Service
+**Status:** 📋 Spec Ready  
+**Spec:** [018-config-service/spec.md](018-config-service/spec.md)
+
+**Summary:**  
+Single source of truth for desired state. Agents pull their desired state (app definitions, versions, env vars) on a polling interval and self-converge. Replaces push-based deployment with pull-based model. Environment variable inheritance: global → app → node.
+
+**Key Features:**
+- [ ] **Desired state per node** — what apps/versions should run where
+- [ ] **Pull-based convergence** — agents poll, diff, and self-converge
+- [ ] **Version hashing** — SHA-256 hash for change detection
+- [ ] **Env var inheritance** — global → app → node override
+- [ ] **Label-based placement** — assign apps by node labels
+- [ ] **Config history** — versioned changes with rollback
+- [ ] **SignalR optimization** — push notifications for faster convergence
+
+**Estimated Effort:** 3 weeks
+
+---
+
+### 019 Registry & Packages
+**Status:** 📋 Spec Ready  
+**Spec:** [019-registry/spec.md](019-registry/spec.md)
+
+**Summary:**  
+Artifact store for versioned application packages. Developers push `.mcpkg` bundles (ZIP files with `manifest.json`), agents download them when Config says a new version is needed. Includes package lifecycle, integrity verification, retention policies, and CLI commands.
+
+**Key Features:**
+- [ ] **Package format** — `.mcpkg` (ZIP + manifest.json)
+- [ ] **Manifest spec** — runtime, ports, health checks, env vars, scripts
+- [ ] **Upload/download API** — multipart upload, streamed download with hash
+- [ ] **Version management** — semver, tagging (stable, canary), retention
+- [ ] **CLI commands** — mc registry push/pull/list/inspect/init
+- [ ] **Agent integration** — cache, hash verification, upgrade with rollback
+- [ ] **.mcignore** — exclude files from packages (like .gitignore)
+
+**Estimated Effort:** 3 weeks
 
 ---
 

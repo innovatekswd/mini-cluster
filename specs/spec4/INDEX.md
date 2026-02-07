@@ -145,10 +145,14 @@ spec4/
 | Rollback | 📋 | HIGH | 1 week |
 | Git Integration | 💡 | LOW | 2 weeks |
 
-#### 06 - Scaling
+#### 06 - Scaling & Clustering
 | Feature | Status | Priority | Effort |
 |---------|--------|----------|--------|
-| Multi-Node Cluster | 📋 | HIGH | ~8 weeks (v1) |
+| Multi-Node Cluster | 🚧 Phase 0+1 | HIGH | ~8 weeks (v1) |
+| Discovery & Services | 📋 | HIGH | 2 weeks |
+| Identity / OIDC | 📋 | HIGH | 3 weeks |
+| Config Service | 📋 | HIGH | 3 weeks |
+| Registry & Packages | 📋 | HIGH | 3 weeks |
 | Container Support | 📋 | LOW | 6 weeks |
 | Cron Scheduling | 📋 | LOW | 2 weeks |
 
@@ -189,9 +193,13 @@ spec4/
 7. **Hierarchical Apps** (3 weeks)
 8. **Startup Plans** (2 weeks)
 
-### Phase 4: Scale (Q3-Q4 2026) - 10 weeks
-9. **Multi-Node Cluster** (~8 weeks v1, stateful agents, API-key auth)
-10. **Cron Scheduling** (2 weeks)
+### Phase 4: Scale (Q3-Q4 2026) - 19 weeks
+9. **Multi-Node Cluster** (~8 weeks v1, Phase 0+1 implemented)
+10. **Discovery & Services Architecture** (2 weeks — well-known endpoint, bootstrap)
+11. **Identity / OIDC** (3 weeks — OpenIddict, replaces custom JWT)
+12. **Config Service** (3 weeks — pull-based desired state, env vars)
+13. **Registry & Packages** (3 weeks — .mcpkg bundles, version management)
+14. **Cron Scheduling** (2 weeks)
 
 ### Phase 5: Ecosystem (Q4 2026+) - 16 weeks
 11. **Plugin System** (12 weeks)
