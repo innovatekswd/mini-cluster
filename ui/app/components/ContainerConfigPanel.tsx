@@ -191,7 +191,7 @@ export function ContainerConfigPanel({ serviceId }: Props) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Container Name</label>
-                <input className="input-dark w-full text-sm" value={form.containerName ?? ""} onChange={(e) => set("containerName", e.target.value)} />
+                <input className="input-dark w-full text-sm" value={form.containerName ?? ""} onChange={(e) => set("containerName", e.target.value)} placeholder="my-container" />
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Network Mode</label>
@@ -203,7 +203,7 @@ export function ContainerConfigPanel({ serviceId }: Props) {
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Restart Policy</label>
-                <select className="input-dark w-full text-sm" value={form.restartPolicy ?? 0} onChange={(e) => set("restartPolicy", Number(e.target.value))}>
+                <select className="input-dark w-full text-sm" title="Restart Policy" value={form.restartPolicy ?? 0} onChange={(e) => set("restartPolicy", Number(e.target.value))}>
                   {restartPolicies.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                 </select>
               </div>
@@ -228,11 +228,11 @@ export function ContainerConfigPanel({ serviceId }: Props) {
                   <input type="number" className="input-dark w-24 text-sm" placeholder="Host" value={p.host || ""} onChange={(e) => updatePort(i, "host", e.target.value)} />
                   <span className="text-slate-500">:</span>
                   <input type="number" className="input-dark w-24 text-sm" placeholder="Container" value={p.container || ""} onChange={(e) => updatePort(i, "container", e.target.value)} />
-                  <select className="input-dark w-20 text-sm" value={p.protocol} onChange={(e) => updatePort(i, "protocol", e.target.value)}>
+                  <select className="input-dark w-20 text-sm" title="Protocol" value={p.protocol} onChange={(e) => updatePort(i, "protocol", e.target.value)}>
                     <option value="tcp">TCP</option>
                     <option value="udp">UDP</option>
                   </select>
-                  <button onClick={() => removePort(i)} className="text-rose-400 hover:text-rose-300 p-1"><FaTrash size={10} /></button>
+                  <button onClick={() => removePort(i)} className="text-rose-400 hover:text-rose-300 p-1" title="Remove port"><FaTrash size={10} /></button>
                 </div>
               ))}
             </div>
@@ -251,7 +251,7 @@ export function ContainerConfigPanel({ serviceId }: Props) {
                   <label className="flex items-center gap-1 text-xs text-slate-400 whitespace-nowrap">
                     <input type="checkbox" checked={v.readOnly} onChange={(e) => updateVol(i, "readOnly", e.target.checked)} className="accent-cyan-500" /> RO
                   </label>
-                  <button onClick={() => removeVol(i)} className="text-rose-400 hover:text-rose-300 p-1"><FaTrash size={10} /></button>
+                  <button onClick={() => removeVol(i)} className="text-rose-400 hover:text-rose-300 p-1" title="Remove volume"><FaTrash size={10} /></button>
                 </div>
               ))}
             </div>
@@ -267,7 +267,7 @@ export function ContainerConfigPanel({ serviceId }: Props) {
                   <input className="input-dark flex-1 text-sm" placeholder="Key" value={k} onChange={(e) => updateLabel(k, e.target.value, v)} />
                   <span className="text-slate-500">=</span>
                   <input className="input-dark flex-1 text-sm" placeholder="Value" value={v} onChange={(e) => updateLabel(k, k, e.target.value)} />
-                  <button onClick={() => removeLabel(k)} className="text-rose-400 hover:text-rose-300 p-1"><FaTrash size={10} /></button>
+                  <button onClick={() => removeLabel(k)} className="text-rose-400 hover:text-rose-300 p-1" title="Remove label"><FaTrash size={10} /></button>
                 </div>
               ))}
             </div>

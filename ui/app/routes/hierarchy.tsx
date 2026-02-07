@@ -36,6 +36,7 @@ function SnapshotPanel() {
       <div className="flex items-center gap-3 mb-4">
         <select
           className="input-dark text-sm"
+          title="Select app"
           value={selectedAppId}
           onChange={(e) => setSelectedAppId(e.target.value)}
         >

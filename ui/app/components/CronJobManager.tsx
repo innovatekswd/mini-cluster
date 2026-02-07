@@ -130,6 +130,7 @@ function CronJobForm({ initial, onSubmit, onCancel, isPending }: FormProps) {
           <label className="block text-sm font-medium text-slate-300 mb-1">Target Type</label>
           <select
             className="input-dark w-full"
+            title="Target Type"
             value={form.targetType}
             onChange={(e) => set("targetType", Number(e.target.value) as CronTarget)}
           >
@@ -142,6 +143,7 @@ function CronJobForm({ initial, onSubmit, onCancel, isPending }: FormProps) {
           <label className="block text-sm font-medium text-slate-300 mb-1">Action</label>
           <select
             className="input-dark w-full"
+            title="Action"
             value={form.action}
             onChange={(e) => set("action", Number(e.target.value) as CronAction)}
           >
@@ -159,6 +161,7 @@ function CronJobForm({ initial, onSubmit, onCancel, isPending }: FormProps) {
           <label className="block text-sm font-medium text-slate-300 mb-1">App</label>
           <select
             className="input-dark w-full"
+            title="App"
             value={form.appId ?? ""}
             onChange={(e) => set("appId", e.target.value)}
           >
@@ -224,6 +227,7 @@ function CronJobForm({ initial, onSubmit, onCancel, isPending }: FormProps) {
           <label className="block text-sm font-medium text-slate-300 mb-1">Missed Policy</label>
           <select
             className="input-dark w-full"
+            title="Missed Policy"
             value={form.missedPolicy}
             onChange={(e) => set("missedPolicy", Number(e.target.value) as CronMissedPolicy)}
           >
@@ -239,6 +243,7 @@ function CronJobForm({ initial, onSubmit, onCancel, isPending }: FormProps) {
               checked={form.waitForCompletion ?? true}
               onChange={(e) => set("waitForCompletion", e.target.checked)}
               className="accent-cyan-500"
+              title="Wait for completion"
             />
             Wait for Completion
           </label>

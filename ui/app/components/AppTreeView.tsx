@@ -68,7 +68,7 @@ function TreeNode({ node, depth, onNavigate, flatApps }: TreeNodeProps) {
 
   const handleMove = (newParentId: string | null) => {
     moveMut.mutate(
-      { appId: node.id, newParentAppId: newParentId },
+      { appId: node.id, data: { newParentAppId: newParentId } },
       { onSuccess: () => setShowMove(false) }
     );
   };

@@ -48,14 +48,18 @@ Each stage expands the audience without breaking the previous one.
 
 | Phase | Feature | Spec | Status | Effort |
 |-------|---------|------|--------|--------|
-| 7 | Simple App Tabs | [021](../spec/021-simple-app-tabs/spec.md) | 📋 Spec | 1-2 weeks |
-| 8 | Cron Scheduling | [011](../spec/011-cron-scheduling/spec.md) | 📋 Spec | 2 weeks |
-| 9 | Container Support | [006](../spec/006-container-support/spec.md) | 📋 Spec | 6-8 weeks |
-| 10 | Service Versioning & Deployment | [007](../spec/007-app-versioning/spec.md) | 📋 Spec | 3-4 weeks |
-| 11 | Hierarchical Apps | [008](../spec/008-hierarchical-apps/spec.md) | 📋 Spec | 3-4 weeks |
+| 7 | Simple App Tabs | [021](../spec/021-simple-app-tabs/spec.md) | ✅ Done | — |
+| 8 | Cron Scheduling | [011](../spec/011-cron-scheduling/spec.md) | ✅ Done | — |
+| 9 | Container Support | [006](../spec/006-container-support/spec.md) | ✅ Done | — |
+| 10 | Service Versioning & Deployment | [007](../spec/007-app-versioning/spec.md) | ✅ Done | — |
+| 11 | Hierarchical Apps | [008](../spec/008-hierarchical-apps/spec.md) | ✅ Done | — |
 | 12 | Reliability (remaining) | [005](../spec/005-reliability-orchestration/spec.md) | 📋 Spec | 6-8 weeks |
 
 **What ships:** App grouping, cron scheduling, Docker/Podman containers, service versioning with rollback, hierarchical apps, OTLP observability.
+
+**What's done:** App tabs, cron scheduling (6-field with runs tracking), container config (image/ports/volumes/labels), versioning (deploy/rollback/deployment-config), hierarchical apps (tree/move/subtree/snapshots). Full API + React UI.
+
+**What's remaining:** OTLP observability (Part 4 of Spec 005). Startup Plans with dependency graphs.
 
 **Driven by:** User feedback from MVP. Build what users actually ask for.
 

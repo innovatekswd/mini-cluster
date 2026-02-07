@@ -144,7 +144,7 @@ function DeploymentConfigEditor({ serviceId }: { serviceId: string }) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Strategy</label>
-                <select className="input-dark w-full text-sm" value={form.strategy ?? 0} onChange={(e) => set("strategy", Number(e.target.value))}>
+                <select className="input-dark w-full text-sm" title="Strategy" value={form.strategy ?? 0} onChange={(e) => set("strategy", Number(e.target.value))}>
                   <option value={DeploymentStrategy.InPlace}>In-Place</option>
                   <option value={DeploymentStrategy.BlueGreen}>Blue-Green</option>
                   <option value={DeploymentStrategy.Rolling}>Rolling</option>
@@ -234,7 +234,7 @@ export function VersioningPanel({ serviceId }: Props) {
       confirmLabel: "Deploy",
       variant: "warning",
     });
-    if (ok) deployMut.mutate({ serviceId, versionId });
+    if (ok) deployMut.mutate(versionId);
   };
 
   const handleRollback = async () => {
