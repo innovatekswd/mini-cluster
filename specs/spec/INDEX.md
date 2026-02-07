@@ -27,6 +27,8 @@
 | 017 | [Identity / OIDC](#017-identity-oidc) | 📋 Spec Ready | High | 3 weeks |
 | 018 | [Config Service](#018-config-service) | 📋 Spec Ready | High | 3 weeks |
 | 019 | [Registry & Packages](#019-registry) | 📋 Spec Ready | High | 3 weeks |
+| 020 | [Auto-Scaling](#020-auto-scaling) | 💡 Planned | Medium | 6-8 weeks |
+| 006 | [Container Support](#006-container-support) | 📋 Spec Ready | Medium | 6-8 weeks |
 
 ### Legend
 - ✅ **Implemented** - Feature is complete and in production
@@ -143,10 +145,24 @@
 │      ├── CI/CD integration (GitHub Actions, GitLab, etc.)                   │
 │      └── Real-time log streaming                                            │
 │                                                                             │
+│  PHASE 12: Container Runtime                                                │
+│  └── 006 Container Support 📋                                               │
+│      ├── Docker/Podman as runtime type in manifest.json                     │
+│      ├── runtime.type: "docker" alongside "process"                          │
+│      ├── Same pipeline: Registry → Config → Agent → container              │
+│      └── Hybrid apps (some services = process, some = container)            │
+│                                                                             │
+│  PHASE 13: Auto-Scaling                                                     │
+│  └── 020 Auto-Scaling 💡                                                    │
+│      ├── Phase 1: One-liner agent install (curl | bash)                     │
+│      ├── Phase 2: Cloud provider plugins (Hetzner, DO, Vultr, AWS)         │
+│      ├── Phase 3: Rule-based auto-scale (CPU/mem thresholds)               │
+│      └── Pay only when needed — scale to zero on idle                      │
+│                                                                             │
 │  FUTURE                                                                     │
-│  ├── 013 Secrets Management                                                 │
-│  ├── 014 Backup & Restore                                                   │
-│  └── 020 Windows Service Integration                                        │
+│  ├── 021 Secrets Management                                                 │
+│  ├── 022 Backup & Restore                                                   │
+│  └── 023 Windows Service Integration                                        │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -166,7 +182,9 @@ MiniCluster competitive positioning, target market, and differentiation from Kub
 **Key Points:**
 - Target: Windows shops, small teams, edge/IoT, SMB, MSPs
 - Differentiator: Native processes, no containers required, Windows-first, open plugin ecosystem
-- Position: "Kubernetes-like orchestration without Kubernetes complexity"
+- Position: "Ship to bare metal like you ship to the cloud"
+- Two entry points: simple (vs PM2/Supervisor) and platform (vs Coolify/CapRover/Dokku)
+- Key differentiator: same binary scales from 1 server to 100 — zero migration
 - Business Model: Open core + plugin marketplace + managed cloud + enterprise support
 
 ---
@@ -467,23 +485,67 @@ Command-line interface for managing MiniCluster from the terminal. Enables DevOp
 
 ---
 
+## � Platform Evolution
+
+### 020 Auto-Scaling
+**Status:** 💡 Planned  
+**Spec:** [020-auto-scaling/spec.md](020-auto-scaling/spec.md)  
+**Priority:** Medium  
+**Effort:** 6-8 weeks
+
+**Summary:**  
+Scale infrastructure based on load. Acquire new VMs from cloud providers, auto-install MiniCluster agents, expand capacity. Scale down when idle — pay only for what you use.
+
+**Phased Approach:**
+- **Phase 1: One-liner install** — `curl -s https://ctrl:5147/install | bash` → agent running in 60s
+- **Phase 2: Provider plugins** — `mc scale web --add 2 --provider hetzner` → VMs created + agents deployed
+- **Phase 3: Auto-scale rules** — "If CPU > 80% for 5min, add node (max 10). If < 20% for 15min, remove (min 2)"
+
+**Key Features:**
+- [ ] One-liner agent install script
+- [ ] Cloud provider plugins (Hetzner, DigitalOcean, Vultr, AWS, Azure)
+- [ ] Scale-up rules (CPU, memory, request rate thresholds)
+- [ ] Scale-down with graceful drain
+- [ ] Scale-to-zero (terminate idle VMs)
+- [ ] Cost-aware decisions (spot instances, reserved capacity)
+
+---
+
+### 006 Container Support (Later Stage)
+
+Container support becomes a **runtime type** in the existing `.mcpkg` manifest — not a separate system.
+
+```json
+// manifest.json — container runtime (future)
+{
+  "runtime": {
+    "type": "docker",
+    "image": "myapp:1.2.3"
+  }
+}
+```
+
+Everything above the runtime layer stays identical: Registry stores the package, Config assigns it to nodes, agents pull and converge. Only the last step changes — `docker run` instead of `Process.Start()`.
+
+---
+
 ## 💡 Future Features (Not Specified)
 
-### 020 Secrets Management
+### 021 Secrets Management
 Secure storage and injection of sensitive configuration.
 - Encrypted secret storage
 - Environment variable injection
 - Secret rotation
 - Integration with external vaults (HashiCorp, Azure Key Vault)
 
-### 021 Backup & Restore
+### 022 Backup & Restore
 Protect application data and configurations.
 - Scheduled backups
 - Configuration export/import
 - Data volume backups
 - Disaster recovery
 
-### 022 Windows Service Integration
+### 023 Windows Service Integration
 Deep integration with Windows Service Control Manager.
 - Register apps as Windows Services
 - Service recovery options

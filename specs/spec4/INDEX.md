@@ -205,8 +205,13 @@ spec4/
 11. **Plugin System** (12 weeks)
 12. **Marketplace** (4 weeks)
 
+### Phase 6: Container & Scaling (2027) - 14 weeks
+15. **Container Support** (6 weeks — docker runtime type in manifest, hybrid apps)
+16. **Auto-Scaling** (8 weeks — cloud provider plugins, rule-based scale-up/down, pay-when-needed)
+
 ### Future
-- Container Support
+- Secrets Management
+- Backup & Restore
 - Analytics & AI
 - Git Integration
 

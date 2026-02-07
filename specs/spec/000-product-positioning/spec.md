@@ -1,8 +1,8 @@
 # MiniCluster Product Positioning
 
-> **"The DevOps platform that actually works on Windows, without containers."**
+> **"Ship to bare metal like you ship to the cloud."**
 > 
-> **"Kubernetes-like orchestration without Kubernetes complexity."**
+> **"Start simple. Scale without switching."**
 
 ---
 
@@ -122,15 +122,23 @@ MiniCluster is for teams who need Kubernetes-like orchestration but can't justif
 
 ## MiniCluster vs Alternatives
 
-| Product | MiniCluster Advantage |
-|---------|----------------------|
-| **Docker Compose** | Clustering, versioning, multi-node, UI, Windows-native |
-| **Kubernetes** | 10x simpler, Windows-first, no container requirement |
-| **HashiCorp Nomad** | Simpler setup, better Windows support, integrated UI |
-| **PM2** | Multi-language, clustering, versioning, plugin system |
-| **Portainer** | Native processes (not just containers), full orchestration |
-| **systemd/supervisor** | Cross-platform, clustering, UI, versioning |
-| **Windows Services** | Central management, orchestration, observability |
+| Product | Category | MiniCluster Advantage |
+|---------|----------|----------------------|
+| **PM2** | Process manager | Multi-language, clustering, UI, versioning, package registry |
+| **Supervisor** | Process manager | Cross-platform, UI, clustering, OIDC, package registry |
+| **systemd** | Init system | Cross-platform, UI, multi-node, versioning |
+| **Coolify** | Self-hosted PaaS | No Docker required, process-native, Windows support |
+| **CapRover** | Self-hosted PaaS | No Docker required, Windows, .mcpkg packages |
+| **Dokku** | Self-hosted PaaS | No Docker, Windows, multi-node, UI dashboard |
+| **Kamal** | Deploy tool | UI, OIDC auth, desired-state config, auto-scaling |
+| **Docker Compose** | Container orchestration | No containers needed, clustering, versioning, UI |
+| **Kubernetes** | Container orchestration | 10x simpler, Windows-first, no container requirement |
+| **HashiCorp Nomad** | Workload orchestration | Simpler setup, better Windows, integrated UI/registry |
+| **Portainer** | Container management | Native processes (not just containers), full orchestration |
+
+**Two-level competitive positioning:**
+- vs PM2/Supervisor: "Same simplicity, but with UI + proxy + clustering + packages"
+- vs Coolify/CapRover/Dokku: "Same deployment platform, but without Docker dependency"
 
 ---
 
@@ -182,17 +190,22 @@ Apps contain services. Apps contain child apps. Tree structure mirrors how you t
 ### 4. Versioning Everything
 Version apps. Version individual services. Rollback with one click. Atomic snapshots. No GitOps toolchain required.
 
-### 5. API-First Clustering
-Control 100 servers from one dashboard. Agents are simple HTTP servers. No etcd, no control plane complexity.
+### 5. Application Package Manager
+`.mcpkg` is to MiniCluster what `.deb` is to Ubuntu. Not just a process manager — a full application package manager with its own registry, manifest format, and lifecycle.
 
-### 6. Open Plugin Ecosystem
+### 6. Three-Service Architecture
+Identity (OIDC), Config (desired state), Registry (packages) — all in one binary. Discovery endpoint makes everything self-configuring. Enterprise-grade auth without enterprise complexity.
+
+### 7. Pull-Based Deployment
+Agents pull their desired state and self-converge. No push failures, no drift, no "what if the target is offline." Same model that won for Kubernetes, Puppet, and GitOps.
+
+### 8. Auto-Scaling
+Scale infrastructure based on load. Acquire VMs from cloud providers (Hetzner, DigitalOcean, AWS), auto-install agents, expand on demand. Scale to zero when idle. Pay only for what you use.
+
+### 9. Open Plugin Ecosystem
 **Anyone can build plugins.** Backend SDK (C#/.NET). Frontend SDK (React/TypeScript). CLI for scaffolding. Marketplace for distribution.
 
-
-### 7. Analytics & Decision Support
-Resource usage growth, peaks, and anomalies for every process/app/service. AI-driven recommendations, predictive alerts, and root cause analysis. Network activity, error/event analytics, and security/compliance reporting.
-
-### 8. Integrated Observability
+### 10. Integrated Observability
 Logs, metrics, health checks built-in. Not 5 separate tools. TimescaleDB for high-volume telemetry.
 
 ### 9. Cron Scheduling
@@ -204,15 +217,22 @@ Schedule jobs with UI, not YAML. Dependency chains. Missed schedule handling. Ru
 
 MiniCluster is NOT competing with Kubernetes head-on.
 
-MiniCluster captures the **massive underserved market** of:
-- Windows-first organizations (still 70%+ of enterprise servers)
-- Small/medium deployments (5-50 services)
-- Edge computing (can't run K8s on a Raspberry Pi)
-- Teams without dedicated DevOps
-- MSPs managing hundreds of client servers
-- Infrastructure tool vendors wanting simple integration
+MiniCluster owns **two underserved segments simultaneously**:
 
-**Analogy:** SQLite vs PostgreSQL. Different use cases, both valuable. MiniCluster is the SQLite of orchestration.
+**Segment 1 (Bottom-up):** Teams using PM2/Supervisor/systemd who need more.
+They want a UI, clustering, proxy, health checks — but not the jump to Kubernetes.
+MiniCluster gives them everything PM2 has, plus everything PM2 doesn't.
+
+**Segment 2 (Top-down):** Teams evaluating Coolify/CapRover/Dokku who can't use Docker.
+Windows shops, edge deployments, legacy apps that can't be containerized.
+MiniCluster gives them the same deployment platform experience without Docker.
+
+**The bridge:** Both segments start with the same binary. Segment 1 users grow into
+Segment 2 organically — no migration, no new tool, no retraining. The platform
+is revealed progressively as they need it.
+
+**Analogy:** SQLite vs PostgreSQL. Different use cases, both valuable. MiniCluster is
+the SQLite of orchestration — embedded, zero-config, surprisingly capable.
 
 ---
 
