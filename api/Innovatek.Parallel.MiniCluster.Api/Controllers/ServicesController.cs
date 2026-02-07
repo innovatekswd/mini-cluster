@@ -20,18 +20,24 @@ public class ServicesController : ControllerBase
     private readonly IServiceProcessManager _processManager;
     private readonly ILogger<ServicesController> _logger;
     private readonly IIdentifierResolver _resolver;
+    private readonly IHealthCheckService _healthCheckService;
+    private readonly IAutoRestartService _autoRestartService;
 
     public ServicesController(AppDbContext db,
         IMapper mapper,
         IServiceProcessManager processManager,
         ILogger<ServicesController> logger,
-        IIdentifierResolver resolver)
+        IIdentifierResolver resolver,
+        IHealthCheckService healthCheckService,
+        IAutoRestartService autoRestartService)
     {
         _db = db;
         _mapper = mapper;
         _processManager = processManager;
         _logger = logger;
         _resolver = resolver;
+        _healthCheckService = healthCheckService;
+        _autoRestartService = autoRestartService;
     }
 
     /// <summary>
@@ -143,6 +149,14 @@ public class ServicesController : ControllerBase
             _ => "Stopped"
         };
 
+        // Get runtime health and restart state
+        var healthState = service.HealthCheckType != Core.Entities.HealthCheckType.None
+            ? _healthCheckService.GetHealthState(service.Id)
+            : null;
+        var restartState = service.RestartPolicy != Core.Entities.RestartPolicy.Never
+            ? _autoRestartService.GetRestartState(service.Id)
+            : null;
+
         return new ServiceResponseDto
         {
             Id = service.Id,
@@ -163,7 +177,34 @@ public class ServicesController : ControllerBase
             AppId = service.AppId,
             Status = statusString,
             CreatedAt = service.CreatedAt,
-            ModifiedAt = service.ModifiedAt
+            ModifiedAt = service.ModifiedAt,
+
+            // Restart policy fields
+            RestartPolicy = (int)service.RestartPolicy,
+            MaxRestarts = service.MaxRestarts,
+            RestartWindowSeconds = service.RestartWindowSeconds,
+            RestartDelaySeconds = service.RestartDelaySeconds,
+            MaxRestartDelaySeconds = service.MaxRestartDelaySeconds,
+            UseExponentialBackoff = service.UseExponentialBackoff,
+
+            // Health check config fields
+            HealthCheckType = (int)service.HealthCheckType,
+            HealthCheckTarget = service.HealthCheckTarget,
+            HealthCheckIntervalSeconds = service.HealthCheckIntervalSeconds,
+            HealthCheckTimeoutSeconds = service.HealthCheckTimeoutSeconds,
+            HealthCheckFailureThreshold = service.HealthCheckFailureThreshold,
+            HealthCheckGracePeriodSeconds = service.HealthCheckGracePeriodSeconds,
+
+            // Runtime health state
+            IsHealthy = healthState?.IsHealthy,
+            ConsecutiveHealthFailures = healthState?.ConsecutiveFailures,
+            LastHealthError = healthState?.LastError,
+            LastHealthCheckAt = healthState?.LastCheckAt,
+
+            // Runtime restart state
+            RestartCount = restartState?.RestartCount,
+            IsInCooldown = restartState?.IsInCooldown,
+            CooldownUntil = restartState?.CooldownUntil
         };
     }
 
@@ -191,6 +232,18 @@ public class ServicesController : ControllerBase
             Description = input.Description,
             OrderIndex = input.OrderIndex,
             AppId = input.AppId,
+            RestartPolicy = (RestartPolicy)input.RestartPolicy,
+            MaxRestarts = input.MaxRestarts,
+            RestartWindowSeconds = input.RestartWindowSeconds,
+            RestartDelaySeconds = input.RestartDelaySeconds,
+            MaxRestartDelaySeconds = input.MaxRestartDelaySeconds,
+            UseExponentialBackoff = input.UseExponentialBackoff,
+            HealthCheckType = (HealthCheckType)input.HealthCheckType,
+            HealthCheckTarget = input.HealthCheckTarget,
+            HealthCheckIntervalSeconds = input.HealthCheckIntervalSeconds,
+            HealthCheckTimeoutSeconds = input.HealthCheckTimeoutSeconds,
+            HealthCheckFailureThreshold = input.HealthCheckFailureThreshold,
+            HealthCheckGracePeriodSeconds = input.HealthCheckGracePeriodSeconds,
             CreatedAt = DateTime.UtcNow,
             ModifiedAt = DateTime.UtcNow
         };
@@ -253,6 +306,22 @@ public class ServicesController : ControllerBase
             if (updated.Description != null) existing.Description = updated.Description;
             if (updated.OrderIndex.HasValue) existing.OrderIndex = updated.OrderIndex.Value;
             
+            // Restart policy fields
+            if (updated.RestartPolicy.HasValue) existing.RestartPolicy = (RestartPolicy)updated.RestartPolicy.Value;
+            if (updated.MaxRestarts.HasValue) existing.MaxRestarts = updated.MaxRestarts.Value;
+            if (updated.RestartWindowSeconds.HasValue) existing.RestartWindowSeconds = updated.RestartWindowSeconds.Value;
+            if (updated.RestartDelaySeconds.HasValue) existing.RestartDelaySeconds = updated.RestartDelaySeconds.Value;
+            if (updated.MaxRestartDelaySeconds.HasValue) existing.MaxRestartDelaySeconds = updated.MaxRestartDelaySeconds.Value;
+            if (updated.UseExponentialBackoff.HasValue) existing.UseExponentialBackoff = updated.UseExponentialBackoff.Value;
+
+            // Health check fields
+            if (updated.HealthCheckType.HasValue) existing.HealthCheckType = (HealthCheckType)updated.HealthCheckType.Value;
+            if (updated.HealthCheckTarget != null) existing.HealthCheckTarget = updated.HealthCheckTarget;
+            if (updated.HealthCheckIntervalSeconds.HasValue) existing.HealthCheckIntervalSeconds = updated.HealthCheckIntervalSeconds.Value;
+            if (updated.HealthCheckTimeoutSeconds.HasValue) existing.HealthCheckTimeoutSeconds = updated.HealthCheckTimeoutSeconds.Value;
+            if (updated.HealthCheckFailureThreshold.HasValue) existing.HealthCheckFailureThreshold = updated.HealthCheckFailureThreshold.Value;
+            if (updated.HealthCheckGracePeriodSeconds.HasValue) existing.HealthCheckGracePeriodSeconds = updated.HealthCheckGracePeriodSeconds.Value;
+
             existing.ModifiedAt = DateTime.UtcNow;
             
             // Regenerate slug if name changed
@@ -351,6 +420,10 @@ public class ServicesController : ControllerBase
             return BadRequest(new { error = startResult.ErrorMessage });
         }
 
+        // Clear manually-stopped flag so auto-restart can kick in if it exits
+        _autoRestartService.ClearManuallyStopped(service.Id);
+        _autoRestartService.ResetRestartState(service.Id);
+
         _logger.LogInformation("Started service {Name} ({Id})", service.Name, service.Id);
 
         return Ok(new { success = true, message = $"Service '{service.Name}' started" });
@@ -378,6 +451,9 @@ public class ServicesController : ControllerBase
             return NotFound();
 
         var stopped = await _processManager.StopServiceAsync(service.Id);
+
+        // Mark as manually stopped so auto-restart (UnlessStopped) won't restart it
+        _autoRestartService.MarkManuallyStopped(service.Id);
 
         _logger.LogInformation("Stopped service {Name} ({Id}), result={Stopped}", service.Name, service.Id, stopped);
 

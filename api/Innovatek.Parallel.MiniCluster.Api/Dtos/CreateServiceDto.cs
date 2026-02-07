@@ -50,4 +50,28 @@ public class CreateServiceDto
     /// Optional App ID to assign the service to
     /// </summary>
     public Guid? AppId { get; set; }
+
+    // ── Restart Policy ──────────────────────────────────────────────
+
+    /// <summary>Restart policy: Never (0), OnFailure (1), Always (2), UnlessStopped (3)</summary>
+    public int RestartPolicy { get; set; } = 0;
+
+    public int MaxRestarts { get; set; } = 5;
+    public int RestartWindowSeconds { get; set; } = 300;
+    public int RestartDelaySeconds { get; set; } = 3;
+    public int MaxRestartDelaySeconds { get; set; } = 300;
+    public bool UseExponentialBackoff { get; set; } = true;
+
+    // ── Health Check ────────────────────────────────────────────────
+
+    /// <summary>Health check type: None (0), Http (1), Tcp (2), Exec (3)</summary>
+    public int HealthCheckType { get; set; } = 0;
+
+    [StringLength(500, ErrorMessage = "Health check target cannot exceed 500 characters")]
+    public string? HealthCheckTarget { get; set; }
+
+    public int HealthCheckIntervalSeconds { get; set; } = 30;
+    public int HealthCheckTimeoutSeconds { get; set; } = 5;
+    public int HealthCheckFailureThreshold { get; set; } = 3;
+    public int HealthCheckGracePeriodSeconds { get; set; } = 10;
 }

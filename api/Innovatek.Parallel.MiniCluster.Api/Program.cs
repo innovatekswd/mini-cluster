@@ -150,6 +150,19 @@ builder.Services.AddHostedService(provider => (LogBatchService)provider.GetRequi
 builder.Services.AddHostedService<ProcessMonitoringService>();
 builder.Services.AddHostedService<LogCleanupService>(); // Automatic log cleanup every 10 minutes
 
+// Health check & auto-restart services
+builder.Services.AddSingleton<HealthCheckService>();
+builder.Services.AddSingleton<IHealthCheckService>(provider =>
+    provider.GetRequiredService<HealthCheckService>());
+builder.Services.AddHostedService(provider =>
+    provider.GetRequiredService<HealthCheckService>());
+
+builder.Services.AddSingleton<AutoRestartService>();
+builder.Services.AddSingleton<IAutoRestartService>(provider =>
+    provider.GetRequiredService<AutoRestartService>());
+builder.Services.AddHostedService(provider =>
+    provider.GetRequiredService<AutoRestartService>());
+
 // Process metrics collection service
 builder.Services.AddSingleton<ProcessMetricsCollectionService>();
 builder.Services.AddSingleton<IProcessMetricsService>(provider => 

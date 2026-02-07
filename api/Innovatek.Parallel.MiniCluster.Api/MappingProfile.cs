@@ -12,10 +12,16 @@ public class MappingProfile : Profile
         CreateMap<ServiceBase, Service>();
         
         // DTO mappings for services
-        CreateMap<CreateServiceDto, Service>();
+        CreateMap<CreateServiceDto, Service>()
+            .ForMember(dest => dest.RestartPolicy, opt => opt.MapFrom(src => (RestartPolicy)src.RestartPolicy))
+            .ForMember(dest => dest.HealthCheckType, opt => opt.MapFrom(src => (HealthCheckType)src.HealthCheckType));
         CreateMap<UpdateServiceDto, Service>()
+            .ForMember(dest => dest.RestartPolicy, opt => opt.MapFrom(src => src.RestartPolicy.HasValue ? (RestartPolicy)src.RestartPolicy.Value : RestartPolicy.Never))
+            .ForMember(dest => dest.HealthCheckType, opt => opt.MapFrom(src => src.HealthCheckType.HasValue ? (HealthCheckType)src.HealthCheckType.Value : HealthCheckType.None))
             .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
-        CreateMap<Service, ServiceResponseDto>();
+        CreateMap<Service, ServiceResponseDto>()
+            .ForMember(dest => dest.RestartPolicy, opt => opt.MapFrom(src => (int)src.RestartPolicy))
+            .ForMember(dest => dest.HealthCheckType, opt => opt.MapFrom(src => (int)src.HealthCheckType));
 
         // App mappings
         CreateMap<App, ApplicationDto>();

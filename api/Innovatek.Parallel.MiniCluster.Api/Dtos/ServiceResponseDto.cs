@@ -29,4 +29,38 @@ public class ServiceResponseDto
     
     public DateTime CreatedAt { get; set; }
     public DateTime ModifiedAt { get; set; }
+
+    // ── Restart Policy ──────────────────────────────────────────────
+    
+    /// <summary>Restart policy: Never (0), OnFailure (1), Always (2), UnlessStopped (3)</summary>
+    public int RestartPolicy { get; set; }
+    public int MaxRestarts { get; set; }
+    public int RestartWindowSeconds { get; set; }
+    public int RestartDelaySeconds { get; set; }
+    public int MaxRestartDelaySeconds { get; set; }
+    public bool UseExponentialBackoff { get; set; }
+
+    // ── Health Check ────────────────────────────────────────────────
+    
+    /// <summary>Health check type: None (0), Http (1), Tcp (2), Exec (3)</summary>
+    public int HealthCheckType { get; set; }
+    public string? HealthCheckTarget { get; set; }
+    public int HealthCheckIntervalSeconds { get; set; }
+    public int HealthCheckTimeoutSeconds { get; set; }
+    public int HealthCheckFailureThreshold { get; set; }
+    public int HealthCheckGracePeriodSeconds { get; set; }
+
+    // ── Runtime Health State (populated from HealthCheckService) ─────
+    
+    /// <summary>Current health status: null = no check configured, true = healthy, false = unhealthy</summary>
+    public bool? IsHealthy { get; set; }
+    public int? ConsecutiveHealthFailures { get; set; }
+    public string? LastHealthError { get; set; }
+    public DateTime? LastHealthCheckAt { get; set; }
+
+    // ── Runtime Restart State (populated from AutoRestartService) ────
+    
+    public int? RestartCount { get; set; }
+    public bool? IsInCooldown { get; set; }
+    public DateTime? CooldownUntil { get; set; }
 }

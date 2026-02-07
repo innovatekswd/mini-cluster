@@ -4,6 +4,36 @@ using System.Collections.Generic;
 namespace Innovatek.Parallel.MiniCluster.Core.Entities
 {
     /// <summary>
+    /// Restart policy for a service when it exits
+    /// </summary>
+    public enum RestartPolicy
+    {
+        /// <summary>Never restart on exit</summary>
+        Never = 0,
+        /// <summary>Restart only on non-zero exit code</summary>
+        OnFailure = 1,
+        /// <summary>Always restart (except manual stop)</summary>
+        Always = 2,
+        /// <summary>Restart unless explicitly stopped by user</summary>
+        UnlessStopped = 3
+    }
+
+    /// <summary>
+    /// Type of health check probe
+    /// </summary>
+    public enum HealthCheckType
+    {
+        /// <summary>No health check configured</summary>
+        None = 0,
+        /// <summary>HTTP GET request, expects 2xx response</summary>
+        Http = 1,
+        /// <summary>TCP connection test to a port</summary>
+        Tcp = 2,
+        /// <summary>Execute a command, check exit code</summary>
+        Exec = 3
+    }
+
+    /// <summary>
     /// Base class with common service properties (for import/export scenarios)
     /// </summary>
     public class ServiceBase
@@ -75,5 +105,71 @@ namespace Innovatek.Parallel.MiniCluster.Core.Entities
         /// Null means local (the machine running this MiniCluster instance).
         /// </summary>
         public Guid? MachineId { get; set; }
+
+        // ── Restart Policy ──────────────────────────────────────────────
+
+        /// <summary>
+        /// Restart policy: Never, OnFailure, Always, UnlessStopped
+        /// </summary>
+        public RestartPolicy RestartPolicy { get; set; } = RestartPolicy.Never;
+
+        /// <summary>
+        /// Max restart attempts within the restart window before entering cooldown
+        /// </summary>
+        public int MaxRestarts { get; set; } = 5;
+
+        /// <summary>
+        /// Time window (seconds) for counting restart attempts
+        /// </summary>
+        public int RestartWindowSeconds { get; set; } = 300;
+
+        /// <summary>
+        /// Initial delay (seconds) before first restart attempt
+        /// </summary>
+        public int RestartDelaySeconds { get; set; } = 3;
+
+        /// <summary>
+        /// Maximum delay (seconds) when using exponential backoff
+        /// </summary>
+        public int MaxRestartDelaySeconds { get; set; } = 300;
+
+        /// <summary>
+        /// Use exponential backoff with jitter for restart delays
+        /// </summary>
+        public bool UseExponentialBackoff { get; set; } = true;
+
+        // ── Health Check ────────────────────────────────────────────────
+
+        /// <summary>
+        /// Type of health check probe: None, Http, Tcp, Exec
+        /// </summary>
+        public HealthCheckType HealthCheckType { get; set; } = HealthCheckType.None;
+
+        /// <summary>
+        /// Health check endpoint URL for HTTP probes (e.g., http://localhost:3000/health)
+        /// or host:port for TCP probes (e.g., localhost:5432)
+        /// or command for Exec probes (e.g., "curl -f http://localhost/health")
+        /// </summary>
+        public string? HealthCheckTarget { get; set; }
+
+        /// <summary>
+        /// Interval in seconds between health check probes
+        /// </summary>
+        public int HealthCheckIntervalSeconds { get; set; } = 30;
+
+        /// <summary>
+        /// Timeout in seconds for each health check probe
+        /// </summary>
+        public int HealthCheckTimeoutSeconds { get; set; } = 5;
+
+        /// <summary>
+        /// Number of consecutive failures before marking unhealthy
+        /// </summary>
+        public int HealthCheckFailureThreshold { get; set; } = 3;
+
+        /// <summary>
+        /// Grace period in seconds after start before health checks begin
+        /// </summary>
+        public int HealthCheckGracePeriodSeconds { get; set; } = 10;
     }
 }
