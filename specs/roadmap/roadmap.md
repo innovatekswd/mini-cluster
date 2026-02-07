@@ -31,13 +31,14 @@ Each stage expands the audience without breaking the previous one.
 | Phase | Feature | Spec | Status | Effort |
 |-------|---------|------|--------|--------|
 | 1 | File Explorer | [001](../spec/001-file-explorer/spec.md) | ✅ Done | — |
+| 1 | Console / Terminal | — | ✅ Done | — |
 | 2 | Routing & Navigation | [002](../spec/002-routing-navigation/spec.md) | ✅ Done | — |
 | 3 | Reverse Proxy (YARP) | [004](../spec/004-reverse-proxy/spec.md) | ✅ Done | — |
 | 4 | CLI | [015](../spec/015-cli/spec.md) | ✅ Done | — |
 | 5 | Authentication | [003](../spec/003-authentication/spec.md) | ✅ Done | — |
 | 6 | Health Checks & Auto-Restart | [005](../spec/005-reliability-orchestration/spec.md) | ✅ Done | — |
 
-**What ships:** Process manager, reverse proxy, health checks, auto-restart, auth with API keys, web UI, CLI.
+**What ships:** Process manager, reverse proxy, web terminal, health checks, auto-restart, auth with API keys, web UI, CLI.
 
 **What it replaces:** PM2, Supervisor, systemd units, manual nginx config.
 

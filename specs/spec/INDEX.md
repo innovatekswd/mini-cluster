@@ -12,6 +12,7 @@
 | 000 | [Product Positioning](#000-product-positioning) | 📄 Reference | - |
 | 001 | [File Explorer](#001-file-explorer) | ✅ Implemented | - |
 | 002 | [Routing & Navigation](#002-routing-navigation) | ✅ Implemented | - |
+| — | Console / Terminal | ✅ Implemented | - |
 | 003 | [Authentication](#003-authentication) | ✅ Implemented | - |
 | 004 | [Reverse Proxy](#004-reverse-proxy) | ✅ Implemented | - |
 | 005 | [Reliability & Orchestration](#005-reliability-orchestration) | � MVP Done | 10-14 weeks remaining |
