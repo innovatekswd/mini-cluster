@@ -37,6 +37,7 @@ Each stage expands the audience without breaking the previous one.
 | 7 | Hierarchical Apps & Grouping | [008](../spec/008-hierarchical-apps/spec.md) | 📋 Spec | 3-4 weeks |
 | 8 | Service-Level Versioning | [009](../spec/009-service-versioning/spec.md) | 📋 Spec | 2-3 weeks |
 | 9 | Simple App Tabs | [021](../spec/021-simple-app-tabs/spec.md) | 📋 Spec | 1-2 weeks |
+| 10 | CLI | [015](../spec/015-cli/spec.md) | ✅ Done | — |
 
 **What ships:** Process manager, reverse proxy, health checks, auto-restart, versioning with rollback, hierarchical apps, web UI, CLI.
 
@@ -52,11 +53,10 @@ Each stage expands the audience without breaking the previous one.
 
 | Phase | Feature | Spec | Status | Effort |
 |-------|---------|------|--------|--------|
-| 9 | Discovery & Services | [016](../spec/016-discovery-services/spec.md) | 📋 Spec | 2 weeks |
-| 10 | Identity / OIDC | [017](../spec/017-identity-oidc/spec.md) | 📋 Spec | 3 weeks |
-| 11 | Config Service | [018](../spec/018-config-service/spec.md) | 📋 Spec | 3 weeks |
-| 12 | Registry & Packages | [019](../spec/019-registry/spec.md) | 📋 Spec | 3 weeks |
-| 13 | CLI & DevOps Tooling | [015](../spec/015-cli/spec.md) | ✅ Done | - |
+| 11 | Discovery & Services | [016](../spec/016-discovery-services/spec.md) | 📋 Spec | 2 weeks |
+| 12 | Identity / OIDC | [017](../spec/017-identity-oidc/spec.md) | 📋 Spec | 3 weeks |
+| 13 | Config Service | [018](../spec/018-config-service/spec.md) | 📋 Spec | 3 weeks |
+| 14 | Registry & Packages | [019](../spec/019-registry/spec.md) | 📋 Spec | 3 weeks |
 
 **What ships:** Discovery endpoint, OIDC identity (users, tokens, SSO), pull-based config with convergence, .mcpkg registry, full CLI.
 
@@ -72,11 +72,11 @@ Each stage expands the audience without breaking the previous one.
 
 | Phase | Feature | Spec | Status | Effort |
 |-------|---------|------|--------|--------|
-| 14 | Multi-Node Cluster | [010](../spec/010-multi-node-cluster/spec.md) | 🚧 Phase 0+1 | ~8 weeks |
-| 15 | Cron Scheduling | [011](../spec/011-cron-scheduling/spec.md) | 📋 Spec | 2 weeks |
-| 16 | Container Support | [006](../spec/006-container-support/spec.md) | 📋 Spec | 6-8 weeks |
-| 17 | Auto-Scaling | [020](../spec/020-auto-scaling/spec.md) | 📋 Spec | 6-8 weeks |
-| 18 | Plugin System | [012](../spec/012-plugin-system/spec.md) | 📋 Spec | 12 weeks |
+| 15 | Multi-Node Cluster | [010](../spec/010-multi-node-cluster/spec.md) | 🚧 Phase 0+1 | ~8 weeks |
+| 16 | Cron Scheduling | [011](../spec/011-cron-scheduling/spec.md) | 📋 Spec | 2 weeks |
+| 17 | Container Support | [006](../spec/006-container-support/spec.md) | 📋 Spec | 6-8 weeks |
+| 18 | Auto-Scaling | [020](../spec/020-auto-scaling/spec.md) | 📋 Spec | 6-8 weeks |
+| 19 | Plugin System | [012](../spec/012-plugin-system/spec.md) | 📋 Spec | 12 weeks |
 
 **What ships:** Multi-node clustering with heartbeat/failover, cron scheduling, Docker/Podman as optional runtime, cloud auto-scaling (Hetzner, DO, AWS), open plugin SDK + marketplace.
 
