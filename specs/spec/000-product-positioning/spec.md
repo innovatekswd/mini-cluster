@@ -27,7 +27,7 @@ At the bottom it's a process manager. At the top it's a multi-node, auto-scaling
 │  │  health chk │  │  routes     │  │  one-click  │  │  distribute │       │
 │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘       │
 │                                                                             │
-│  STAGE 2 — THE PLATFORM         (emerge as users grow)                     │
+│  STAGE 2 — THE PLATFORM + CLUSTER (add a second server)                   │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │
 │  │  Discovery  │  │  Identity   │  │  Config     │  │  Registry   │       │
 │  │  ──────────│  │  ──────────│  │  ──────────│  │  ──────────│       │
@@ -36,14 +36,21 @@ At the bottom it's a process manager. At the top it's a multi-node, auto-scaling
 │  │  bootstrap  │  │  SSO, API   │  │  state,     │  │  download,  │       │
 │  │             │  │  tokens     │  │  converge   │  │  lifecycle  │       │
 │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘       │
+│  ┌─────────────┐                                                           │
+│  │  Clustering │                                                           │
+│  │  ──────────│                                                           │
+│  │  Multi-node,│                                                           │
+│  │  heartbeat, │                                                           │
+│  │  failover   │                                                           │
+│  └─────────────┘                                                           │
 │                                                                             │
 │  STAGE 3 — THE FLEET            (scale without switching)                  │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │
-│  │  Clustering │  │  Auto-      │  │  Containers │  │  Plugins    │       │
+│  │  Cron       │  │  Auto-      │  │  Containers │  │  Plugins    │       │
 │  │  ──────────│  │  Scaling    │  │  ──────────│  │  ──────────│       │
-│  │  Multi-node,│  │  ──────────│  │  Docker/    │  │  Open SDK,  │       │
-│  │  heartbeat, │  │  Cloud VMs, │  │  Podman as  │  │  marketplace│       │
-│  │  failover   │  │  scale-to-  │  │  optional   │  │  ecosystem  │       │
+│  │  Scheduled  │  │  ──────────│  │  Docker/    │  │  Open SDK,  │       │
+│  │  jobs, run  │  │  Cloud VMs, │  │  Podman as  │  │  marketplace│       │
+│  │  history    │  │  scale-to-  │  │  optional   │  │  ecosystem  │       │
 │  │             │  │  zero       │  │  runtime    │  │             │       │
 │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘       │
 │                                                                             │
@@ -241,9 +248,9 @@ Each stage expands the audience without breaking the previous one.
 
 ---
 
-### Stage 2 — The Platform ("Grow without switching")
+### Stage 2 — The Platform + Cluster ("Add a second server")
 
-**Emerge as users add their second server or second team member.**
+**Emerge as users add their second server. Platform services and clustering ship together — they're inseparable.**
 
 | Layer | What it enables |
 |-------|----------------|
@@ -251,12 +258,13 @@ Each stage expands the audience without breaking the previous one.
 | Identity (OIDC) | Users, API tokens, SSO, team access control |
 | Config service | Push desired state, agents self-converge |
 | Registry | Central .mcpkg storage, versioned downloads |
+| Multi-node clustering | Heartbeat, failover, workload placement |
 
-**Entry story:** "You added a second server? Run `mc join`. Identity, config, and registry are already built into the binary you installed in Stage 1."
+**Entry story:** "You added a second server? Run `mc join`. The agent discovers, authenticates, pulls config, downloads packages, and converges — automatically."
 
 **Who this reaches:** Teams growing from 1→5 servers, anyone who needs auth or multi-user access, MSPs managing client servers. They discovered MiniCluster as a PM2 replacement and now need platform features.
 
-**Key property:** Zero migration. No new binary, no new config format, no retraining. The platform was always there — it just wasn't needed yet.
+**Key property:** Zero migration. No new binary, no new config format, no retraining. The platform was always there — it just wasn't needed yet. Clustering is the reason the platform services exist.
 
 ---
 
@@ -266,11 +274,10 @@ Each stage expands the audience without breaking the previous one.
 
 | Layer | What it enables |
 |-------|----------------|
-| Multi-node clustering | Heartbeat, failover, workload placement |
+| Scheduling | Cron jobs, dependency chains, run history |
 | Auto-scaling | Cloud VMs on demand (Hetzner, DO, AWS, Azure) |
 | Containers | Docker/Podman as optional runtime type |
 | Plugin ecosystem | Open SDK, marketplace, community extensions |
-| Scheduling | Cron jobs, dependency chains, run history |
 
 **Entry story:** "Traffic spiked. MiniCluster added two Hetzner VMs, deployed your app, and routed traffic — then scaled back to zero when it was over."
 
@@ -283,7 +290,7 @@ Each stage expands the audience without breaking the previous one.
 ```
   Stage 1              Stage 2              Stage 3
   ─────────           ─────────           ─────────
-  PM2 users    ──→    Platform users  ──→  Fleet operators
+  PM2 users    ──→    Multi-server teams ──→  Fleet operators
   1 server            2-10 servers         10-500 servers
   Solo dev            Small team           Growing org
   mc start            mc join              mc scale

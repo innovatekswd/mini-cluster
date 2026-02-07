@@ -10,12 +10,12 @@ MiniCluster ships in **three stages**. Each stage is a complete, useful product.
 Each stage expands the audience without breaking the previous one.
 
 ```
-  Stage 1              Stage 2              Stage 3
-  ─────────           ─────────           ─────────
-  PM2 users    ──→    Platform users  ──→  Fleet operators
-  1 server            2-10 servers         10-500 servers
-  Solo dev            Small team           Growing org
-  mc start            mc join              mc scale
+  Stage 1              Stage 2                   Stage 3
+  ─────────           ─────────                 ─────────
+  PM2 users    ──→    Multi-server teams  ──→   Fleet operators
+  1 server            2-10 servers              10-500 servers
+  Solo dev            Small team                Growing org
+  mc start            mc join                   mc scale
 
   Same binary. Same CLI. Same UI. Same mental model.
 ```
@@ -59,9 +59,9 @@ Each stage expands the audience without breaking the previous one.
 
 ---
 
-## Stage 2 — The Platform
+## Stage 2 — The Platform + Cluster
 
-> **Goal:** Emerge as users add a second server or team member. Zero migration from Stage 1.
+> **Goal:** Add a second server with one command. Discovery, identity, config, registry, and clustering ship together — they're inseparable.
 
 | Phase | Feature | Spec | Status | Effort |
 |-------|---------|------|--------|--------|
@@ -69,12 +69,13 @@ Each stage expands the audience without breaking the previous one.
 | 13 | Identity / OIDC | [017](../spec/017-identity-oidc/spec.md) | 📋 Spec | 3 weeks |
 | 14 | Config Service | [018](../spec/018-config-service/spec.md) | 📋 Spec | 3 weeks |
 | 15 | Registry & Packages | [019](../spec/019-registry/spec.md) | 📋 Spec | 3 weeks |
+| 16 | Multi-Node Cluster | [010](../spec/010-multi-node-cluster/spec.md) | 🚧 Phase 0+1 | ~8 weeks |
 
-**What ships:** Discovery endpoint, OIDC identity (users, tokens, SSO), pull-based config with convergence, .mcpkg registry, full CLI.
+**What ships:** Discovery endpoint, OIDC identity (users, tokens, SSO), pull-based config with convergence, .mcpkg registry, multi-node clustering with heartbeat/failover.
 
-**What it enables:** Multi-user access control, team collaboration, desired-state deployments, package distribution, CI/CD integration.
+**What it enables:** `mc join` adds a server. Agent discovers → authenticates → pulls config → downloads packages → converges. Multi-user access control, desired-state deployments, package distribution.
 
-**Milestone:** `mc join` adds a server. Identity, config, and registry activate automatically.
+**Milestone:** `mc join` adds a server. Everything activates automatically.
 
 ---
 
@@ -84,13 +85,12 @@ Each stage expands the audience without breaking the previous one.
 
 | Phase | Feature | Spec | Status | Effort |
 |-------|---------|------|--------|--------|
-| 16 | Multi-Node Cluster | [010](../spec/010-multi-node-cluster/spec.md) | 🚧 Phase 0+1 | ~8 weeks |
 | 17 | Cron Scheduling | [011](../spec/011-cron-scheduling/spec.md) | 📋 Spec | 2 weeks |
 | 18 | Container Support | [006](../spec/006-container-support/spec.md) | 📋 Spec | 6-8 weeks |
 | 19 | Auto-Scaling | [020](../spec/020-auto-scaling/spec.md) | 📋 Spec | 6-8 weeks |
 | 20 | Plugin System | [012](../spec/012-plugin-system/spec.md) | 📋 Spec | 12 weeks |
 
-**What ships:** Multi-node clustering with heartbeat/failover, cron scheduling, Docker/Podman as optional runtime, cloud auto-scaling (Hetzner, DO, AWS), open plugin SDK + marketplace.
+**What ships:** Cron scheduling, Docker/Podman as optional runtime, cloud auto-scaling (Hetzner, DO, AWS), open plugin SDK + marketplace.
 
 **What it enables:** Fleet management, workload placement, auto-scaling with scale-to-zero, container-native apps alongside process apps, community plugins.
 
