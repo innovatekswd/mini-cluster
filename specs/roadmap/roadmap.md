@@ -51,12 +51,11 @@ Each stage expands the audience without breaking the previous one.
 | 7 | Simple App Tabs | [021](../spec/021-simple-app-tabs/spec.md) | 📋 Spec | 1-2 weeks |
 | 8 | Cron Scheduling | [011](../spec/011-cron-scheduling/spec.md) | 📋 Spec | 2 weeks |
 | 9 | Container Support | [006](../spec/006-container-support/spec.md) | 📋 Spec | 6-8 weeks |
-| 10 | App Versioning & Deployment | [007](../spec/007-app-versioning/spec.md) | 📋 Spec | 4-6 weeks |
-| 11 | Hierarchical Apps & Grouping | [008](../spec/008-hierarchical-apps/spec.md) | 📋 Spec | 3-4 weeks |
-| 12 | Service-Level Versioning | [009](../spec/009-service-versioning/spec.md) | 📋 Spec | 2-3 weeks |
-| 13 | Reliability (full) | [005](../spec/005-reliability-orchestration/spec.md) | 📋 Spec | 8-10 weeks |
+| 10 | Service Versioning & Deployment | [007](../spec/007-app-versioning/spec.md) | 📋 Spec | 3-4 weeks |
+| 11 | Hierarchical Apps | [008](../spec/008-hierarchical-apps/spec.md) | 📋 Spec | 3-4 weeks |
+| 12 | Reliability (remaining) | [005](../spec/005-reliability-orchestration/spec.md) | 📋 Spec | 6-8 weeks |
 
-**What ships:** App grouping, cron scheduling, Docker/Podman containers, versioning with rollback, hierarchical apps, OTLP observability, startup dependency graphs.
+**What ships:** App grouping, cron scheduling, Docker/Podman containers, service versioning with rollback, hierarchical apps, OTLP observability.
 
 **Driven by:** User feedback from MVP. Build what users actually ask for.
 

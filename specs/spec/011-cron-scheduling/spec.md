@@ -23,33 +23,39 @@ Run apps and services on cron schedules. Supports:
 
 ## Data Model
 
+> **Entity alignment:**
+> - `AppId` → FK to `Apps` table (target an app = start/stop all its services)
+> - `ServiceId` → FK to `ControlledApps` table (target a single service)
+> - `GroupId` → FK to `ServiceGroups` table (target all services in a group)
+
 ```csharp
 public class CronJob
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "";
     public string? Description { get; set; }
-    
-    // Target
+
+    // Target — exactly one of these is set based on TargetType
     public CronTarget TargetType { get; set; }
-    public Guid? AppId { get; set; }
-    public Guid? ServiceId { get; set; }
-    public Guid? GroupId { get; set; }  // Run all apps in group
-    
+    public Guid? AppId { get; set; }           // FK → Apps
+    public Guid? ServiceId { get; set; }       // FK → ControlledApps
+    public Guid? GroupId { get; set; }          // FK → ServiceGroups
+    public string? ScriptPath { get; set; }     // For Script target only
+
     // Schedule
     public string CronExpression { get; set; } = "";  // "0 2 * * *" = 2 AM daily
     public string? Timezone { get; set; }  // Default: UTC
-    
+
     // Behavior
     public CronAction Action { get; set; } = CronAction.Start;
     public bool WaitForCompletion { get; set; } = true;
     public int TimeoutSeconds { get; set; } = 3600;  // 1 hour
     public CronMissedPolicy MissedPolicy { get; set; } = CronMissedPolicy.RunOnce;
-    
+
     // Chain
     public Guid? DependsOnJobId { get; set; }  // Run after this job completes
     public CronJob? DependsOnJob { get; set; }
-    
+
     // State
     public bool IsEnabled { get; set; } = true;
     public DateTime? LastRun { get; set; }
@@ -62,10 +68,10 @@ public class CronJob
 
 public enum CronTarget
 {
-    App = 0,
-    Service = 1,
-    Group = 2,
-    Script = 3
+    App = 0,        // Target an App (all its services)
+    Service = 1,    // Target a single Service
+    Group = 2,      // Target a ServiceGroup (all assigned services)
+    Script = 3      // Run a shell script via ScriptPath
 }
 
 public enum CronAction
@@ -74,7 +80,7 @@ public enum CronAction
     Run = 1,        // Start, wait for exit
     Restart = 2,    // Stop then start
     Stop = 3,       // Stop if running
-    Script = 4      // Run custom script
+    Script = 4      // Run ScriptPath directly
 }
 
 public enum CronMissedPolicy
@@ -99,19 +105,118 @@ public class CronJobRun
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid JobId { get; set; }
     public CronJob Job { get; set; } = null!;
-    
+
     public DateTime ScheduledFor { get; set; }
     public DateTime StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
-    
+
     public CronRunStatus Status { get; set; }
     public int? ExitCode { get; set; }
     public string? Output { get; set; }
     public string? Error { get; set; }
-    
+
     public TimeSpan? Duration => CompletedAt - StartedAt;
 }
 ```
+
+---
+
+## DTOs
+
+```csharp
+public class CreateCronJobDto
+{
+    [Required, MaxLength(200)]
+    public string Name { get; set; } = "";
+    public string? Description { get; set; }
+
+    [Required]
+    public CronTarget TargetType { get; set; }
+    public Guid? AppId { get; set; }
+    public Guid? ServiceId { get; set; }
+    public Guid? GroupId { get; set; }
+    public string? ScriptPath { get; set; }
+
+    [Required]
+    public string CronExpression { get; set; } = "";
+    public string? Timezone { get; set; }
+
+    public CronAction Action { get; set; } = CronAction.Start;
+    public bool WaitForCompletion { get; set; } = true;
+    public int TimeoutSeconds { get; set; } = 3600;
+    public CronMissedPolicy MissedPolicy { get; set; } = CronMissedPolicy.RunOnce;
+    public Guid? DependsOnJobId { get; set; }
+}
+
+public class UpdateCronJobDto
+{
+    [MaxLength(200)]
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+
+    public CronTarget? TargetType { get; set; }
+    public Guid? AppId { get; set; }
+    public Guid? ServiceId { get; set; }
+    public Guid? GroupId { get; set; }
+    public string? ScriptPath { get; set; }
+
+    public string? CronExpression { get; set; }
+    public string? Timezone { get; set; }
+
+    public CronAction? Action { get; set; }
+    public bool? WaitForCompletion { get; set; }
+    public int? TimeoutSeconds { get; set; }
+    public CronMissedPolicy? MissedPolicy { get; set; }
+    public Guid? DependsOnJobId { get; set; }
+}
+
+public class CronJobResponseDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = "";
+    public string? Description { get; set; }
+
+    public CronTarget TargetType { get; set; }
+    public string? TargetName { get; set; }  // Resolved name of app/service/group
+    public Guid? AppId { get; set; }
+    public Guid? ServiceId { get; set; }
+    public Guid? GroupId { get; set; }
+    public string? ScriptPath { get; set; }
+
+    public string CronExpression { get; set; } = "";
+    public string? CronDescription { get; set; }  // Human-readable: "Every day at 2 AM"
+    public string? Timezone { get; set; }
+    public CronAction Action { get; set; }
+    public int TimeoutSeconds { get; set; }
+    public CronMissedPolicy MissedPolicy { get; set; }
+
+    public bool IsEnabled { get; set; }
+    public DateTime? LastRun { get; set; }
+    public DateTime? NextRun { get; set; }
+    public CronRunStatus LastRunStatus { get; set; }
+    public int TotalRuns { get; set; }
+    public int FailedRuns { get; set; }
+
+    public Guid? DependsOnJobId { get; set; }
+    public string? DependsOnJobName { get; set; }
+}
+
+public class CronJobRunResponseDto
+{
+    public Guid Id { get; set; }
+    public Guid JobId { get; set; }
+    public DateTime ScheduledFor { get; set; }
+    public DateTime StartedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public CronRunStatus Status { get; set; }
+    public int? ExitCode { get; set; }
+    public string? Output { get; set; }
+    public string? Error { get; set; }
+    public double? DurationSeconds { get; set; }
+}
+```
+
+---
 
 ## Scheduler Service
 
@@ -123,23 +228,23 @@ public class CronSchedulerService : BackgroundService
         while (!ct.IsCancellationRequested)
         {
             var now = DateTime.UtcNow;
-            
+
             // Find due jobs
             var dueJobs = await _db.CronJobs
                 .Where(j => j.IsEnabled && j.NextRun <= now)
-                .Where(j => j.DependsOnJobId == null || 
-                           j.DependsOnJob.LastRunStatus == CronRunStatus.Success)
+                .Where(j => j.DependsOnJobId == null ||
+                           j.DependsOnJob!.LastRunStatus == CronRunStatus.Success)
                 .ToListAsync(ct);
-            
+
             foreach (var job in dueJobs)
             {
                 _ = ExecuteJobAsync(job, ct);  // Fire and forget
             }
-            
+
             await Task.Delay(TimeSpan.FromSeconds(10), ct);
         }
     }
-    
+
     private async Task ExecuteJobAsync(CronJob job, CancellationToken ct)
     {
         var run = new CronJobRun
@@ -151,34 +256,40 @@ public class CronSchedulerService : BackgroundService
         };
         _db.CronJobRuns.Add(run);
         await _db.SaveChangesAsync(ct);
-        
+
         try
         {
             var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(job.TimeoutSeconds));
-            
+
             switch (job.Action)
             {
                 case CronAction.Start:
                     await StartTargetAsync(job, cts.Token);
                     break;
-                    
+
                 case CronAction.Run:
                     var result = await RunTargetAsync(job, cts.Token);
                     run.ExitCode = result.ExitCode;
                     run.Output = result.Output;
                     break;
-                    
+
                 case CronAction.Restart:
                     await StopTargetAsync(job, cts.Token);
                     await StartTargetAsync(job, cts.Token);
                     break;
-                    
+
                 case CronAction.Stop:
                     await StopTargetAsync(job, cts.Token);
                     break;
+
+                case CronAction.Script:
+                    var scriptResult = await RunScriptAsync(job.ScriptPath!, cts.Token);
+                    run.ExitCode = scriptResult.ExitCode;
+                    run.Output = scriptResult.Output;
+                    break;
             }
-            
+
             run.Status = CronRunStatus.Success;
         }
         catch (OperationCanceledException)
@@ -199,20 +310,34 @@ public class CronSchedulerService : BackgroundService
             job.NextRun = CalculateNextRun(job);
             job.TotalRuns++;
             await _db.SaveChangesAsync(ct);
-            
+
             // Trigger dependent jobs
             await TriggerDependentJobsAsync(job, ct);
         }
     }
-    
+
     private DateTime CalculateNextRun(CronJob job)
     {
         var cron = CronExpression.Parse(job.CronExpression);
         var tz = TimeZoneInfo.FindSystemTimeZoneById(job.Timezone ?? "UTC");
         return cron.GetNextOccurrence(DateTime.UtcNow, tz)!.Value;
     }
+
+    /// <summary>
+    /// Script execution is sandboxed: ScriptPath must be an absolute path
+    /// within a configured allowed directory. No shell expansion.
+    /// </summary>
+    private async Task<(int ExitCode, string Output)> RunScriptAsync(
+        string scriptPath, CancellationToken ct)
+    {
+        // Validate path is within allowed script directory
+        // Execute via Process.Start with no shell
+        throw new NotImplementedException();
+    }
 }
 ```
+
+---
 
 ## API Endpoints
 
@@ -229,12 +354,109 @@ public class CronSchedulerService : BackgroundService
 | GET | `/api/cron/{id}/runs` | Get run history |
 | GET | `/api/cron/{id}/runs/{runId}` | Get run details |
 
+---
+
+## Cron Expression Reference
+
+| Expression | Description |
+|------------|-------------|
+| `* * * * *` | Every minute |
+| `0 * * * *` | Every hour |
+| `0 2 * * *` | Daily at 2 AM |
+| `0 2 * * 0` | Sunday at 2 AM |
+| `0 0 1 * *` | First of month |
+| `*/5 * * * *` | Every 5 minutes |
+| `0 9-17 * * 1-5` | Hourly 9-5 weekdays |
+
+---
+
+## Database Migration
+
+```csharp
+public partial class AddCronScheduling : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.CreateTable(
+            name: "CronJobs",
+            columns: table => new
+            {
+                Id = table.Column<Guid>(nullable: false),
+                Name = table.Column<string>(maxLength: 200, nullable: false),
+                Description = table.Column<string>(nullable: true),
+                TargetType = table.Column<int>(nullable: false),
+                AppId = table.Column<Guid>(nullable: true),
+                ServiceId = table.Column<Guid>(nullable: true),
+                GroupId = table.Column<Guid>(nullable: true),
+                ScriptPath = table.Column<string>(maxLength: 500, nullable: true),
+                CronExpression = table.Column<string>(maxLength: 100, nullable: false),
+                Timezone = table.Column<string>(maxLength: 50, nullable: true),
+                Action = table.Column<int>(nullable: false),
+                WaitForCompletion = table.Column<bool>(nullable: false),
+                TimeoutSeconds = table.Column<int>(nullable: false),
+                MissedPolicy = table.Column<int>(nullable: false),
+                DependsOnJobId = table.Column<Guid>(nullable: true),
+                IsEnabled = table.Column<bool>(nullable: false),
+                LastRun = table.Column<DateTime>(nullable: true),
+                NextRun = table.Column<DateTime>(nullable: true),
+                LastRunStatus = table.Column<int>(nullable: false),
+                LastRunError = table.Column<string>(nullable: true),
+                TotalRuns = table.Column<int>(nullable: false),
+                FailedRuns = table.Column<int>(nullable: false)
+            },
+            constraints: table =>
+            {
+                table.PrimaryKey("PK_CronJobs", x => x.Id);
+                table.ForeignKey("FK_CronJobs_Apps",
+                    x => x.AppId, "Apps", "Id",
+                    onDelete: ReferentialAction.SetNull);
+                table.ForeignKey("FK_CronJobs_Services",
+                    x => x.ServiceId, "ControlledApps", "Id",
+                    onDelete: ReferentialAction.SetNull);
+                table.ForeignKey("FK_CronJobs_ServiceGroups",
+                    x => x.GroupId, "ServiceGroups", "Id",
+                    onDelete: ReferentialAction.SetNull);
+                table.ForeignKey("FK_CronJobs_DependsOn",
+                    x => x.DependsOnJobId, "CronJobs", "Id",
+                    onDelete: ReferentialAction.SetNull);
+            });
+
+        migrationBuilder.CreateTable(
+            name: "CronJobRuns",
+            columns: table => new
+            {
+                Id = table.Column<Guid>(nullable: false),
+                JobId = table.Column<Guid>(nullable: false),
+                ScheduledFor = table.Column<DateTime>(nullable: false),
+                StartedAt = table.Column<DateTime>(nullable: false),
+                CompletedAt = table.Column<DateTime>(nullable: true),
+                Status = table.Column<int>(nullable: false),
+                ExitCode = table.Column<int>(nullable: true),
+                Output = table.Column<string>(nullable: true),
+                Error = table.Column<string>(nullable: true)
+            },
+            constraints: table =>
+            {
+                table.PrimaryKey("PK_CronJobRuns", x => x.Id);
+                table.ForeignKey("FK_CronJobRuns_Jobs",
+                    x => x.JobId, "CronJobs", "Id",
+                    onDelete: ReferentialAction.Cascade);
+            });
+
+        migrationBuilder.CreateIndex("IX_CronJobs_NextRun", "CronJobs", "NextRun");
+        migrationBuilder.CreateIndex("IX_CronJobRuns_JobId", "CronJobRuns", "JobId");
+    }
+}
+```
+
+---
+
 ## UI Components
 
 ```tsx
 function CronJobsList() {
   const { data: jobs } = useCronJobs();
-  
+
   return (
     <Table>
       <thead>
@@ -269,127 +491,43 @@ function CronJobsList() {
     </Table>
   );
 }
-
-function CronJobForm({ job }: { job?: CronJob }) {
-  return (
-    <Form>
-      <Field label="Name" name="name" required />
-      <Field label="Cron Expression" name="cronExpression" required 
-             help="e.g., '0 2 * * *' for daily at 2 AM" />
-      <Field label="Timezone" name="timezone" component={TimezoneSelect} />
-      
-      <Field label="Target Type" name="targetType" component={Select}>
-        <option value="app">App</option>
-        <option value="service">Service</option>
-        <option value="group">Group</option>
-      </Field>
-      
-      <Field label="Action" name="action" component={Select}>
-        <option value="start">Start</option>
-        <option value="run">Run (wait for exit)</option>
-        <option value="restart">Restart</option>
-        <option value="stop">Stop</option>
-      </Field>
-      
-      <Field label="Timeout (seconds)" name="timeoutSeconds" type="number" />
-      <Field label="Depends On" name="dependsOnJobId" component={JobSelect} />
-    </Form>
-  );
-}
-
-function CronScheduleVisualizer({ expression }: { expression: string }) {
-  const next5 = useMemo(() => getNext5Occurrences(expression), [expression]);
-  
-  return (
-    <div className="schedule-preview">
-      <p>Next runs:</p>
-      <ul>
-        {next5.map((date, i) => (
-          <li key={i}>{formatDate(date)}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
 ```
 
-## Cron Expression Reference
+---
 
-| Expression | Description |
-|------------|-------------|
-| `* * * * *` | Every minute |
-| `0 * * * *` | Every hour |
-| `0 2 * * *` | Daily at 2 AM |
-| `0 2 * * 0` | Sunday at 2 AM |
-| `0 0 1 * *` | First of month |
-| `*/5 * * * *` | Every 5 minutes |
-| `0 9-17 * * 1-5` | Hourly 9-5 weekdays |
+## Implementation Phases
 
-## Migration
+### Phase 1: Core Scheduler (1.5 weeks)
+- [ ] `CronJob` + `CronJobRun` entities and migration
+- [ ] `CronSchedulerService` (BackgroundService)
+- [ ] CRUD endpoints for cron jobs
+- [ ] Manual trigger endpoint
+- [ ] Run history endpoints
+- [ ] Cron expression parsing (Cronos NuGet package)
 
-```csharp
-public partial class AddCronScheduling : Migration
-{
-    protected override void Up(MigrationBuilder migrationBuilder)
-    {
-        migrationBuilder.CreateTable(
-            name: "CronJobs",
-            columns: table => new
-            {
-                Id = table.Column<Guid>(nullable: false),
-                Name = table.Column<string>(maxLength: 200, nullable: false),
-                Description = table.Column<string>(nullable: true),
-                TargetType = table.Column<int>(nullable: false),
-                AppId = table.Column<Guid>(nullable: true),
-                ServiceId = table.Column<Guid>(nullable: true),
-                GroupId = table.Column<Guid>(nullable: true),
-                CronExpression = table.Column<string>(maxLength: 100, nullable: false),
-                Timezone = table.Column<string>(maxLength: 50, nullable: true),
-                Action = table.Column<int>(nullable: false),
-                WaitForCompletion = table.Column<bool>(nullable: false),
-                TimeoutSeconds = table.Column<int>(nullable: false),
-                MissedPolicy = table.Column<int>(nullable: false),
-                DependsOnJobId = table.Column<Guid>(nullable: true),
-                IsEnabled = table.Column<bool>(nullable: false),
-                LastRun = table.Column<DateTime>(nullable: true),
-                NextRun = table.Column<DateTime>(nullable: true),
-                LastRunStatus = table.Column<int>(nullable: false),
-                LastRunError = table.Column<string>(nullable: true),
-                TotalRuns = table.Column<int>(nullable: false),
-                FailedRuns = table.Column<int>(nullable: false)
-            },
-            constraints: table =>
-            {
-                table.PrimaryKey("PK_CronJobs", x => x.Id);
-                table.ForeignKey("FK_CronJobs_DependsOn", x => x.DependsOnJobId,
-                    "CronJobs", "Id", onDelete: ReferentialAction.SetNull);
-            });
+### Phase 2: Advanced Features (0.5 weeks)
+- [ ] Dependency chaining
+- [ ] Missed schedule handling
+- [ ] Script target (with sandboxing)
+- [ ] SignalR notifications for job start/complete
 
-        migrationBuilder.CreateTable(
-            name: "CronJobRuns",
-            columns: table => new
-            {
-                Id = table.Column<Guid>(nullable: false),
-                JobId = table.Column<Guid>(nullable: false),
-                ScheduledFor = table.Column<DateTime>(nullable: false),
-                StartedAt = table.Column<DateTime>(nullable: false),
-                CompletedAt = table.Column<DateTime>(nullable: true),
-                Status = table.Column<int>(nullable: false),
-                ExitCode = table.Column<int>(nullable: true),
-                Output = table.Column<string>(nullable: true),
-                Error = table.Column<string>(nullable: true)
-            },
-            constraints: table =>
-            {
-                table.PrimaryKey("PK_CronJobRuns", x => x.Id);
-                table.ForeignKey("FK_CronJobRuns_Jobs", x => x.JobId,
-                    "CronJobs", "Id", onDelete: ReferentialAction.Cascade);
-            });
-    }
-}
-```
+### Phase 3: UI (1 week)
+- [ ] Cron jobs list view
+- [ ] Create/edit form with schedule preview
+- [ ] Run history view with output
+- [ ] Job dependency visualization
 
-## Estimated Effort: 2 weeks
+---
+
+## Estimated Effort: 2-3 weeks
 
 ## Dependencies
-- Feature 008 (Groups) - for group targeting
+
+- ServiceGroups already exist for group targeting — no feature dependency
+- Feature 005 (health checks) — ✅ Done (used by target resolution)
+
+## Notes
+
+- `GroupId` references the existing `ServiceGroups` table (not a new entity)
+- `ScriptPath` for `CronTarget.Script` must be validated against an allowed directory whitelist to prevent arbitrary command execution
+- Uses [Cronos](https://github.com/HangfireIO/Cronos) NuGet package for cron expression parsing

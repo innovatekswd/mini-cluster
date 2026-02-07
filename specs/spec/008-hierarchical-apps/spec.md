@@ -1,298 +1,231 @@
-# Feature 008: Hierarchical Apps & Grouping
+# Feature 008: Hierarchical Apps (Nested App Groups)
+
+> **Simplified** — uses existing `ServiceGroup` for tag hierarchy, adds `ParentAppId` to `App` for nested apps.
 
 ## Overview
 
-Transform MiniCluster from flat app lists to a **tree-based hierarchy** where:
-- **Apps can contain other apps** (composite applications)
-- **Services are processes** within an app
-- **Groups organize** apps logically
-- Operations cascade through the tree
+Allow apps to be nested inside other apps, creating a tree structure. A "parent app" contains child apps, each with their own services. This enables modeling complex deployments like microservice stacks (e.g., an "E-Commerce" parent app containing "Frontend", "API", "Database" child apps).
+
+**Key principle:** No new entities for grouping — we use existing `App` (flat group) and `ServiceGroup` (tag hierarchy). This feature only adds `ParentAppId` to `App` to enable nesting.
 
 ---
 
-## Business Value
+## What Already Exists (No Changes Needed)
 
-| Problem | Current | Solution |
-|---------|---------|----------|
-| Microservices sprawl | Flat list of 50+ apps | Tree structure, nested apps |
-| "Start the e-commerce system" | Start 10 apps manually | Start parent, children follow |
-| Environment separation | Naming conventions | Groups with inheritance |
-| Shared config | Copy-paste env vars | Inherit from parent |
+| Entity | Purpose | Status |
+|--------|---------|--------|
+| `App` | Flat grouping container for services | ✅ Exists |
+| `Service` | Runnable process (table: `ControlledApps`) | ✅ Exists |
+| `ServiceGroup` | Hierarchical tagging (already has `ParentGroupId`) | ✅ Exists |
+| `ServiceGroupAssignment` | Many-to-many join (Service ↔ ServiceGroup) | ✅ Exists |
+| `GroupVariable` | Inherited variables at group level | ✅ Exists |
 
 ---
 
-## Data Model
+## Data Model Changes
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    HIERARCHY STRUCTURE                           │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  GROUP: "Production"                                            │
-│  ├── APP: "E-Commerce Platform" (composite)                     │
-│  │   ├── SERVICE: "API Gateway"         ← process               │
-│  │   ├── SERVICE: "Product Service"     ← process               │
-│  │   ├── APP: "Order System" (composite)                        │
-│  │   │   ├── SERVICE: "Order API"                               │
-│  │   │   ├── SERVICE: "Order Worker"                            │
-│  │   │   └── SERVICE: "Order DB"                                │
-│  │   └── APP: "Payment System"                                  │
-│  │       ├── SERVICE: "Payment API"                             │
-│  │       └── SERVICE: "Payment Worker"                          │
-│  │                                                              │
-│  └── APP: "Monitoring Stack"                                    │
-│      ├── SERVICE: "Seq"                                         │
-│      ├── SERVICE: "Grafana"                                     │
-│      └── SERVICE: "Prometheus"                                  │
-│                                                                  │
-│  GROUP: "Development"                                           │
-│  └── ...                                                        │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## Entities
+### Only Change: Add `ParentAppId` to `App`
 
 ```csharp
-public class AppGroup
-{
-    public Guid Id { get; set; } = Guid.NewGuid();
-    public string Name { get; set; } = "";
-    public string? Description { get; set; }
-    public string? Color { get; set; }  // UI visual
-    public int SortOrder { get; set; }
-    
-    // Hierarchy
-    public Guid? ParentGroupId { get; set; }
-    public AppGroup? ParentGroup { get; set; }
-    public ICollection<AppGroup> ChildGroups { get; set; } = new List<AppGroup>();
-    public ICollection<App> Apps { get; set; } = new List<App>();
-    
-    // Inherited settings
-    public Dictionary<string, string> Variables { get; set; } = new();
-    public RestartPolicy? DefaultRestartPolicy { get; set; }
-}
-
-public class App
-{
-    // Existing fields...
-    
-    // Hierarchy - NEW
-    public Guid? ParentAppId { get; set; }
-    public App? ParentApp { get; set; }
-    public ICollection<App> ChildApps { get; set; } = new List<App>();
-    
-    // Grouping - NEW
-    public Guid? GroupId { get; set; }
-    public AppGroup? Group { get; set; }
-    
-    // Type
-    public AppType Type { get; set; } = AppType.Process;
-    
-    // Services (processes) if composite
-    public ICollection<AppService> Services { get; set; } = new List<AppService>();
-}
-
-public enum AppType
-{
-    Process = 0,     // Single process (leaf node)
-    Composite = 1,   // Contains child apps/services
-    Container = 2    // Docker container
-}
-
-public class AppService
-{
-    public Guid Id { get; set; } = Guid.NewGuid();
-    public Guid AppId { get; set; }
-    public App App { get; set; } = null!;
-    
-    public string Name { get; set; } = "";
-    public int Order { get; set; }
-    
-    // Process config
-    public string Command { get; set; } = "";
-    public string? Args { get; set; }
-    public string? WorkingDirectory { get; set; }
-    public Dictionary<string, string> Environment { get; set; } = new();
-    
-    // Runtime
-    public ProcessStatus Status { get; set; }
-    public int? ProcessId { get; set; }
-}
+// In existing App.cs — add these two properties:
+public Guid? ParentAppId { get; set; }
+public App? ParentApp { get; set; }
+public ICollection<App> ChildApps { get; set; } = new List<App>();
 ```
 
-## Cascade Operations
+This creates an `App` tree:
+```
+E-Commerce (App, ParentAppId = null)
+├── Frontend (App, ParentAppId = E-Commerce.Id)
+│   ├── React-App (Service)
+│   └── CDN-Proxy (Service)
+├── API (App, ParentAppId = E-Commerce.Id)
+│   ├── REST-Server (Service)
+│   └── GraphQL-Server (Service)
+└── Database (App, ParentAppId = E-Commerce.Id)
+    ├── PostgreSQL (Service)
+    └── Redis (Service)
+```
+
+---
+
+## App Tree Service
 
 ```csharp
 public interface IAppTreeService
 {
-    // Start/Stop cascade through children
-    Task StartTreeAsync(Guid appId, CancellationToken ct);
-    Task StopTreeAsync(Guid appId, CancellationToken ct);
-    
-    // Get flattened list respecting order
-    Task<List<App>> GetStartupOrderAsync(Guid appId, CancellationToken ct);
-    
-    // Variable inheritance
-    Dictionary<string, string> ResolveVariables(App app);
-}
+    // Tree queries
+    Task<List<AppTreeNodeDto>> GetAppTreeAsync(CancellationToken ct);
+    Task<AppTreeNodeDto?> GetAppSubtreeAsync(Guid appId, CancellationToken ct);
+    Task<List<App>> GetRootAppsAsync(CancellationToken ct);
+    Task<List<App>> GetChildAppsAsync(Guid parentAppId, CancellationToken ct);
+    Task<List<Guid>> GetAncestorIdsAsync(Guid appId, CancellationToken ct);
 
-public class AppTreeService : IAppTreeService
-{
-    public async Task StartTreeAsync(Guid appId, CancellationToken ct)
-    {
-        var app = await GetAppWithChildrenAsync(appId, ct);
-        
-        // Start services first (in order)
-        foreach (var service in app.Services.OrderBy(s => s.Order))
-        {
-            await _processManager.StartServiceAsync(service, ct);
-            if (service.HealthCheck != null)
-                await WaitForHealthyAsync(service, ct);
-        }
-        
-        // Then start child apps (respecting dependencies)
-        var children = await GetStartupOrderAsync(appId, ct);
-        foreach (var child in children)
-        {
-            await StartTreeAsync(child.Id, ct);
-        }
-    }
-    
-    public Dictionary<string, string> ResolveVariables(App app)
-    {
-        var vars = new Dictionary<string, string>();
-        
-        // Group variables (inherited)
-        if (app.Group != null)
-            MergeVariables(vars, GetGroupVariables(app.Group));
-        
-        // Parent app variables
-        if (app.ParentApp != null)
-            MergeVariables(vars, ResolveVariables(app.ParentApp));
-        
-        // Own variables (highest priority)
-        MergeVariables(vars, app.Variables);
-        
-        return vars;
-    }
+    // Tree mutations
+    Task MoveAppAsync(Guid appId, Guid? newParentAppId, CancellationToken ct);
+    Task ReorderChildrenAsync(Guid parentAppId, List<Guid> orderedChildIds, CancellationToken ct);
+
+    // Cascade operations
+    Task StartAppTreeAsync(Guid appId, CancellationToken ct);
+    Task StopAppTreeAsync(Guid appId, CancellationToken ct);
+    Task RestartAppTreeAsync(Guid appId, CancellationToken ct);
 }
 ```
+
+---
+
+## DTOs
+
+```csharp
+public class AppTreeNodeDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = "";
+    public string? Slug { get; set; }
+    public string? Icon { get; set; }
+    public string? Color { get; set; }
+    public Guid? ParentAppId { get; set; }
+    public int SortOrder { get; set; }
+
+    // Aggregated from all services in this app (and children)
+    public int TotalServices { get; set; }
+    public int RunningServices { get; set; }
+    public int StoppedServices { get; set; }
+    public int ErrorServices { get; set; }
+
+    public List<ServiceSummaryDto> Services { get; set; } = new();
+    public List<AppTreeNodeDto> Children { get; set; } = new();
+}
+
+public class ServiceSummaryDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = "";
+    public string Status { get; set; } = "";
+}
+
+public class MoveAppDto
+{
+    public Guid? NewParentAppId { get; set; }
+}
+
+public class ReorderChildrenDto
+{
+    public List<Guid> OrderedChildIds { get; set; } = new();
+}
+```
+
+---
 
 ## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| **Groups** |||
-| GET | `/api/groups` | List all groups (tree) |
-| POST | `/api/groups` | Create group |
-| PUT | `/api/groups/{id}` | Update group |
-| DELETE | `/api/groups/{id}` | Delete group |
-| POST | `/api/groups/{id}/move` | Move group in tree |
-| **Tree Operations** |||
-| GET | `/api/apps/{id}/tree` | Get app with children |
-| POST | `/api/apps/{id}/tree/start` | Start app and all children |
-| POST | `/api/apps/{id}/tree/stop` | Stop app and all children |
-| POST | `/api/apps/{id}/move` | Move app to group/parent |
-| **Services** |||
-| GET | `/api/apps/{id}/services` | List services |
-| POST | `/api/apps/{id}/services` | Add service |
-| PUT | `/api/services/{id}` | Update service |
-| DELETE | `/api/services/{id}` | Delete service |
-| POST | `/api/services/{id}/start` | Start single service |
+| GET | `/api/apps/tree` | Full app tree (root apps with nested children) |
+| GET | `/api/apps/{id}/subtree` | Subtree for one app |
+| GET | `/api/apps/{id}/children` | Direct children only |
+| PUT | `/api/apps/{id}/move` | Move app to new parent |
+| PUT | `/api/apps/{id}/children/reorder` | Reorder children |
+| POST | `/api/apps/{id}/tree/start` | Start all services in app tree |
+| POST | `/api/apps/{id}/tree/stop` | Stop all services in app tree |
+| POST | `/api/apps/{id}/tree/restart` | Restart all services in app tree |
 
-## UI: Tree View
+---
 
-```tsx
-function AppTree() {
-  const { data: tree } = useAppTree();
-  
-  return (
-    <TreeView>
-      {tree.groups.map(group => (
-        <GroupNode key={group.id} group={group}>
-          {group.apps.map(app => (
-            <AppNode key={app.id} app={app} />
-          ))}
-        </GroupNode>
-      ))}
-    </TreeView>
-  );
-}
-
-function AppNode({ app }: { app: App }) {
-  return (
-    <TreeItem 
-      icon={app.type === 'composite' ? <FolderIcon /> : <ProcessIcon />}
-      label={app.name}
-      status={app.status}
-      actions={<AppActions app={app} />}
-    >
-      {app.services?.map(svc => (
-        <ServiceNode key={svc.id} service={svc} />
-      ))}
-      {app.childApps?.map(child => (
-        <AppNode key={child.id} app={child} />
-      ))}
-    </TreeItem>
-  );
-}
-```
-
-## Migration
+## Database Migration
 
 ```csharp
 public partial class AddHierarchicalApps : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.CreateTable(
-            name: "AppGroups",
-            columns: table => new
-            {
-                Id = table.Column<Guid>(nullable: false),
-                Name = table.Column<string>(maxLength: 200, nullable: false),
-                Description = table.Column<string>(nullable: true),
-                Color = table.Column<string>(maxLength: 20, nullable: true),
-                SortOrder = table.Column<int>(nullable: false, defaultValue: 0),
-                ParentGroupId = table.Column<Guid>(nullable: true),
-                Variables = table.Column<string>(nullable: true),
-                DefaultRestartPolicy = table.Column<int>(nullable: true)
-            },
-            constraints: table =>
-            {
-                table.PrimaryKey("PK_AppGroups", x => x.Id);
-                table.ForeignKey("FK_AppGroups_Parent", x => x.ParentGroupId,
-                    "AppGroups", "Id", onDelete: ReferentialAction.Restrict);
-            });
+        migrationBuilder.AddColumn<Guid>(
+            name: "ParentAppId",
+            table: "Apps",
+            nullable: true);
 
-        migrationBuilder.AddColumn<Guid>("ParentAppId", "Apps", nullable: true);
-        migrationBuilder.AddColumn<Guid>("GroupId", "Apps", nullable: true);
-        migrationBuilder.AddColumn<int>("Type", "Apps", nullable: false, defaultValue: 0);
+        migrationBuilder.CreateIndex(
+            name: "IX_Apps_ParentAppId",
+            table: "Apps",
+            column: "ParentAppId");
 
-        migrationBuilder.CreateTable(
-            name: "AppServices",
-            columns: table => new
-            {
-                Id = table.Column<Guid>(nullable: false),
-                AppId = table.Column<Guid>(nullable: false),
-                Name = table.Column<string>(maxLength: 200, nullable: false),
-                Order = table.Column<int>(nullable: false, defaultValue: 0),
-                Command = table.Column<string>(nullable: false),
-                Args = table.Column<string>(nullable: true),
-                WorkingDirectory = table.Column<string>(nullable: true),
-                Environment = table.Column<string>(nullable: true),
-                Status = table.Column<int>(nullable: false, defaultValue: 0),
-                ProcessId = table.Column<int>(nullable: true)
-            },
-            constraints: table =>
-            {
-                table.PrimaryKey("PK_AppServices", x => x.Id);
-                table.ForeignKey("FK_AppServices_Apps", x => x.AppId,
-                    "Apps", "Id", onDelete: ReferentialAction.Cascade);
-            });
+        migrationBuilder.AddForeignKey(
+            name: "FK_Apps_Apps_ParentAppId",
+            table: "Apps",
+            column: "ParentAppId",
+            principalTable: "Apps",
+            principalColumn: "Id",
+            onDelete: ReferentialAction.Restrict);
     }
 }
 ```
 
+---
+
+## Cascade Logic
+
+### Start Tree
+1. Collect all apps in subtree (BFS/DFS)
+2. Collect all services from those apps
+3. Start in dependency order: deepest children first (leaves → root)
+
+### Stop Tree
+1. Collect all apps in subtree
+2. Stop in reverse order: root → leaves (parent stops last)
+
+### Cycle Detection
+Before moving an app, ensure the target parent is not a descendant of the app being moved:
+```csharp
+var ancestors = await GetAncestorIdsAsync(newParentId);
+if (ancestors.Contains(appId))
+    throw new InvalidOperationException("Cannot move app into its own subtree");
+```
+
+---
+
+## UI Components
+
+### Tree View
+- Collapsible tree sidebar showing app hierarchy
+- Each node shows: icon, name, service count badge, status indicator
+- Drag-and-drop to rearrange (calls move/reorder endpoints)
+
+### Breadcrumb Navigation
+- When viewing a nested app: `E-Commerce > API > REST-Server`
+- Click any segment to navigate up
+
+---
+
+## Implementation Phases
+
+### Phase 1: Core Hierarchy (1-2 weeks)
+- [ ] Add `ParentAppId` column + migration
+- [ ] `IAppTreeService` implementation
+- [ ] Tree query endpoints (GET tree, subtree, children)
+- [ ] Move + reorder endpoints
+- [ ] Cycle detection
+
+### Phase 2: Cascade Operations (1 week)
+- [ ] Cascade start/stop/restart
+- [ ] DFS ordering for start (leaves first) and stop (root first)
+- [ ] SignalR notifications for tree status changes
+
+### Phase 3: UI (1 week)
+- [ ] Tree view sidebar component
+- [ ] Breadcrumb navigation
+- [ ] Drag-and-drop reordering
+- [ ] Bulk status indicators
+
+---
+
 ## Estimated Effort: 3-4 weeks
+
+## Dependencies
+
+- Feature 021 (Simple App Tabs) — ✅ Done (apps already exist as groups)
+
+## Notes
+
+- `ServiceGroup` is NOT affected — it remains a separate tagging/grouping system (many-to-many with services, variable inheritance). It serves a different purpose than app hierarchy.
+- No new `AppGroup` or `AppService` entities — those were removed as they duplicated existing entities.
+- `ParentAppId` uses `ReferentialAction.Restrict` to prevent cascade-deleting child apps when a parent is deleted. Users must reassign or delete children first.

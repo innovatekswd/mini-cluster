@@ -15,11 +15,11 @@
 | — | Console / Terminal | ✅ Implemented | - |
 | 003 | [Authentication](#003-authentication) | ✅ Implemented | - |
 | 004 | [Reverse Proxy](#004-reverse-proxy) | ✅ Implemented | - |
-| 005 | [Reliability & Orchestration](#005-reliability-orchestration) | � MVP Done | 10-14 weeks remaining |
+| 005 | [Reliability & Orchestration](#005-reliability-orchestration) | 🔶 Part 1 Done | Parts 4+5 future |
 | 006 | [Container Support](#006-container-support) | 📋 Spec Ready | 6-8 weeks |
-| 007 | [App Versioning & Deployment](#007-app-versioning) | 📋 Spec Ready | 4-6 weeks |
-| 008 | [Hierarchical Apps & Grouping](#008-hierarchical-apps) | 📋 Spec Ready | 3-4 weeks |
-| 009 | [Service-Level Versioning](#009-service-versioning) | 📋 Spec Ready | 2-3 weeks |
+| 007 | [Service Versioning & Deployment](#007-service-versioning) | 📋 Spec Ready | 3-4 weeks |
+| 008 | [Hierarchical Apps](#008-hierarchical-apps) | 📋 Spec Ready | 3-4 weeks |
+| 009 | [~~Service-Level Versioning~~](#009-service-versioning) | ➡️ Merged → 007 | — |
 | 010 | [Multi-Node Cluster](#010-multi-node-cluster) | 🚧 Phase 0+1 Done | ~8 weeks |
 | 011 | [Cron Scheduling](#011-cron-scheduling) | 📋 Spec Ready | 2 weeks |
 | 012 | [Plugin System](#012-plugin-system) | 📋 Spec Ready | 12 weeks |
@@ -142,24 +142,20 @@ Proxy internal services (Seq, Grafana, RabbitMQ, etc.) through MiniCluster with 
 ---
 
 ### 005 Reliability & Orchestration
-**Status:** 📋 Spec Ready  
+**Status:** � Part 1 Done  
 **Spec:** [005-reliability-orchestration/spec.md](005-reliability-orchestration/spec.md)
 
 **Summary:**  
-Transform MiniCluster from a process manager into a full DevOps platform with reliability, orchestration, and observability features.
+Mega-spec covering reliability, orchestration, observability, and marketplace. Part 1 (auto-restart + health checks) is implemented. Parts 2 & 3 superseded by dedicated specs.
 
-**Key Features:**
-- [ ] **Auto-restart policies** (Never, OnFailure, Always, UnlessStopped)
-- [ ] **Exponential backoff** with jitter for restart delays
-- [ ] **Health checks** (HTTP, TCP, Exec, Process)
-- [ ] **App/Service/Process hierarchy** for complex applications
-- [ ] **Startup plans** with dependency graphs
-- [ ] **Scheduled tasks** (cron-based restarts, maintenance)
-- [ ] **OTLP integration** for logs, metrics, traces
-- [ ] **TimescaleDB** for high-volume telemetry storage
-- [ ] **Marketplace** for one-click template deployments
+**Part Status:**
+- [x] **Part 1: Reliability** — Auto-restart policies, health checks, exponential backoff (**✅ Done in MVP**)
+- [ ] **Part 2: Orchestration** — ➡️ Superseded by [Spec 008](008-hierarchical-apps/spec.md)
+- [ ] **Part 3: Scheduled Tasks** — ➡️ Superseded by [Spec 011](011-cron-scheduling/spec.md)
+- [ ] **Part 4: Observability** — OTLP + TimescaleDB (**Future**)
+- [ ] **Part 5: Marketplace** — Template ecosystem (**Future**)
 
-**Estimated Effort:** 12-16 weeks
+**Remaining Effort:** Parts 4+5 (6-8 weeks, future)
 
 ---
 
@@ -192,66 +188,56 @@ Add optional container (Docker/Podman) support alongside native process manageme
 
 ---
 
-### 007 App Versioning & Deployment
+### 007 Service Versioning & Deployment
 **Status:** 📋 Spec Ready  
 **Spec:** [007-app-versioning/spec.md](007-app-versioning/spec.md)
 
 **Summary:**  
-Track application versions, enable rollbacks, and support deployment strategies like blue-green deployments.
+Track **Service** configuration history, enable rollbacks, and support deployment strategies. We version `Service` configs (not `App` groups). App-level snapshots capture all service versions at a point in time.
 
 **Key Features:**
-- [ ] **Version history** - Track every deployment with timestamp and metadata
-- [ ] **Configuration snapshots** - Save complete app config per version
-- [ ] **Rollback** - One-click revert to previous version
-- [ ] **Blue-green deployments** - Zero-downtime updates
-- [ ] **Canary deployments** - Gradual traffic shifting
-- [ ] **Git integration** - Deploy from git push (webhooks)
-- [ ] **Deployment pipelines** - Multi-stage deployments
-- [ ] **Audit trail** - Who deployed what and when
+- [ ] **ServiceVersion** — Config snapshots per service, auto-versioned on save
+- [ ] **Version diffs** — JSON diff between versions
+- [ ] **One-click rollback** — Stop → apply old config → start
+- [ ] **AppSnapshot** — Capture all service versions in an app
+- [ ] **DeploymentConfig** — Per-service deployment preferences
+- [ ] **Audit trail** — Who deployed what and when
 
-**Use Cases:**
-- Quick rollback when new version has bugs
-- Track configuration drift over time
-- Automated deployments from CI/CD
-- Compliance and audit requirements
+**Deferred to later phases:**
+- Blue-green / canary deployments
+- Git integration (webhooks)
 
-**Estimated Effort:** 4-6 weeks
+**Estimated Effort:** 3-4 weeks
+
+> **Note:** Old spec 009 (Service-Level Versioning) has been merged into this spec.
 
 ---
 
-### 008 Hierarchical Apps & Grouping
+### 008 Hierarchical Apps
 **Status:** 📋 Spec Ready  
 **Spec:** [008-hierarchical-apps/spec.md](008-hierarchical-apps/spec.md)
 
 **Summary:**  
-Transform from flat app lists to tree-based hierarchy where apps contain services (processes) and can contain child apps. Groups organize apps logically.
+Allow apps to be nested inside other apps by adding `ParentAppId` to the existing `App` entity. No new entities — uses existing `App`, `Service`, and `ServiceGroup`.
 
 **Key Features:**
-- [ ] Apps as composite (contain services/child apps)
-- [ ] Services are individual processes within an app
-- [ ] Groups for logical organization
-- [ ] Cascade operations (start/stop propagate through tree)
-- [ ] Variable inheritance (parent → child)
-- [ ] Tree view UI
+- [ ] `ParentAppId` on `App` for nesting
+- [ ] Tree view API (`/api/apps/tree`)
+- [ ] Cascade start/stop/restart through subtree
+- [ ] Cycle detection on move
+- [ ] Tree view sidebar UI with drag-and-drop
+- [ ] Breadcrumb navigation
 
 **Estimated Effort:** 3-4 weeks
 
 ---
 
 ### 009 Service-Level Versioning
-**Status:** 📋 Spec Ready  
+**Status:** ➡️ Merged into Spec 007  
 **Spec:** [009-service-versioning/spec.md](009-service-versioning/spec.md)
 
 **Summary:**  
-Extend versioning to individual services within apps, enabling granular rollbacks and atomic app snapshots.
-
-**Key Features:**
-- [ ] Version individual services independently
-- [ ] Rollback single service without affecting others
-- [ ] App snapshots (atomic version of all service versions)
-- [ ] Service-level version history and diffs
-
-**Estimated Effort:** 2-3 weeks
+~~Extend versioning to individual services.~~ This spec has been **merged into [Spec 007](#007-service-versioning)** since we version `Service` configs directly. There is no separate app-vs-service versioning distinction.
 
 ---
 
