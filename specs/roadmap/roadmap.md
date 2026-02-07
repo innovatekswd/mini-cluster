@@ -56,7 +56,7 @@ Each stage expands the audience without breaking the previous one.
 | 10 | Identity / OIDC | [017](../spec/017-identity-oidc/spec.md) | 📋 Spec | 3 weeks |
 | 11 | Config Service | [018](../spec/018-config-service/spec.md) | 📋 Spec | 3 weeks |
 | 12 | Registry & Packages | [019](../spec/019-registry/spec.md) | 📋 Spec | 3 weeks |
-| 13 | CLI & DevOps Tooling | [015](../spec/015-cli/spec.md) | 📋 Spec | 6-8 weeks |
+| 13 | CLI & DevOps Tooling | [015](../spec/015-cli/spec.md) | ✅ Done | - |
 
 **What ships:** Discovery endpoint, OIDC identity (users, tokens, SSO), pull-based config with convergence, .mcpkg registry, full CLI.
 

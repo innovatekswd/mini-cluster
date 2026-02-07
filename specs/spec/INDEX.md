@@ -24,7 +24,7 @@
 | 012 | [Plugin System](#012-plugin-system) | 📋 Spec Ready | 12 weeks |
 | 013 | [Analytics & Decision Support](#013-analytics-decision-support) | 📋 Spec Ready | 6 weeks |
 | 014 | [App Update Manager](#014-app-update-manager) | 📋 Spec Ready | 4 weeks |
-| 015 | [CLI](#015-cli) | 📋 Spec Ready | 6-8 weeks |
+| 015 | [CLI](#015-cli) | ✅ Implemented | - |
 | 016 | [Discovery & Services Architecture](#016-discovery-services) | 📋 Spec Ready | 2 weeks |
 | 017 | [Identity / OIDC](#017-identity-oidc) | 📋 Spec Ready | 3 weeks |
 | 018 | [Config Service](#018-config-service) | 📋 Spec Ready | 3 weeks |
