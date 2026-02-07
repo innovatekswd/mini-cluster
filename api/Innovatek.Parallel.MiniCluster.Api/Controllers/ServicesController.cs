@@ -556,4 +556,168 @@ public class ServicesController : ControllerBase
             return StatusCode(500, "An error occurred while cloning the service");
         }
     }
+
+    // ── Container Config Endpoints ─────────────────────────────
+
+    /// <summary>
+    /// Get container configuration for a service
+    /// </summary>
+    [HttpGet("{identifier}/container")]
+    public async Task<ActionResult<ContainerConfigDto>> GetContainerConfig(string identifier, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _resolver.ResolveServiceAsync(identifier);
+            if (!result.Success) return NotFound(new { error = $"Service '{identifier}' not found" });
+
+            var config = await _db.ContainerConfigs.FirstOrDefaultAsync(c => c.ServiceId == result.Value, ct);
+            if (config == null) return NotFound(new { error = "No container config for this service" });
+
+            return Ok(MapContainerConfig(config));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting container config for {Identifier}", identifier);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Create or update container configuration for a service
+    /// </summary>
+    [HttpPut("{identifier}/container")]
+    public async Task<ActionResult<ContainerConfigDto>> UpdateContainerConfig(
+        string identifier, ContainerConfigDto dto, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _resolver.ResolveServiceAsync(identifier);
+            if (!result.Success) return NotFound(new { error = $"Service '{identifier}' not found" });
+
+            var config = await _db.ContainerConfigs.FirstOrDefaultAsync(c => c.ServiceId == result.Value, ct);
+            if (config == null)
+            {
+                config = new ContainerConfig { ServiceId = result.Value };
+                _db.ContainerConfigs.Add(config);
+            }
+
+            config.Image = dto.Image;
+            config.Tag = dto.Tag ?? "latest";
+            config.Registry = dto.Registry;
+            config.NetworkMode = dto.NetworkMode;
+            config.RestartPolicy = (ContainerRestartPolicy)dto.RestartPolicy;
+            config.Privileged = dto.Privileged;
+            config.CpuLimit = dto.CpuLimit;
+            config.MemoryLimitBytes = dto.MemoryLimitBytes;
+            
+            if (dto.PortMappings != null)
+                config.PortMappings = string.Join(";", dto.PortMappings.Select(p => $"{p.Host}:{p.Container}/{p.Protocol ?? "tcp"}"));
+            if (dto.VolumeMounts != null)
+                config.VolumeMounts = string.Join(";", dto.VolumeMounts.Select(v => $"{v.Host}:{v.Container}:{(v.ReadOnly ? "ro" : "rw")}"));
+            if (dto.Labels != null)
+                config.Labels = string.Join(";", dto.Labels.Select(kv => $"{kv.Key}={kv.Value}"));
+
+            // Update the service type to Docker if not already
+            var service = await _db.Services.FindAsync(new object[] { result.Value }, ct);
+            if (service != null && service.ServiceType == ServiceType.Process)
+            {
+                service.ServiceType = ServiceType.Docker;
+                service.ModifiedAt = DateTime.UtcNow;
+            }
+
+            await _db.SaveChangesAsync(ct);
+            return Ok(MapContainerConfig(config));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating container config for {Identifier}", identifier);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Delete container configuration and reset service to process type
+    /// </summary>
+    [HttpDelete("{identifier}/container")]
+    public async Task<IActionResult> DeleteContainerConfig(string identifier, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _resolver.ResolveServiceAsync(identifier);
+            if (!result.Success) return NotFound(new { error = $"Service '{identifier}' not found" });
+
+            var config = await _db.ContainerConfigs.FirstOrDefaultAsync(c => c.ServiceId == result.Value, ct);
+            if (config == null) return NotFound(new { error = "No container config to delete" });
+
+            _db.ContainerConfigs.Remove(config);
+
+            var service = await _db.Services.FindAsync(new object[] { result.Value }, ct);
+            if (service != null)
+            {
+                service.ServiceType = ServiceType.Process;
+                service.ModifiedAt = DateTime.UtcNow;
+            }
+
+            await _db.SaveChangesAsync(ct);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting container config for {Identifier}", identifier);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    private static ContainerConfigDto MapContainerConfig(ContainerConfig c)
+    {
+        var dto = new ContainerConfigDto
+        {
+            Id = c.Id,
+            ServiceId = c.ServiceId,
+            Image = c.Image,
+            Tag = c.Tag,
+            Registry = c.Registry,
+            ContainerName = c.ContainerName,
+            Hostname = c.Hostname,
+            NetworkMode = c.NetworkMode,
+            RestartPolicy = (int)c.RestartPolicy,
+            Privileged = c.Privileged,
+            User = c.User,
+            CpuLimit = c.CpuLimit,
+            MemoryLimitBytes = c.MemoryLimitBytes,
+            ContainerId = c.ContainerId,
+            ImageId = c.ImageId
+        };
+
+        if (!string.IsNullOrEmpty(c.PortMappings))
+        {
+            dto.PortMappings = c.PortMappings.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(p =>
+            {
+                var parts = p.Split(':');
+                var portProto = parts.Length > 1 ? parts[1].Split('/') : new[] { parts[0] };
+                return new PortMappingDto
+                {
+                    Host = int.TryParse(parts[0], out var hp) ? hp : 0,
+                    Container = int.TryParse(portProto[0], out var cp) ? cp : 0,
+                    Protocol = portProto.Length > 1 ? portProto[1] : "tcp"
+                };
+            }).ToList();
+        }
+
+        if (!string.IsNullOrEmpty(c.VolumeMounts))
+        {
+            dto.VolumeMounts = c.VolumeMounts.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(v =>
+            {
+                var parts = v.Split(':');
+                return new VolumeMountDto
+                {
+                    Host = parts.Length > 0 ? parts[0] : "",
+                    Container = parts.Length > 1 ? parts[1] : "",
+                    ReadOnly = parts.Length > 2 && parts[2] == "ro"
+                };
+            }).ToList();
+        }
+
+        return dto;
+    }
 }

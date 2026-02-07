@@ -76,6 +76,14 @@ public class MappingProfile : Profile
         CreateMap<UpdateMachineDto, Machine>()
             .ForMember(dest => dest.ModifiedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
             .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
+
+        // ── Post-MVP Mappings ──────────────────────────────────────
+
+        // CronJob mappings
+        CreateMap<CreateCronJobDto, CronJob>();
+        CreateMap<CronJob, CronJobResponseDto>();
+        CreateMap<CronJobRun, CronJobRunResponseDto>()
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => (int)src.Status));
     }
 
     private static PathPrefixConfigDto MapPathPrefixConfig(ProxyRoute src)

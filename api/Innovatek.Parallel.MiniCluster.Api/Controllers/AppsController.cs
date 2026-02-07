@@ -20,19 +20,22 @@ public class AppsController : ControllerBase
     private readonly ILogger<AppsController> _logger;
     private readonly IServiceProcessManager _processManager;
     private readonly IIdentifierResolver _resolver;
+    private readonly IAppTreeService _appTreeService;
 
     public AppsController(
         AppDbContext context,
         IMapper mapper,
         ILogger<AppsController> logger,
         IServiceProcessManager processManager,
-        IIdentifierResolver resolver)
+        IIdentifierResolver resolver,
+        IAppTreeService appTreeService)
     {
         _context = context;
         _mapper = mapper;
         _logger = logger;
         _processManager = processManager;
         _resolver = resolver;
+        _appTreeService = appTreeService;
     }
 
     /// <summary>
@@ -433,6 +436,170 @@ public class AppsController : ControllerBase
         {
             _logger.LogError(ex, "Error seeding sample data");
             return StatusCode(500, "An error occurred while seeding sample data");
+        }
+    }
+
+    // ── Hierarchical App Tree Endpoints ────────────────────────
+
+    /// <summary>
+    /// Get full app tree (root apps with nested children)
+    /// </summary>
+    [HttpGet("tree")]
+    public async Task<ActionResult<List<AppTreeNodeDto>>> GetAppTree(CancellationToken ct)
+    {
+        try
+        {
+            var tree = await _appTreeService.GetAppTreeAsync(ct);
+            return Ok(tree);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting app tree");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get subtree rooted at an app
+    /// </summary>
+    [HttpGet("{identifier}/subtree")]
+    public async Task<ActionResult<AppTreeNodeDto>> GetAppSubtree(string identifier, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _resolver.ResolveAppAsync(identifier);
+            if (!result.Success)
+                return result.AmbiguousMatches?.Any() == true
+                    ? BadRequest(new { error = result.Error, matches = result.AmbiguousMatches })
+                    : NotFound(new { error = $"App '{identifier}' not found" });
+
+            var subtree = await _appTreeService.GetAppSubtreeAsync(result.Value, ct);
+            if (subtree == null) return NotFound(new { error = $"App '{identifier}' not found" });
+            return Ok(subtree);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting subtree for {Identifier}", identifier);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Move an app to a new parent (or to root)
+    /// </summary>
+    [HttpPost("{identifier}/move")]
+    public async Task<IActionResult> MoveApp(string identifier, MoveAppDto dto, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _resolver.ResolveAppAsync(identifier);
+            if (!result.Success)
+                return result.AmbiguousMatches?.Any() == true
+                    ? BadRequest(new { error = result.Error, matches = result.AmbiguousMatches })
+                    : NotFound(new { error = $"App '{identifier}' not found" });
+
+            await _appTreeService.MoveAppAsync(result.Value, dto, ct);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error moving app {Identifier}", identifier);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Reorder children of an app
+    /// </summary>
+    [HttpPost("{identifier}/reorder-children")]
+    public async Task<IActionResult> ReorderChildren(string identifier, ReorderChildrenDto dto, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _resolver.ResolveAppAsync(identifier);
+            if (!result.Success)
+                return result.AmbiguousMatches?.Any() == true
+                    ? BadRequest(new { error = result.Error, matches = result.AmbiguousMatches })
+                    : NotFound(new { error = $"App '{identifier}' not found" });
+
+            await _appTreeService.ReorderChildrenAsync(result.Value, dto, ct);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reordering children of {Identifier}", identifier);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Start all services in an app subtree
+    /// </summary>
+    [HttpPost("{identifier}/tree/start")]
+    public async Task<IActionResult> StartAppTree(string identifier, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _resolver.ResolveAppAsync(identifier);
+            if (!result.Success) return NotFound(new { error = $"App '{identifier}' not found" });
+
+            await _appTreeService.StartAppTreeAsync(result.Value, "api-tree-start", ct);
+            return Ok(new { message = "App tree start initiated" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error starting app tree {Identifier}", identifier);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Stop all services in an app subtree
+    /// </summary>
+    [HttpPost("{identifier}/tree/stop")]
+    public async Task<IActionResult> StopAppTree(string identifier, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _resolver.ResolveAppAsync(identifier);
+            if (!result.Success) return NotFound(new { error = $"App '{identifier}' not found" });
+
+            await _appTreeService.StopAppTreeAsync(result.Value, ct);
+            return Ok(new { message = "App tree stop initiated" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error stopping app tree {Identifier}", identifier);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Restart all services in an app subtree
+    /// </summary>
+    [HttpPost("{identifier}/tree/restart")]
+    public async Task<IActionResult> RestartAppTree(string identifier, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _resolver.ResolveAppAsync(identifier);
+            if (!result.Success) return NotFound(new { error = $"App '{identifier}' not found" });
+
+            await _appTreeService.RestartAppTreeAsync(result.Value, "api-tree-restart", ct);
+            return Ok(new { message = "App tree restart initiated" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error restarting app tree {Identifier}", identifier);
+            return StatusCode(500, new { error = ex.Message });
         }
     }
 }

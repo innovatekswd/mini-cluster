@@ -21,7 +21,15 @@ public class App
     public DateTime CreatedAt { get; set; }
     public DateTime ModifiedAt { get; set; }
     public int SortOrder { get; set; }
+
+    /// <summary>
+    /// Parent App ID for nested app hierarchy.
+    /// Null = root-level app. Set to another App's Id to create nesting.
+    /// </summary>
+    public Guid? ParentAppId { get; set; }
+    public App? ParentApp { get; set; }
     
-    // Navigation property
+    // Navigation properties
     public ICollection<Service> Services { get; set; } = new List<Service>();
+    public ICollection<App> ChildApps { get; set; } = new List<App>();
 }

@@ -191,6 +191,16 @@ builder.Services.AddHostedService<AgentRegistrationService>();
 builder.Services.Configure<ExplorerOptions>(builder.Configuration.GetSection(ExplorerOptions.SectionName));
 builder.Services.AddScoped<ExplorerService>();
 
+// Post-MVP: Cron Scheduling
+builder.Services.AddScoped<ICronSchedulingService, CronSchedulingService>();
+builder.Services.AddHostedService<CronSchedulerBackgroundService>();
+
+// Post-MVP: Service Versioning & Deployment
+builder.Services.AddScoped<IServiceVersioningService, ServiceVersioningService>();
+
+// Post-MVP: Hierarchical Apps
+builder.Services.AddScoped<IAppTreeService, AppTreeService>();
+
 // SignalR with enhanced configuration (from our fixes)
 builder.Services.AddSignalR(options =>
 {

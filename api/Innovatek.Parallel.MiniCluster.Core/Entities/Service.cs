@@ -106,6 +106,17 @@ namespace Innovatek.Parallel.MiniCluster.Core.Entities
         /// </summary>
         public Guid? MachineId { get; set; }
 
+        /// <summary>
+        /// Service type: Process (native), Docker, or Podman.
+        /// Default is Process (native OS process).
+        /// </summary>
+        public ServiceType ServiceType { get; set; } = ServiceType.Process;
+
+        /// <summary>
+        /// Container configuration (only used when ServiceType is Docker or Podman)
+        /// </summary>
+        public ContainerConfig? ContainerConfig { get; set; }
+
         // ── Restart Policy ──────────────────────────────────────────────
 
         /// <summary>

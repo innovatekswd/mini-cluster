@@ -33,6 +33,19 @@ public class AppDbContext : DbContext, IIdentityDbContext
     public DbSet<ProxyRoute> ProxyRoutes { get; set; }
     public DbSet<ProxySettings> ProxySettings { get; set; }
     
+    // Post-MVP: Cron Scheduling
+    public DbSet<CronJob> CronJobs { get; set; }
+    public DbSet<CronJobRun> CronJobRuns { get; set; }
+    
+    // Post-MVP: Container Support
+    public DbSet<ContainerConfig> ContainerConfigs { get; set; }
+    
+    // Post-MVP: Service Versioning & Deployment
+    public DbSet<ServiceVersion> ServiceVersions { get; set; }
+    public DbSet<DeploymentConfig> DeploymentConfigs { get; set; }
+    public DbSet<AppSnapshot> AppSnapshots { get; set; }
+    public DbSet<AppSnapshotEntry> AppSnapshotEntries { get; set; }
+    
     // Authentication
     public DbSet<User> Users { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
@@ -69,6 +82,12 @@ public class AppDbContext : DbContext, IIdentityDbContext
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.Icon).HasMaxLength(50);
             entity.Property(e => e.Color).HasMaxLength(20);
+            
+            // Hierarchical apps: self-referencing FK
+            entity.HasOne(e => e.ParentApp)
+                .WithMany(e => e.ChildApps)
+                .HasForeignKey(e => e.ParentAppId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Service entity - maps to ControlledApps table for migration compatibility
@@ -224,6 +243,118 @@ public class AppDbContext : DbContext, IIdentityDbContext
             entity.HasOne(e => e.User)
                 .WithMany(u => u.RefreshTokens)
                 .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── Post-MVP Entities ──────────────────────────────────────
+
+        // CronJob entity
+        modelBuilder.Entity<CronJob>(entity =>
+        {
+            entity.ToTable("CronJobs");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => e.IsEnabled);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.CronExpression).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Timezone).HasMaxLength(100).HasDefaultValue("UTC");
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.TargetType).HasConversion<int>();
+            entity.Property(e => e.Action).HasConversion<int>();
+            entity.Property(e => e.MissedPolicy).HasConversion<int>();
+            
+            // Self-referential dependency
+            entity.HasOne(e => e.DependsOnJob)
+                .WithMany()
+                .HasForeignKey(e => e.DependsOnJobId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // CronJobRun entity
+        modelBuilder.Entity<CronJobRun>(entity =>
+        {
+            entity.ToTable("CronJobRuns");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.JobId);
+            entity.HasIndex(e => e.StartedAt);
+            entity.Property(e => e.Status).HasConversion<int>();
+            
+            entity.HasOne(e => e.Job)
+                .WithMany()
+                .HasForeignKey(e => e.JobId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ContainerConfig entity
+        modelBuilder.Entity<ContainerConfig>(entity =>
+        {
+            entity.ToTable("ContainerConfigs");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ServiceId).IsUnique(); // One container config per service
+            entity.Property(e => e.Image).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Tag).HasMaxLength(200).HasDefaultValue("latest");
+            entity.Property(e => e.Registry).HasMaxLength(500);
+            entity.Property(e => e.PortMappings).HasMaxLength(4000);
+            entity.Property(e => e.VolumeMounts).HasMaxLength(4000);
+            entity.Property(e => e.Labels).HasMaxLength(4000);
+            entity.Property(e => e.NetworkMode).HasMaxLength(100);
+            entity.Property(e => e.RestartPolicy).HasConversion<int>();
+            
+            entity.HasOne(e => e.Service)
+                .WithOne(s => s.ContainerConfig)
+                .HasForeignKey<ContainerConfig>(e => e.ServiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ServiceVersion entity
+        modelBuilder.Entity<ServiceVersion>(entity =>
+        {
+            entity.ToTable("ServiceVersions");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ServiceId);
+            entity.HasIndex(e => new { e.ServiceId, e.SequenceNumber }).IsUnique();
+            entity.Property(e => e.Version).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Label).HasMaxLength(500);
+            entity.Property(e => e.GitCommit).HasMaxLength(100);
+            entity.Property(e => e.DeploymentNotes).HasMaxLength(2000);
+            entity.Property(e => e.Source).HasConversion<int>();
+            entity.Property(e => e.DeploymentStatus).HasConversion<int>();
+            
+            entity.HasOne(e => e.Service)
+                .WithMany()
+                .HasForeignKey(e => e.ServiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // DeploymentConfig entity
+        modelBuilder.Entity<DeploymentConfig>(entity =>
+        {
+            entity.ToTable("DeploymentConfigs");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ServiceId).IsUnique(); // One config per service
+            entity.Property(e => e.Strategy).HasConversion<int>();
+        });
+
+        // AppSnapshot entity
+        modelBuilder.Entity<AppSnapshot>(entity =>
+        {
+            entity.ToTable("AppSnapshots");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.AppId);
+            entity.Property(e => e.Version).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Label).HasMaxLength(500);
+        });
+
+        // AppSnapshotEntry entity
+        modelBuilder.Entity<AppSnapshotEntry>(entity =>
+        {
+            entity.ToTable("AppSnapshotEntries");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.AppSnapshotId);
+            
+            entity.HasOne(e => e.AppSnapshot)
+                .WithMany(s => s.Entries)
+                .HasForeignKey(e => e.AppSnapshotId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }
