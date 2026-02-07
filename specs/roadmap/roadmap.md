@@ -49,12 +49,14 @@ Each stage expands the audience without breaking the previous one.
 | Phase | Feature | Spec | Status | Effort |
 |-------|---------|------|--------|--------|
 | 7 | Simple App Tabs | [021](../spec/021-simple-app-tabs/spec.md) | 📋 Spec | 1-2 weeks |
-| 8 | App Versioning & Deployment | [007](../spec/007-app-versioning/spec.md) | 📋 Spec | 4-6 weeks |
-| 9 | Hierarchical Apps & Grouping | [008](../spec/008-hierarchical-apps/spec.md) | 📋 Spec | 3-4 weeks |
-| 10 | Service-Level Versioning | [009](../spec/009-service-versioning/spec.md) | 📋 Spec | 2-3 weeks |
-| 11 | Reliability (full) | [005](../spec/005-reliability-orchestration/spec.md) | 📋 Spec | 8-10 weeks |
+| 8 | Cron Scheduling | [011](../spec/011-cron-scheduling/spec.md) | 📋 Spec | 2 weeks |
+| 9 | Container Support | [006](../spec/006-container-support/spec.md) | 📋 Spec | 6-8 weeks |
+| 10 | App Versioning & Deployment | [007](../spec/007-app-versioning/spec.md) | 📋 Spec | 4-6 weeks |
+| 11 | Hierarchical Apps & Grouping | [008](../spec/008-hierarchical-apps/spec.md) | 📋 Spec | 3-4 weeks |
+| 12 | Service-Level Versioning | [009](../spec/009-service-versioning/spec.md) | 📋 Spec | 2-3 weeks |
+| 13 | Reliability (full) | [005](../spec/005-reliability-orchestration/spec.md) | 📋 Spec | 8-10 weeks |
 
-**What ships:** App grouping, versioning with rollback, hierarchical apps, OTLP observability, startup dependency graphs.
+**What ships:** App grouping, cron scheduling, Docker/Podman containers, versioning with rollback, hierarchical apps, OTLP observability, startup dependency graphs.
 
 **Driven by:** User feedback from MVP. Build what users actually ask for.
 
@@ -66,11 +68,11 @@ Each stage expands the audience without breaking the previous one.
 
 | Phase | Feature | Spec | Status | Effort |
 |-------|---------|------|--------|--------|
-| 12 | Discovery & Services | [016](../spec/016-discovery-services/spec.md) | 📋 Spec | 2 weeks |
-| 13 | Identity / OIDC | [017](../spec/017-identity-oidc/spec.md) | 📋 Spec | 3 weeks |
-| 14 | Config Service | [018](../spec/018-config-service/spec.md) | 📋 Spec | 3 weeks |
-| 15 | Registry & Packages | [019](../spec/019-registry/spec.md) | 📋 Spec | 3 weeks |
-| 16 | Multi-Node Cluster | [010](../spec/010-multi-node-cluster/spec.md) | 🚧 Phase 0+1 | ~8 weeks |
+| 14 | Discovery & Services | [016](../spec/016-discovery-services/spec.md) | 📋 Spec | 2 weeks |
+| 15 | Identity / OIDC | [017](../spec/017-identity-oidc/spec.md) | 📋 Spec | 3 weeks |
+| 16 | Config Service | [018](../spec/018-config-service/spec.md) | 📋 Spec | 3 weeks |
+| 17 | Registry & Packages | [019](../spec/019-registry/spec.md) | 📋 Spec | 3 weeks |
+| 18 | Multi-Node Cluster | [010](../spec/010-multi-node-cluster/spec.md) | 🚧 Phase 0+1 | ~8 weeks |
 
 **What ships:** Discovery endpoint, OIDC identity (users, tokens, SSO), pull-based config with convergence, .mcpkg registry, multi-node clustering with heartbeat/failover.
 
@@ -86,14 +88,12 @@ Each stage expands the audience without breaking the previous one.
 
 | Phase | Feature | Spec | Status | Effort |
 |-------|---------|------|--------|--------|
-| 17 | Cron Scheduling | [011](../spec/011-cron-scheduling/spec.md) | 📋 Spec | 2 weeks |
-| 18 | Container Support | [006](../spec/006-container-support/spec.md) | 📋 Spec | 6-8 weeks |
 | 19 | Auto-Scaling | [020](../spec/020-auto-scaling/spec.md) | 📋 Spec | 6-8 weeks |
 | 20 | Plugin System | [012](../spec/012-plugin-system/spec.md) | 📋 Spec | 12 weeks |
 
-**What ships:** Cron scheduling, Docker/Podman as optional runtime, cloud auto-scaling (Hetzner, DO, AWS), open plugin SDK + marketplace.
+**What ships:** Cloud auto-scaling (Hetzner, DO, AWS), open plugin SDK + marketplace.
 
-**What it enables:** Fleet management, workload placement, auto-scaling with scale-to-zero, container-native apps alongside process apps, community plugins.
+**What it enables:** Fleet management, workload placement, auto-scaling with scale-to-zero, community plugins.
 
 **Milestone:** Traffic spikes → MiniCluster adds VMs, deploys apps, routes traffic → scales back to zero.
 
