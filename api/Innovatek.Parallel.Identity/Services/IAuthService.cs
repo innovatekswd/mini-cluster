@@ -16,4 +16,5 @@ public interface IAuthService
     Task<bool> DeleteUserAsync(Guid userId);
     Task<bool> UpdateUserRoleAsync(Guid userId, string role);
     Task<bool> UpdateUserStatusAsync(Guid userId, bool isActive);
+    Task<bool> ResetPasswordAsync(Guid userId, string newPassword);
 }

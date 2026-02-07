@@ -1,22 +1,46 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Innovatek.Parallel.MiniCluster.Api.Data;
 using Innovatek.Parallel.MiniCluster.Core.Entities;
+using Innovatek.Parallel.Identity.Services;
+using Microsoft.Extensions.Options;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace Innovatek.Parallel.MiniCluster.Api.Middleware;
 
 /// <summary>
 /// Middleware to handle authentication for proxy routes.
 /// Checks if the route requires authentication and validates the request.
+/// Supports: API key header, JWT Bearer token, session cookie (JWT-based).
 /// </summary>
 public class ProxyAuthMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<ProxyAuthMiddleware> _logger;
+    private readonly TokenValidationParameters _tokenValidationParams;
 
-    public ProxyAuthMiddleware(RequestDelegate next, ILogger<ProxyAuthMiddleware> logger)
+    public ProxyAuthMiddleware(
+        RequestDelegate next,
+        ILogger<ProxyAuthMiddleware> logger,
+        IOptions<AuthenticationOptions> authOptions)
     {
         _next = next;
         _logger = logger;
+
+        var opts = authOptions.Value;
+        _tokenValidationParams = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = opts.JwtIssuer,
+            ValidAudience = opts.JwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(opts.JwtSecret)),
+            ClockSkew = TimeSpan.Zero
+        };
     }
 
     public async Task InvokeAsync(HttpContext context, AppDbContext dbContext)
@@ -120,54 +144,94 @@ public class ProxyAuthMiddleware
 
     private Task<bool> ValidateAuthenticationAsync(HttpContext context, ProxyRoute proxyRoute)
     {
-        // Check for API key in header or query string
+        // 1. Check for API key in header or query string
         var apiKey = context.Request.Headers["X-Proxy-Key"].FirstOrDefault()
             ?? context.Request.Query["proxy_key"].FirstOrDefault();
 
         if (!string.IsNullOrEmpty(apiKey))
         {
-            // Validate API key against the route's configured key
-            // For now, we'll use a simple comparison
-            // In production, this should use secure comparison and hashing
             if (!string.IsNullOrEmpty(proxyRoute.ApiKey) && apiKey == proxyRoute.ApiKey)
             {
                 return Task.FromResult(true);
             }
         }
 
-        // Check for session cookie (for browser-based access)
-        var sessionCookie = context.Request.Cookies["proxy_session"];
-        if (!string.IsNullOrEmpty(sessionCookie))
-        {
-            // TODO: Implement session validation
-            // For now, just check if the cookie exists
-            // In production, validate against a session store
-            return Task.FromResult(true);
-        }
-
-        // Check for bearer token (JWT)
+        // 2. Check for Bearer token (JWT)
         var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
         if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
         {
-            // TODO: Implement JWT validation
-            // For now, just check if a token is present
-            // In production, validate the JWT token
+            var token = authHeader["Bearer ".Length..].Trim();
+            var principal = ValidateJwtToken(token);
+            if (principal != null)
+            {
+                context.User = principal;
+                return Task.FromResult(true);
+            }
+        }
+
+        // 3. Check for session cookie (contains JWT)
+        var sessionCookie = context.Request.Cookies["proxy_session"];
+        if (!string.IsNullOrEmpty(sessionCookie))
+        {
+            var principal = ValidateJwtToken(sessionCookie);
+            if (principal != null)
+            {
+                context.User = principal;
+                return Task.FromResult(true);
+            }
+        }
+
+        // 4. Check if the request already has a valid identity from upstream auth middleware
+        if (context.User.Identity?.IsAuthenticated == true)
+        {
             return Task.FromResult(true);
         }
 
         return Task.FromResult(false);
     }
 
+    private ClaimsPrincipal? ValidateJwtToken(string token)
+    {
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var principal = handler.ValidateToken(token, _tokenValidationParams, out _);
+            return principal;
+        }
+        catch (SecurityTokenException ex)
+        {
+            _logger.LogDebug(ex, "JWT validation failed for proxy auth");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unexpected error validating JWT for proxy auth");
+            return null;
+        }
+    }
+
     private Task<bool> ValidateRolesAsync(HttpContext context, string allowedRoles)
     {
-        // Parse allowed roles (comma-separated)
         var roles = allowedRoles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        
-        // TODO: Implement role validation against the authenticated user
-        // For now, allow access if any authentication was provided
-        // In production, extract roles from JWT claims or session and compare
-        
-        return Task.FromResult(true);
+
+        // Check if the authenticated user has any of the required roles
+        if (context.User.Identity?.IsAuthenticated == true)
+        {
+            foreach (var role in roles)
+            {
+                if (context.User.IsInRole(role))
+                {
+                    return Task.FromResult(true);
+                }
+            }
+
+            _logger.LogDebug("User {User} does not have any of the required roles: {Roles}",
+                context.User.Identity.Name, allowedRoles);
+            return Task.FromResult(false);
+        }
+
+        // API key auth doesn't carry roles — if API key was valid and roles are required, deny
+        return Task.FromResult(false);
     }
 }
 

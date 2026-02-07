@@ -128,7 +128,10 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    Innovatek.Parallel.MiniCluster.Api.Configuration.AuthPolicies.ConfigurePolicies(options);
+});
 
 // Identity services - register AppDbContext as IIdentityDbContext
 builder.Services.AddScoped<IIdentityDbContext>(sp => sp.GetRequiredService<AppDbContext>());
@@ -281,8 +284,11 @@ app.UseDefaultFiles(); // Looks for index.html by default
 app.UseStaticFiles();
 
 // Authentication & Authorization
+app.UseLoginRateLimit(); // 5 attempts/min per IP on /api/auth/login
 app.UseAuthentication();
+app.UseAuthenticationBypass(); // Skips auth when Authentication.Enabled=false
 app.UseAuthorization();
+app.UseRoleBasedAccess(); // RBAC: Viewer=read-only, Operator=no user mgmt, Admin=full
 
 // Agent API key auth for /api/cluster/* endpoints
 app.UseAgentApiKeyAuth();

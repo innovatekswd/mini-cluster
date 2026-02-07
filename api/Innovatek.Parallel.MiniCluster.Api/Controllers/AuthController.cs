@@ -160,10 +160,10 @@ public class AuthController : ControllerBase
             return BadRequest(new { error = "Username and password are required" });
         }
 
-        var validRoles = new[] { "Admin", "User", "ReadOnly" };
+        var validRoles = new[] { "Admin", "Operator", "Viewer" };
         if (!validRoles.Contains(request.Role))
         {
-            return BadRequest(new { error = "Invalid role. Must be Admin, User, or ReadOnly" });
+            return BadRequest(new { error = "Invalid role. Must be Admin, Operator, or Viewer" });
         }
 
         var user = await _authService.CreateUserAsync(request.Username, request.Password, request.Role, request.Email);
@@ -233,6 +233,28 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Status updated successfully" });
     }
 
+    /// <summary>
+    /// Reset a user's password (Admin only). Forces re-login by revoking all refresh tokens.
+    /// </summary>
+    [HttpPost("users/{userId}/reset-password")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> ResetPassword(Guid userId, [FromBody] ResetPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 6)
+        {
+            return BadRequest(new { error = "New password must be at least 6 characters" });
+        }
+
+        var success = await _authService.ResetPasswordAsync(userId, request.NewPassword);
+
+        if (!success)
+        {
+            return BadRequest(new { error = "Unable to reset password. User may not exist." });
+        }
+
+        return Ok(new { message = "Password reset successfully. User must login again." });
+    }
+
     private void SetRefreshTokenCookie(string refreshToken)
     {
         var cookieOptions = new CookieOptions
@@ -298,6 +320,13 @@ public class UpdateStatusRequest
 {
     [Required]
     public bool IsActive { get; set; }
+}
+
+public class ResetPasswordRequest
+{
+    [Required]
+    [MinLength(6)]
+    public string NewPassword { get; set; } = string.Empty;
 }
 
 #endregion

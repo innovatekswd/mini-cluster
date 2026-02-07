@@ -441,6 +441,40 @@ public class AuthService : IAuthService
         }
     }
 
+    public async Task<bool> ResetPasswordAsync(Guid userId, string newPassword)
+    {
+        try
+        {
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null)
+            {
+                return false;
+            }
+
+            user.PasswordHash = HashPassword(newPassword);
+            await _db.SaveChangesAsync();
+
+            // Revoke all refresh tokens for this user so they must re-login
+            var tokens = await _db.RefreshTokens
+                .Where(t => t.UserId == userId && !t.IsRevoked)
+                .ToListAsync();
+            foreach (var token in tokens)
+            {
+                token.IsRevoked = true;
+                token.RevokedAt = DateTime.UtcNow;
+            }
+            await _db.SaveChangesAsync();
+
+            _logger.LogInformation("Password reset for user {Username} ({UserId})", user.Username, userId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting password for user {UserId}", userId);
+            return false;
+        }
+    }
+
     #region Private Methods
 
     private string GenerateAccessToken(User user)
