@@ -689,6 +689,14 @@ public class ServicesController : ControllerBase
             ImageId = c.ImageId
         };
 
+        if (!string.IsNullOrEmpty(c.Labels))
+        {
+            dto.Labels = c.Labels.Split(';', StringSplitOptions.RemoveEmptyEntries)
+                .Select(l => l.Split('=', 2))
+                .Where(p => p.Length == 2)
+                .ToDictionary(p => p[0], p => p[1]);
+        }
+
         if (!string.IsNullOrEmpty(c.PortMappings))
         {
             dto.PortMappings = c.PortMappings.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(p =>

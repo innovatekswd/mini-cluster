@@ -11,6 +11,7 @@ public record ApplicationDto
     public string? Description { get; init; }
     public string? Icon { get; init; }
     public string? Color { get; init; }
+    public Guid? ParentAppId { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime ModifiedAt { get; init; }
     public int SortOrder { get; init; }
@@ -29,6 +30,7 @@ public record CreateApplicationDto
     public string? Description { get; init; }
     public string? Icon { get; init; }
     public string? Color { get; init; }
+    public Guid? ParentAppId { get; init; }
 }
 
 public record UpdateApplicationDto
@@ -37,4 +39,5 @@ public record UpdateApplicationDto
     public string? Description { get; init; }
     public string? Icon { get; init; }
     public string? Color { get; init; }
+    public Guid? ParentAppId { get; init; }
 }
