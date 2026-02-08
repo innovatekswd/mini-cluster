@@ -25,7 +25,7 @@ export default function TerminalPage() {
     setNextTabId(prev => prev + 1);
   }, [nextTabId]);
 
-  const closeTab = useCallback((tabId: string, e: React.MouseEvent) => {
+  const closeTab = useCallback((tabId: string, e: React.SyntheticEvent) => {
     e.stopPropagation();
     
     setTabs(prev => {

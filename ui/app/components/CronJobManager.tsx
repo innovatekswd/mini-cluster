@@ -5,6 +5,7 @@ import {
   FaChevronDown, FaChevronRight
 } from "react-icons/fa";
 import { Modal } from "~/components/Modal";
+import { CronExpressionBuilder, describeExpression } from "~/components/CronExpressionBuilder";
 import {
   useCronJobsQuery,
   useCronJobRunsQuery,
@@ -197,19 +198,11 @@ function CronJobForm({ initial, onSubmit, onCancel, isPending }: FormProps) {
 
       {/* Cron Expression */}
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-1">
-          Cron Expression <span className="text-slate-500">(6-field with seconds)</span>
-        </label>
-        <input
-          className="input-dark w-full font-mono"
+        <label className="block text-sm font-medium text-slate-300 mb-1">Schedule</label>
+        <CronExpressionBuilder
           value={form.cronExpression}
-          onChange={(e) => set("cronExpression", e.target.value)}
-          required
-          placeholder="0 */5 * * * *"
+          onChange={(expr) => set("cronExpression", expr)}
         />
-        <p className="text-xs text-slate-500 mt-1">
-          Format: second minute hour day month weekday &mdash; e.g. &quot;0 0 3 * * *&quot; = daily 3 AM
-        </p>
       </div>
 
       {/* Advanced row */}
@@ -442,7 +435,7 @@ export function CronJobManager() {
                       {runStatusBadge(job.lastRunStatus)}
                     </div>
                     <div className="flex items-center gap-4 text-xs text-slate-500 mt-0.5">
-                      <span className="font-mono">{job.cronExpression}</span>
+                      <span title={job.cronExpression}>{describeExpression(job.cronExpression)}</span>
                       <span>{targetLabel(job.targetType)} / {actionLabel(job.action)}</span>
                       {job.nextRun && <span>Next: {relativeTime(job.nextRun)}</span>}
                       {job.lastRun && <span>Last: {relativeTime(job.lastRun)}</span>}
