@@ -73,14 +73,17 @@ export default function TerminalPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               {tab.name}
-              <button
+              <span
+                role="button"
+                tabIndex={0}
                 onClick={(e) => closeTab(tab.id, e)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') closeTab(tab.id, e); }}
                 className="ml-1 p-0.5 rounded hover:bg-slate-600 transition-colors"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </button>
+              </span>
             </button>
           ))}
         </div>
