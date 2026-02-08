@@ -2,6 +2,7 @@ import React, { createContext, useContext, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { serviceService } from "~/services/appService";
 import { getBackendConnectionStatus } from "~/lib/queryClient";
+import { useAuth } from "~/context/AuthContext";
 
 export type AppStatusMap = Record<string, string>;
 
@@ -20,14 +21,16 @@ const AppStatusContext = createContext<AppStatusContextType | undefined>(undefin
 
 export const AppStatusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuth();
   
-  // Batch fetch all statuses with polling
+  // Batch fetch all statuses with polling (only when authenticated)
   const { data: statuses = {}, isLoading, refetch } = useQuery({
     queryKey: statusBatchQueryKey,
     queryFn: () => serviceService.getAllStatuses(),
     staleTime: 5 * 1000, // 5 seconds
-    refetchInterval: () => getBackendConnectionStatus() ? 10 * 1000 : false,
-    refetchOnWindowFocus: () => getBackendConnectionStatus(),
+    refetchInterval: () => isAuthenticated && getBackendConnectionStatus() ? 10 * 1000 : false,
+    refetchOnWindowFocus: () => isAuthenticated && getBackendConnectionStatus(),
+    enabled: isAuthenticated,
   });
 
   // Update a single status (for immediate UI feedback after actions)
