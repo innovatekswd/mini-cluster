@@ -224,6 +224,7 @@ public class AppsController : ControllerBase
 
             var app = await _context.Apps
                 .Include(a => a.Services)
+                .Include(a => a.ChildApps)
                 .FirstOrDefaultAsync(a => a.Id == result.Value);
 
             if (app == null)
@@ -231,11 +232,28 @@ public class AppsController : ControllerBase
                 return NotFound($"App '{identifier}' not found");
             }
 
+            // Detach child apps (self-referencing FK with Restrict)
+            foreach (var child in app.ChildApps)
+            {
+                child.ParentAppId = null;
+            }
+
             // Unassign all services from this app (they become unassigned)
             foreach (var service in app.Services)
             {
                 service.AppId = null;
             }
+
+            // Unassign cron jobs targeting this app
+            var cronJobs = await _context.CronJobs.Where(c => c.AppId == app.Id).ToListAsync();
+            foreach (var job in cronJobs)
+            {
+                job.AppId = null;
+            }
+
+            // Delete app snapshots (and their entries via cascade)
+            var snapshots = await _context.AppSnapshots.Where(s => s.AppId == app.Id).ToListAsync();
+            _context.AppSnapshots.RemoveRange(snapshots);
 
             _context.Apps.Remove(app);
             await _context.SaveChangesAsync();
