@@ -277,7 +277,7 @@ export function CronExpressionBuilder({ value, onChange }: CronExpressionBuilder
       {mode === "preset" ? (
         <div className="space-y-3">
           {/* Category Selector */}
-          <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-7">
+          <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 lg:grid-cols-7">
             {PRESET_CATEGORIES.map((cat) => (
               <button
                 key={cat.value}
@@ -291,7 +291,7 @@ export function CronExpressionBuilder({ value, onChange }: CronExpressionBuilder
                 title={cat.description}
               >
                 <span className="text-base">{cat.icon}</span>
-                <span className="truncate w-full text-center">{cat.label}</span>
+                <span className="w-full text-center leading-tight">{cat.label}</span>
               </button>
             ))}
           </div>
