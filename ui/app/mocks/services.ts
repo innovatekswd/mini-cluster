@@ -6,6 +6,7 @@ export const mockServices: Service[] = [
   {
     id: 'svc-1',
     name: 'E-Commerce API',
+    slug: 'e-commerce-api',
     executablePath: '/usr/bin/node',
     arguments: 'dist/api/server.js',
     workingDirectory: '/home/projects/ecommerce-api',
@@ -24,6 +25,7 @@ export const mockServices: Service[] = [
   {
     id: 'svc-2',
     name: 'E-Commerce Worker',
+    slug: 'e-commerce-worker',
     executablePath: '/usr/bin/node',
     arguments: 'dist/worker/index.js',
     workingDirectory: '/home/projects/ecommerce-worker',
@@ -42,6 +44,7 @@ export const mockServices: Service[] = [
   {
     id: 'svc-3',
     name: 'E-Commerce Database',
+    slug: 'e-commerce-database',
     executablePath: '/usr/bin/postgres',
     arguments: '-D /var/lib/postgresql/data',
     workingDirectory: '/var/lib/postgresql',
@@ -62,6 +65,7 @@ export const mockServices: Service[] = [
   {
     id: 'svc-4',
     name: 'Data Processor',
+    slug: 'data-processor',
     executablePath: '/usr/bin/python3',
     arguments: 'processor.py',
     workingDirectory: '/home/projects/analytics',
@@ -80,6 +84,7 @@ export const mockServices: Service[] = [
   {
     id: 'svc-5',
     name: 'Analytics Dashboard',
+    slug: 'analytics-dashboard',
     executablePath: '/usr/bin/node',
     arguments: 'server.js',
     workingDirectory: '/home/projects/analytics-dashboard',
@@ -100,6 +105,7 @@ export const mockServices: Service[] = [
   {
     id: 'svc-6',
     name: 'Prometheus',
+    slug: 'prometheus',
     executablePath: '/usr/bin/prometheus',
     arguments: '--config.file=/etc/prometheus/prometheus.yml',
     workingDirectory: '/etc/prometheus',
@@ -118,6 +124,7 @@ export const mockServices: Service[] = [
   {
     id: 'svc-7',
     name: 'Grafana',
+    slug: 'grafana',
     executablePath: '/usr/bin/grafana-server',
     arguments: '',
     workingDirectory: '/usr/share/grafana',
@@ -138,6 +145,7 @@ export const mockServices: Service[] = [
   {
     id: 'svc-8',
     name: 'Legacy Service 1',
+    slug: 'legacy-service-1',
     executablePath: '/usr/bin/node',
     arguments: 'legacy.js',
     workingDirectory: '/home/projects/legacy',
@@ -155,6 +163,7 @@ export const mockServices: Service[] = [
   {
     id: 'svc-9',
     name: 'Legacy Service 2',
+    slug: 'legacy-service-2',
     executablePath: '/usr/bin/python3',
     arguments: 'old_script.py',
     workingDirectory: '/home/projects/old',

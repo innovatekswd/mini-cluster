@@ -249,7 +249,7 @@ export default function HomePage() {
                   <Tooltip
                     contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
                     labelStyle={{ color: "#94a3b8" }}
-                    formatter={(value: number, name: string) => [`${value.toFixed(1)}%`, name === "cpu" ? "CPU" : "Memory"]}
+                    formatter={(value: number | undefined, name?: string) => [`${(value ?? 0).toFixed(1)}%`, name === "cpu" ? "CPU" : "Memory"]}
                   />
                   <Area type="monotone" dataKey="cpu" stroke={COLORS.cpu.primary} fill="url(#cpuGradient)" strokeWidth={2} isAnimationActive={false} />
                   <Area type="monotone" dataKey="memory" stroke={COLORS.memory.primary} fill="url(#memoryGradient)" strokeWidth={2} isAnimationActive={false} />
@@ -280,7 +280,7 @@ export default function HomePage() {
                   <Tooltip
                     contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
                     labelStyle={{ color: "#94a3b8" }}
-                    formatter={(value: number, name: string) => [`${value.toFixed(2)} MB/s`, name === "networkIn" ? "Download" : "Upload"]}
+                    formatter={(value: number | undefined, name?: string) => [`${(value ?? 0).toFixed(2)} MB/s`, name === "networkIn" ? "Download" : "Upload"]}
                   />
                   <Area type="monotone" dataKey="networkIn" stroke="#22c55e" fill="url(#netInGradient)" strokeWidth={2} name="networkIn" isAnimationActive={false} />
                   <Area type="monotone" dataKey="networkOut" stroke="#f59e0b" fill="url(#netOutGradient)" strokeWidth={2} name="networkOut" isAnimationActive={false} />
@@ -432,7 +432,7 @@ export default function HomePage() {
                     <Tooltip
                       contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
                       labelStyle={{ color: "#94a3b8" }}
-                      formatter={(value: number) => [`${value.toFixed(2)}%`, "CPU"]}
+                      formatter={(value: number | undefined) => [`${(value ?? 0).toFixed(2)}%`, "CPU"]}
                     />
                     <Bar dataKey="cpuUsagePercent" fill={COLORS.cpu.primary} radius={[0, 4, 4, 0]} isAnimationActive={false} />
                   </BarChart>

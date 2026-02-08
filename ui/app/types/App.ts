@@ -18,6 +18,7 @@ export interface AppWithStats extends App {
   serviceCount: number;
   runningCount: number;
   stoppedCount: number;
+  failedCount: number;
 }
 
 export interface CreateAppDto {
