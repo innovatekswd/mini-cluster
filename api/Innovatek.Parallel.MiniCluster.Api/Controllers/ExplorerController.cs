@@ -15,12 +15,14 @@ namespace Innovatek.Parallel.MiniCluster.Api.Controllers;
 public class ExplorerController : ControllerBase
 {
     private readonly ExplorerService _explorerService;
+    private readonly ArchiveService _archiveService;
     private readonly ILogger<ExplorerController> _logger;
     private readonly FileExtensionContentTypeProvider _contentTypeProvider;
 
-    public ExplorerController(ExplorerService explorerService, ILogger<ExplorerController> logger)
+    public ExplorerController(ExplorerService explorerService, ArchiveService archiveService, ILogger<ExplorerController> logger)
     {
         _explorerService = explorerService;
+        _archiveService = archiveService;
         _logger = logger;
         _contentTypeProvider = new FileExtensionContentTypeProvider();
     }
@@ -452,4 +454,119 @@ public class ExplorerController : ControllerBase
             return StatusCode(500, new { error = "OPERATION_FAILED", message = ex.Message });
         }
     }
+
+    #region Archive Operations
+
+    /// <summary>
+    /// Compress files/directories into an archive.
+    /// Supported formats: zip, tar.gz, tar, tar.bz2, 7z, gz
+    /// </summary>
+    [HttpPost("compress")]
+    public async Task<ActionResult<ArchiveOperationResult>> Compress([FromBody] CompressRequest request)
+    {
+        try
+        {
+            if (!ArchiveFormats.WritableFormats.Contains(request.Format.ToLowerInvariant()))
+            {
+                return BadRequest(new { error = "UNSUPPORTED_FORMAT", message = $"Format '{request.Format}' is not supported. Use: {string.Join(", ", ArchiveFormats.WritableFormats)}" });
+            }
+
+            var result = await _archiveService.CompressAsync(request);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = "ACCESS_DENIED", message = ex.Message });
+        }
+        catch (FileNotFoundException ex)
+        {
+            return NotFound(new { error = "NOT_FOUND", message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = "INVALID_OPERATION", message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error compressing files");
+            return StatusCode(500, new { error = "OPERATION_FAILED", message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Extract an archive to a destination directory.
+    /// Auto-detects format. Supports: zip, tar, tar.gz, tar.bz2, tar.xz, 7z, rar, gz, bz2, xz, lzma
+    /// </summary>
+    [HttpPost("extract")]
+    public async Task<ActionResult<ArchiveOperationResult>> Extract([FromBody] ExtractRequest request)
+    {
+        try
+        {
+            var result = await _archiveService.ExtractAsync(request);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = "ACCESS_DENIED", message = ex.Message });
+        }
+        catch (FileNotFoundException ex)
+        {
+            return NotFound(new { error = "NOT_FOUND", message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = "INVALID_OPERATION", message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error extracting archive {Path}", request.ArchivePath);
+            return StatusCode(500, new { error = "OPERATION_FAILED", message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// List contents of an archive without extracting.
+    /// Auto-detects format.
+    /// </summary>
+    [HttpGet("archive-contents")]
+    public async Task<ActionResult<ArchiveContentsResponse>> GetArchiveContents([FromQuery] string path)
+    {
+        try
+        {
+            var result = await _archiveService.ListContentsAsync(path);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = "ACCESS_DENIED", message = ex.Message, path });
+        }
+        catch (FileNotFoundException ex)
+        {
+            return NotFound(new { error = "NOT_FOUND", message = ex.Message, path });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading archive contents {Path}", path);
+            return StatusCode(500, new { error = "OPERATION_FAILED", message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get list of supported archive formats
+    /// </summary>
+    [HttpGet("archive-formats")]
+    public ActionResult GetArchiveFormats()
+    {
+        return Ok(new
+        {
+            writable = ArchiveFormats.WritableFormats.Select(f => new
+            {
+                format = f,
+                name = ArchiveFormats.GetFormatDisplayName(f)
+            }),
+            extractable = ArchiveFormats.ArchiveExtensions
+        });
+    }
+
+    #endregion
 }

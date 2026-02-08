@@ -75,6 +75,56 @@ export interface UploadResult {
   error?: string;
 }
 
+export interface ArchiveOperationResult {
+  success: boolean;
+  message: string;
+  outputPath: string;
+  entryCount: number;
+  totalSize: number;
+  originalSize: number;
+}
+
+export interface ArchiveEntry {
+  name: string;
+  path: string;
+  size: number;
+  compressedSize: number;
+  lastModified: string | null;
+  isDirectory: boolean;
+}
+
+export interface ArchiveContentsResponse {
+  archivePath: string;
+  format: string;
+  entries: ArchiveEntry[];
+  totalEntries: number;
+  totalSize: number;
+  compressedSize: number;
+}
+
+export interface ArchiveFormat {
+  format: string;
+  name: string;
+}
+
+export interface ArchiveFormatsResponse {
+  writable: ArchiveFormat[];
+  extractable: string[];
+}
+
+/** File extensions recognized as archives */
+export const ARCHIVE_EXTENSIONS = [
+  '.zip', '.tar', '.tar.gz', '.tgz', '.tar.bz2', '.tbz2', '.tar.xz', '.txz',
+  '.7z', '.rar', '.gz', '.bz2', '.xz', '.lz', '.lzma',
+];
+
+/** Check if a file is a recognized archive format */
+export function isArchive(item: FileItem): boolean {
+  if (item.type !== 'file') return false;
+  const lower = item.name.toLowerCase();
+  return ARCHIVE_EXTENSIONS.some(ext => lower.endsWith(ext));
+}
+
 // API Functions
 export const explorerService = {
   /**
@@ -277,6 +327,58 @@ export const explorerService = {
       command,
       timeoutSeconds,
     });
+    return data;
+  },
+
+  // === Archive Operations ===
+
+  /**
+   * Compress files/directories into an archive
+   */
+  async compress(
+    paths: string[],
+    outputPath: string,
+    format: string = 'zip'
+  ): Promise<ArchiveOperationResult> {
+    const { data } = await apiClient.post<ArchiveOperationResult>(`${API_BASE}/compress`, {
+      paths,
+      outputPath,
+      format,
+    });
+    return data;
+  },
+
+  /**
+   * Extract an archive to a destination directory
+   */
+  async extract(
+    archivePath: string,
+    destinationPath: string,
+    overwrite: boolean = false
+  ): Promise<ArchiveOperationResult> {
+    const { data } = await apiClient.post<ArchiveOperationResult>(`${API_BASE}/extract`, {
+      archivePath,
+      destinationPath,
+      overwrite,
+    });
+    return data;
+  },
+
+  /**
+   * List contents of an archive without extracting
+   */
+  async getArchiveContents(path: string): Promise<ArchiveContentsResponse> {
+    const { data } = await apiClient.get<ArchiveContentsResponse>(`${API_BASE}/archive-contents`, {
+      params: { path },
+    });
+    return data;
+  },
+
+  /**
+   * Get supported archive formats
+   */
+  async getArchiveFormats(): Promise<ArchiveFormatsResponse> {
+    const { data } = await apiClient.get<ArchiveFormatsResponse>(`${API_BASE}/archive-formats`);
     return data;
   },
 };

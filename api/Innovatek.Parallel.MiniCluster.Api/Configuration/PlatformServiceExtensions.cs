@@ -31,6 +31,7 @@ public static class PlatformServiceExtensions
         // File Explorer
         services.Configure<ExplorerOptions>(configuration.GetSection(ExplorerOptions.SectionName));
         services.AddScoped<ExplorerService>();
+        services.AddScoped<ArchiveService>();
 
         // Cron Scheduling
         services.AddScoped<ICronSchedulingService, CronSchedulingService>();
