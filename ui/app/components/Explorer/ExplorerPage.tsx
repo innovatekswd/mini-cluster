@@ -11,6 +11,7 @@ import {
   FaExpand,
   FaCompress,
   FaFile,
+  FaArchive,
 } from 'react-icons/fa';
 import { 
   explorerService, 
@@ -18,6 +19,7 @@ import {
   type DirectoryListing,
   isEditable,
   isPreviewable,
+  isArchive,
 } from '~/services/explorerService';
 import { FileIcon } from './FileIcon';
 import { AddressBar } from './AddressBar';
@@ -29,6 +31,9 @@ import { NewItemModal } from './NewItemModal';
 import { RenameModal } from './RenameModal';
 import { PropertiesDialog } from './PropertiesDialog';
 import { TerminalPanel } from './TerminalPanel';
+import { CompressModal } from './CompressModal';
+import { ExtractModal } from './ExtractModal';
+import { ArchiveContentsModal } from './ArchiveContentsModal';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useConfirm } from '~/components/ConfirmDialog';
 
@@ -66,6 +71,11 @@ export const ExplorerPage: React.FC = () => {
 
   // Clipboard state for copy/cut operations
   const [clipboard, setClipboard] = useState<{ items: string[]; action: 'copy' | 'cut' } | null>(null);
+
+  // Archive modal states
+  const [compressPaths, setCompressPaths] = useState<string[] | null>(null);
+  const [extractArchivePath, setExtractArchivePath] = useState<string | null>(null);
+  const [archiveContentsPath, setArchiveContentsPath] = useState<string | null>(null);
 
   // Load roots on mount
   useEffect(() => {
@@ -181,6 +191,15 @@ export const ExplorerPage: React.FC = () => {
         // Open terminal at this path
         const termPath = item.type === 'directory' ? item.path : currentPath;
         setTerminalPath(termPath);
+        break;
+      case 'compress':
+        setCompressPaths([item.path]);
+        break;
+      case 'extract':
+        setExtractArchivePath(item.path);
+        break;
+      case 'archive-contents':
+        setArchiveContentsPath(item.path);
         break;
       case 'properties':
         setPropertiesItem(item);
@@ -627,12 +646,25 @@ export const ExplorerPage: React.FC = () => {
                 </>
               )}
             </span>
-            {clipboard && (
-              <span className="flex items-center gap-2 text-amber-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                {clipboard.items.length} {clipboard.action === 'copy' ? 'copied' : 'cut'} to clipboard
-              </span>
-            )}
+            <div className="flex items-center gap-3">
+              {/* Bulk compress button */}
+              {selectedItems.size > 0 && (
+                <button
+                  onClick={() => setCompressPaths(Array.from(selectedItems))}
+                  className="flex items-center gap-1.5 text-cyan-400 hover:text-cyan-300 transition-colors"
+                  title="Compress selected items"
+                >
+                  <FaArchive className="text-xs" />
+                  <span>Compress</span>
+                </button>
+              )}
+              {clipboard && (
+                <span className="flex items-center gap-2 text-amber-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  {clipboard.items.length} {clipboard.action === 'copy' ? 'copied' : 'cut'} to clipboard
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -702,6 +734,45 @@ export const ExplorerPage: React.FC = () => {
         <PropertiesDialog
           item={propertiesItem}
           onClose={() => setPropertiesItem(null)}
+        />
+      )}
+
+      {/* Compress modal */}
+      {compressPaths && compressPaths.length > 0 && (
+        <CompressModal
+          paths={compressPaths}
+          currentPath={currentPath}
+          onClose={() => setCompressPaths(null)}
+          onComplete={() => {
+            setCompressPaths(null);
+            loadDirectory(currentPath);
+          }}
+        />
+      )}
+
+      {/* Extract modal */}
+      {extractArchivePath && (
+        <ExtractModal
+          archivePath={extractArchivePath}
+          currentPath={currentPath}
+          onClose={() => setExtractArchivePath(null)}
+          onComplete={() => {
+            setExtractArchivePath(null);
+            loadDirectory(currentPath);
+          }}
+        />
+      )}
+
+      {/* Archive contents modal */}
+      {archiveContentsPath && (
+        <ArchiveContentsModal
+          archivePath={archiveContentsPath}
+          onClose={() => setArchiveContentsPath(null)}
+          onExtract={() => {
+            const path = archiveContentsPath;
+            setArchiveContentsPath(null);
+            setExtractArchivePath(path);
+          }}
         />
       )}
     </div>

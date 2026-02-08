@@ -9,5 +9,8 @@ export { NewItemModal } from './NewItemModal';
 export { RenameModal } from './RenameModal';
 export { PropertiesDialog } from './PropertiesDialog';
 export { TerminalPanel } from './TerminalPanel';
+export { CompressModal } from './CompressModal';
+export { ExtractModal } from './ExtractModal';
+export { ArchiveContentsModal } from './ArchiveContentsModal';
 export { ExplorerPage } from './ExplorerPage';
 export { default } from './ExplorerPage';

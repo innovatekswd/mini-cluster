@@ -9,8 +9,10 @@ import {
   FaDownload,
   FaEllipsisV,
   FaTrash,
+  FaArchive,
+  FaFileArchive,
 } from 'react-icons/fa';
-import { isEditable, isPreviewable, type FileItem } from '~/services/explorerService';
+import { isEditable, isPreviewable, isArchive, type FileItem } from '~/services/explorerService';
 
 interface ContextMenuProps {
   x: number;
@@ -61,9 +63,24 @@ export const ContextMenu = React.memo<ContextMenuProps>(({ x, y, item, onClose, 
       { action: 'cut', label: 'Cut', icon: <FaCut /> },
       { action: 'rename', label: 'Rename', icon: <FaEdit /> },
       { action: 'separator-2', label: '', icon: null },
+    );
+
+    // Archive actions
+    if (isArchive(item)) {
+      items.push(
+        { action: 'extract', label: 'Extract...', icon: <FaFileArchive /> },
+        { action: 'archive-contents', label: 'Browse Archive', icon: <FaArchive /> },
+      );
+    }
+    items.push(
+      { action: 'compress', label: 'Compress...', icon: <FaArchive /> },
+      { action: 'separator-3', label: '', icon: null },
+    );
+    
+    items.push(
       { action: 'download', label: 'Download', icon: <FaDownload /> },
       { action: 'properties', label: 'Properties', icon: <FaEllipsisV /> },
-      { action: 'separator-3', label: '', icon: null },
+      { action: 'separator-4', label: '', icon: null },
       { action: 'delete', label: 'Delete', icon: <FaTrash />, danger: true }
     );
     

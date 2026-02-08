@@ -7,6 +7,7 @@ using SharpCompress.Archives.Tar;
 using SharpCompress.Archives.Zip;
 using SharpCompress.Common;
 using SharpCompress.Compressors.Deflate;
+using SharpCompress.Readers;
 using SharpCompress.Writers;
 using SharpCompress.Writers.Tar;
 using SharpCompress.Writers.Zip;
@@ -61,7 +62,7 @@ public class ArchiveService
         {
             if (File.Exists(path))
             {
-                originalSize += new FileInfo(path).Length;
+                originalSize += new System.IO.FileInfo(path).Length;
                 entryCount++;
             }
             else if (Directory.Exists(path))
@@ -102,7 +103,7 @@ public class ArchiveService
             }
         });
 
-        var outputInfo = new FileInfo(request.OutputPath);
+        var outputInfo = new System.IO.FileInfo(request.OutputPath);
         _logger.LogInformation("Archive created: {OutputPath} ({EntryCount} entries, {Size} bytes)",
             request.OutputPath, entryCount, outputInfo.Length);
 
@@ -139,20 +140,20 @@ public class ArchiveService
 
         await Task.Run(() =>
         {
-            // SharpCompress auto-detects the format
-            using var archive = ArchiveFactory.Open(request.ArchivePath);
+            // Use ReaderFactory for streaming extraction — handles tar.gz, tar.bz2, etc. reliably
+            using var stream = File.OpenRead(request.ArchivePath);
+            using var reader = ReaderFactory.Open(stream);
             
-            foreach (var entry in archive.Entries)
+            while (reader.MoveToNextEntry())
             {
-                if (entry.IsDirectory)
+                if (reader.Entry.IsDirectory)
                     continue;
 
-                // Security: prevent path traversal attacks
-                var entryPath = entry.Key?.Replace('\\', '/');
+                var entryPath = reader.Entry.Key?.Replace('\\', '/');
                 if (string.IsNullOrEmpty(entryPath))
                     continue;
 
-                // Normalize and validate entry path
+                // Security: prevent path traversal attacks
                 var fullDestPath = Path.GetFullPath(Path.Combine(request.DestinationPath, entryPath));
                 var destDirFull = Path.GetFullPath(request.DestinationPath);
                 
@@ -162,17 +163,6 @@ public class ArchiveService
                     continue;
                 }
 
-                // Ensure parent directory exists
-                var entryDir = Path.GetDirectoryName(fullDestPath);
-                if (!string.IsNullOrEmpty(entryDir) && !Directory.Exists(entryDir))
-                    Directory.CreateDirectory(entryDir);
-
-                var extractOptions = new ExtractionOptions 
-                { 
-                    ExtractFullPath = false, 
-                    Overwrite = request.Overwrite 
-                };
-
                 // Check if file exists and overwrite is not allowed
                 if (File.Exists(fullDestPath) && !request.Overwrite)
                 {
@@ -180,9 +170,19 @@ public class ArchiveService
                     continue;
                 }
 
-                entry.WriteToFile(fullDestPath, extractOptions);
+                // Ensure parent directory exists
+                var entryDir = Path.GetDirectoryName(fullDestPath);
+                if (!string.IsNullOrEmpty(entryDir) && !Directory.Exists(entryDir))
+                    Directory.CreateDirectory(entryDir);
+
+                reader.WriteEntryToDirectory(request.DestinationPath, new ExtractionOptions
+                {
+                    ExtractFullPath = true,
+                    Overwrite = request.Overwrite
+                });
+
                 entryCount++;
-                totalSize += entry.Size;
+                totalSize += reader.Entry.Size;
             }
         });
 
@@ -196,7 +196,7 @@ public class ArchiveService
             OutputPath = request.DestinationPath,
             EntryCount = entryCount,
             TotalSize = totalSize,
-            OriginalSize = new FileInfo(request.ArchivePath).Length
+            OriginalSize = new System.IO.FileInfo(request.ArchivePath).Length
         };
     }
 
@@ -238,7 +238,8 @@ public class ArchiveService
                     Path = entry.Key ?? "",
                     Size = entry.Size,
                     CompressedSize = entry.CompressedSize,
-                    LastModified = entry.LastModifiedTime?.UtcDateTime,
+                    LastModified = entry.LastModifiedTime,
+
                     IsDirectory = entry.IsDirectory
                 });
 
@@ -257,10 +258,7 @@ public class ArchiveService
     private void CreateZipArchive(List<string> paths, string outputPath)
     {
         using var stream = File.Create(outputPath);
-        using var writer = WriterFactory.Open(stream, ArchiveType.Zip, new ZipWriterOptions(CompressionType.Deflate)
-        {
-            DeflateCompressionLevel = CompressionLevel.Default
-        });
+        using var writer = WriterFactory.Open(stream, ArchiveType.Zip, new ZipWriterOptions(CompressionType.Deflate));
 
         foreach (var path in paths)
         {
@@ -314,7 +312,7 @@ public class ArchiveService
         {
             if (File.Exists(path))
             {
-                archive.AddEntry(Path.GetFileName(path), new FileInfo(path));
+                archive.AddEntry(Path.GetFileName(path), new System.IO.FileInfo(path));
             }
             else if (Directory.Exists(path))
             {
@@ -355,7 +353,7 @@ public class ArchiveService
         foreach (var file in Directory.GetFiles(directoryPath))
         {
             var entryName = Path.Combine(basePath, Path.GetFileName(file));
-            archive.AddEntry(entryName, new FileInfo(file));
+            archive.AddEntry(entryName, new System.IO.FileInfo(file));
         }
 
         foreach (var dir in Directory.GetDirectories(directoryPath))
@@ -374,7 +372,7 @@ public class ArchiveService
         {
             try
             {
-                size += new FileInfo(file).Length;
+                size += new System.IO.FileInfo(file).Length;
                 count++;
             }
             catch { }
