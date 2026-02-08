@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useSignalRConnection } from "../context/SignalRConnectionContext";
+import { useSignalRConnection, useSignalRConnected } from "../context/SignalRConnectionContext";
 import type {
   ProcessMetricsSnapshot,
   SystemMetricsSnapshot,
@@ -44,6 +44,7 @@ export function TaskManager({ onSelectService }: TaskManagerProps) {
 
   // Use a shared connection for metrics
   const connection = useSignalRConnection();
+  const isConnected = useSignalRConnected();
 
   const fetchData = useCallback(async () => {
     try {
@@ -85,7 +86,7 @@ export function TaskManager({ onSelectService }: TaskManagerProps) {
   }, [processView, fetchSystemProcesses]);
 
   useEffect(() => {
-    if (!connection) return;
+    if (!connection || !isConnected) return;
 
     connection.invoke("JoinAllMetrics").catch(console.error);
     connection.invoke("JoinSystemMetrics").catch(console.error);
@@ -104,10 +105,12 @@ export function TaskManager({ onSelectService }: TaskManagerProps) {
     return () => {
       connection.off("AllProcessMetrics", handleAllMetrics);
       connection.off("SystemMetrics", handleSystemMetrics);
-      connection.invoke("LeaveAllMetrics").catch(console.error);
-      connection.invoke("LeaveSystemMetrics").catch(console.error);
+      if (connection.state === "Connected") {
+        connection.invoke("LeaveAllMetrics").catch(console.error);
+        connection.invoke("LeaveSystemMetrics").catch(console.error);
+      }
     };
-  }, [connection]);
+  }, [connection, isConnected]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
