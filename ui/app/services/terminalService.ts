@@ -69,6 +69,8 @@ class TerminalService {
           return Math.min(1000 * (retryContext.previousRetryCount + 1), 5000);
         }
       })
+      .withServerTimeout(60000)     // Match server's 60s ClientTimeoutInterval
+      .withKeepAliveInterval(30000) // Match server's 30s KeepAliveInterval
       .configureLogging(signalR.LogLevel.Warning)
       .build();
 
