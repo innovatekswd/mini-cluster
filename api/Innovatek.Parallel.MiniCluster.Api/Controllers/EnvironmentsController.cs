@@ -87,9 +87,34 @@ public class EnvironmentsController : ControllerBase
     {
         var env = await _dbContext.Environments
             .FirstOrDefaultAsync(e => e.IsActive);
-        
-        if (env == null) return NotFound();
-        
+
+        // If no active environment, activate the first one available
+        if (env == null)
+        {
+            env = await _dbContext.Environments.FirstOrDefaultAsync();
+        }
+
+        // If no environments exist at all, create a default empty one
+        if (env == null)
+        {
+            env = new Core.Entities.Environment
+            {
+                Id = Guid.NewGuid(),
+                Name = "Default",
+                Slug = "default",
+                Description = "Default environment",
+                Variables = new Dictionary<string, string>(),
+                IsActive = true
+            };
+            _dbContext.Environments.Add(env);
+        }
+        else if (!env.IsActive)
+        {
+            env.IsActive = true;
+        }
+
+        await _dbContext.SaveChangesAsync();
+
         return _mapper.Map<EnvironmentDto>(env);
     }
 
