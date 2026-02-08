@@ -9,18 +9,18 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5148',
+        target: 'http://127.0.0.1:5147',
         changeOrigin: true,
         secure: false,
       },
       '/loghub': {
-        target: 'http://127.0.0.1:5148',
+        target: 'http://127.0.0.1:5147',
         changeOrigin: true,
         ws: true,
         secure: false,
       },
       '/terminalhub': {
-        target: 'http://127.0.0.1:5148',
+        target: 'http://127.0.0.1:5147',
         changeOrigin: true,
         ws: true,
         secure: false,
