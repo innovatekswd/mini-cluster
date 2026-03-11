@@ -30,6 +30,7 @@ export const fileUploadService = {
       headers: {
         "Content-Type": "multipart/form-data",
       },
+      timeout: 300_000, // 5 min for file uploads
     });
     return response.data;
   },
@@ -55,6 +56,7 @@ export const fileUploadService = {
       headers: {
         "Content-Type": "multipart/form-data",
       },
+      timeout: 300_000, // 5 min for folder uploads
     });
     return response.data;
   },

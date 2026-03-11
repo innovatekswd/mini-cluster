@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { metricsService, type SystemMetricsSnapshot, type SystemMetricsHistory as BackendMetricsHistory } from "~/services/metricsService";
+import { useTabVisible } from "~/hooks/useTabVisible";
 
 const MAX_HISTORY_POINTS = 60; // Keep last 60 data points for charts
 const MIN_HISTORY_POINTS = 50; // Minimum points to request from backend on init
-const POLL_INTERVAL_MS = 2000; // Poll every 2 seconds
+const POLL_INTERVAL_MS = 5000; // Poll every 5 seconds (was 2s — reduced for less network traffic)
 
 export interface SystemMetricsHistory {
   current: SystemMetricsSnapshot | null;
@@ -19,6 +20,7 @@ export interface SystemMetricsHistory {
 }
 
 export function useSystemMetricsHistory(): SystemMetricsHistory {
+  const isTabVisible = useTabVisible();
   const [current, setCurrent] = useState<SystemMetricsSnapshot | null>(null);
   const [cpuHistory, setCpuHistory] = useState<number[]>([]);
   const [memoryHistory, setMemoryHistory] = useState<number[]>([]);
@@ -129,6 +131,9 @@ export function useSystemMetricsHistory(): SystemMetricsHistory {
       await loadHistoricalData();
       await fetchMetrics();
       
+      // Only poll when tab is visible
+      if (!isTabVisible) return () => {};
+
       // Set up polling
       const interval = setInterval(fetchMetrics, POLL_INTERVAL_MS);
       
@@ -144,7 +149,7 @@ export function useSystemMetricsHistory(): SystemMetricsHistory {
       mountedRef.current = false;
       if (cleanup) cleanup();
     };
-  }, [loadHistoricalData, fetchMetrics]);
+  }, [loadHistoricalData, fetchMetrics, isTabVisible]);
 
   return {
     current,

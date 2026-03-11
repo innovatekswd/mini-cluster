@@ -121,6 +121,7 @@ export const serviceService = {
       headers: {
         "Content-Type": "multipart/form-data",
       },
+      timeout: 300_000, // 5 min for import
     });
 
     console.debug("Services imported successfully:", res.data);

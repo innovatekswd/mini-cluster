@@ -12,6 +12,7 @@ export default defineConfig({
         target: 'http://127.0.0.1:5147',
         changeOrigin: true,
         secure: false,
+        timeout: 120000,
       },
       '/loghub': {
         target: 'http://127.0.0.1:5147',

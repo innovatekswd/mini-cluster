@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { Layout } from "~/components/Layout";
 import { useSystemMetricsHistory } from "~/hooks/useSystemMetricsHistory";
 import { useAppsWithStatsQuery } from "~/hooks/useAppsQueries";
+import { useTabVisible } from "~/hooks/useTabVisible";
 import { metricsService, formatBytes, formatBytesPerSecond, formatDuration, formatPercent, type ProcessMetricsSnapshot } from "~/services/metricsService";
 import {
   AreaChart,
@@ -75,8 +76,11 @@ export default function HomePage() {
   const [liveMetrics, setLiveMetrics] = useState<ProcessMetricsSnapshot[]>([]);
   const [chartHistory, setChartHistory] = useState<HistoryPoint[]>([]);
 
-  // Fetch live process metrics
+  const isTabVisible = useTabVisible();
+
+  // Fetch live process metrics (pause when tab is hidden)
   useEffect(() => {
+    if (!isTabVisible) return;
     const fetchLiveMetrics = async () => {
       try {
         const data = await metricsService.getLiveMetrics();
@@ -88,7 +92,7 @@ export default function HomePage() {
     fetchLiveMetrics();
     const interval = setInterval(fetchLiveMetrics, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isTabVisible]);
 
   // Build chart history from arrays
   useEffect(() => {

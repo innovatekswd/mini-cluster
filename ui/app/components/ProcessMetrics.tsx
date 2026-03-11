@@ -11,6 +11,7 @@ import {
 } from "~/services/metricsService";
 import { useSignalRConnection, useSignalRServiceGroup } from "~/context/SignalRConnectionContext";
 import { useAppStatusContext } from "~/context/AppStatusContext";
+import { useTabVisible } from "~/hooks/useTabVisible";
 import { HubConnectionState } from "@microsoft/signalr";
 import { 
   FaMemory, FaMicrochip, FaClock, FaChartLine, FaHistory, 
@@ -37,6 +38,7 @@ export function ProcessMetrics({ serviceId, serviceName }: ProcessMetricsProps) 
   const connection = useSignalRConnection();
   const { joinServiceGroup, leaveServiceGroup } = useSignalRServiceGroup();
   const { statuses } = useAppStatusContext();
+  const isTabVisible = useTabVisible();
   const [currentMetrics, setCurrentMetrics] = useState<ProcessMetricsSnapshot | null>(null);
   const [historicalData, setHistoricalData] = useState<MetricsDataPoint[]>([]);
   const [peakData, setPeakData] = useState<PeakMetricsResponse | null>(null);
@@ -125,16 +127,18 @@ export function ProcessMetrics({ serviceId, serviceName }: ProcessMetricsProps) 
     };
   }, [connection, serviceId, autoRefresh, timeRange, joinServiceGroup, leaveServiceGroup, isServiceRunning]);
 
-  // Auto refresh every 30 seconds (only for running services)
+  // Fallback poll only when SignalR is disconnected AND tab is visible
   useEffect(() => {
-    if (!autoRefresh || !isServiceRunning) return;
+    if (!autoRefresh || !isServiceRunning || !isTabVisible) return;
+    // Skip fallback poll when SignalR is actively delivering real-time data
+    if (connection?.state === HubConnectionState.Connected) return;
     
     const interval = setInterval(() => {
       fetchData();
     }, 30000);
     
     return () => clearInterval(interval);
-  }, [autoRefresh, fetchData]);
+  }, [autoRefresh, fetchData, isServiceRunning, isTabVisible, connection]);
 
   // Calculate min/max/avg from historical data
   const stats = React.useMemo(() => {

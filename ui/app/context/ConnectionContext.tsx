@@ -20,6 +20,8 @@ const ConnectionContext = createContext<ConnectionContextType | undefined>(undef
 
 // Health check interval (10 seconds)
 const HEALTH_CHECK_INTERVAL = 10000;
+// Require N consecutive failures before declaring disconnect
+const DISCONNECT_THRESHOLD = 2;
 
 export const ConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
@@ -27,6 +29,7 @@ export const ConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [isChecking, setIsChecking] = useState(false);
   const wasDisconnectedRef = useRef(false);
   const isCheckingRef = useRef(false);
+  const failureCountRef = useRef(0);
   const queryClientRef = useRef(useQueryClient());
   const disconnectCallbacksRef = useRef<Set<ConnectionCallback>>(new Set());
   const reconnectCallbacksRef = useRef<Set<ConnectionCallback>>(new Set());
@@ -53,6 +56,7 @@ export const ConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setIsChecking(true);
     try {
       await serviceService.checkHealth();
+      failureCountRef.current = 0; // Reset on success
       const wasDisconnected = wasDisconnectedRef.current;
       
       setStatus("connected");
@@ -61,25 +65,33 @@ export const ConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       wasDisconnectedRef.current = false;
 
       // If we just reconnected after being disconnected, notify listeners and refresh data
+      // Stagger invalidations to avoid a cache stampede
       if (wasDisconnected) {
         // Notify all reconnect listeners
         reconnectCallbacksRef.current.forEach(callback => callback());
-        // Invalidate all app-related queries to force refresh
-        queryClientRef.current.invalidateQueries({ queryKey: appQueryKeys.all });
-        // Also invalidate any status queries
-        queryClientRef.current.invalidateQueries({ queryKey: ["apps", "detail"] });
+        // Invalidate critical data first (statuses)
+        queryClientRef.current.invalidateQueries({ queryKey: ["services", "statuses"] });
+        // Stagger app details refresh
+        setTimeout(() => {
+          queryClientRef.current.invalidateQueries({ queryKey: appQueryKeys.details() });
+        }, 1_000);
       }
     } catch (error) {
-      // Track if this is a new disconnection
-      const wasConnected = !wasDisconnectedRef.current;
-      setStatus("disconnected");
-      setBackendConnectionStatus(false); // Update global connection status
-      wasDisconnectedRef.current = true;
-      
-      // Cancel all in-flight queries on first disconnect to prevent flickering
-      if (wasConnected) {
-        queryClientRef.current.cancelQueries();
-        disconnectCallbacksRef.current.forEach(callback => callback());
+      failureCountRef.current++;
+
+      // Only declare disconnect after consecutive failures
+      if (failureCountRef.current >= DISCONNECT_THRESHOLD) {
+        // Track if this is a new disconnection
+        const wasConnected = !wasDisconnectedRef.current;
+        setStatus("disconnected");
+        setBackendConnectionStatus(false); // Update global connection status
+        wasDisconnectedRef.current = true;
+        
+        // Cancel all in-flight queries on first disconnect to prevent flickering
+        if (wasConnected) {
+          queryClientRef.current.cancelQueries();
+          disconnectCallbacksRef.current.forEach(callback => callback());
+        }
       }
     } finally {
       isCheckingRef.current = false;

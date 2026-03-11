@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { serviceService } from "~/services/appService";
 import { getBackendConnectionStatus } from "~/lib/queryClient";
 import { useAuth } from "~/context/AuthContext";
+import { useTabVisible } from "~/hooks/useTabVisible";
 
 export type AppStatusMap = Record<string, string>;
 
@@ -22,13 +23,14 @@ const AppStatusContext = createContext<AppStatusContextType | undefined>(undefin
 export const AppStatusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
+  const isTabVisible = useTabVisible();
   
-  // Batch fetch all statuses with polling (only when authenticated)
+  // Batch fetch all statuses with polling (only when authenticated and tab visible)
   const { data: statuses = {}, isLoading, refetch } = useQuery({
     queryKey: statusBatchQueryKey,
     queryFn: () => serviceService.getAllStatuses(),
     staleTime: 5 * 1000, // 5 seconds
-    refetchInterval: () => isAuthenticated && getBackendConnectionStatus() ? 10 * 1000 : false,
+    refetchInterval: () => isTabVisible && isAuthenticated && getBackendConnectionStatus() ? 10 * 1000 : false,
     refetchOnWindowFocus: () => isAuthenticated && getBackendConnectionStatus(),
     enabled: isAuthenticated,
   });

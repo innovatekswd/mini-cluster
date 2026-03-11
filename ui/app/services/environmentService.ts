@@ -58,6 +58,7 @@ export const environmentService = {
       headers: {
         "Content-Type": "multipart/form-data",
       },
+      timeout: 300_000, // 5 min for import
     });
   },
 

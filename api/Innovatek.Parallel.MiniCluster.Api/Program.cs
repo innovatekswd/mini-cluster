@@ -1,6 +1,8 @@
 using Innovatek.Parallel.MiniCluster.Api.Hubs;
 using Innovatek.Parallel.MiniCluster.Api.Middleware;
 using Innovatek.Parallel.MiniCluster.Api.Configuration;
+using Microsoft.AspNetCore.ResponseCompression;
+using System.IO.Compression;
 
 
 
@@ -51,10 +53,10 @@ builder.Services.AddHttpClient();
 builder.Services.AddSignalR(options =>
 {
     options.EnableDetailedErrors = builder.Environment.IsDevelopment();
-    options.MaximumReceiveMessageSize = 102400;
-    options.StreamBufferCapacity = 10;
-    options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
-    options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+    options.MaximumReceiveMessageSize = 262144; // 256 KB (was 100 KB)
+    options.StreamBufferCapacity = 50;          // was 10 — prevents backpressure on fast log output
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(120); // was 60 s — tolerates network hiccups
+    options.KeepAliveInterval = TimeSpan.FromSeconds(15);      // was 30 s — more frequent heartbeat
 });
 
 // AutoMapper
@@ -62,11 +64,26 @@ builder.Services.AddAutoMapper(typeof(Program));
 
 builder.Services.AddSwaggerGen();
 
+// Response Compression (gzip + Brotli)
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
+        new[] { "application/json", "text/plain", "application/javascript", "text/css" });
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
+    options.Level = CompressionLevel.Fastest);
+builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+    options.Level = CompressionLevel.Fastest);
+
 // ── App Pipeline ────────────────────────────────────────────────────────────
 
 var app = builder.Build();
 
 app.UseExceptionHandler();
+app.UseResponseCompression();
 app.UseRequestTimeout(TimeSpan.FromSeconds(30));
 
 // Initialize: migrate DBs, create admin, auto-start services

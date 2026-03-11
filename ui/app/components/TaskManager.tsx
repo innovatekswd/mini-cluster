@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSignalRConnection, useSignalRConnected } from "../context/SignalRConnectionContext";
+import { useTabVisible } from "~/hooks/useTabVisible";
 import type {
   ProcessMetricsSnapshot,
   SystemMetricsSnapshot,
@@ -45,6 +46,7 @@ export function TaskManager({ onSelectService }: TaskManagerProps) {
   // Use a shared connection for metrics
   const connection = useSignalRConnection();
   const isConnected = useSignalRConnected();
+  const isTabVisible = useTabVisible();
 
   const fetchData = useCallback(async () => {
     try {
@@ -70,20 +72,21 @@ export function TaskManager({ onSelectService }: TaskManagerProps) {
     }
   }, []);
 
+  // Unified polling interval — pauses when tab is hidden
   useEffect(() => {
+    if (!isTabVisible) return;
     fetchData();
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
-  }, [fetchData]);
+  }, [fetchData, isTabVisible]);
 
-  // Fetch system processes when viewing "all-processes"
+  // Fetch system processes when viewing "all-processes" (same visibility gate)
   useEffect(() => {
-    if (processView === "all-processes") {
-      fetchSystemProcesses();
-      const interval = setInterval(fetchSystemProcesses, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [processView, fetchSystemProcesses]);
+    if (processView !== "all-processes" || !isTabVisible) return;
+    fetchSystemProcesses();
+    const interval = setInterval(fetchSystemProcesses, 5000);
+    return () => clearInterval(interval);
+  }, [processView, fetchSystemProcesses, isTabVisible]);
 
   useEffect(() => {
     if (!connection || !isConnected) return;

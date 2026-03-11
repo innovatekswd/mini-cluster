@@ -30,6 +30,7 @@ export const apiClient = axios.create({
 
 // Track if we're currently refreshing to prevent multiple refresh attempts
 let isRefreshing = false;
+const MAX_QUEUED_REQUESTS = 20;
 let failedQueue: Array<{
   resolve: (token: string) => void;
   reject: (error: unknown) => void;
@@ -79,6 +80,10 @@ apiClient.interceptors.response.use(
     }
 
     if (isRefreshing) {
+      // Cap the queue to prevent unbounded growth during slow refreshes
+      if (failedQueue.length >= MAX_QUEUED_REQUESTS) {
+        return Promise.reject(new Error("Too many queued requests during token refresh"));
+      }
       // Wait for the refresh to complete
       return new Promise((resolve, reject) => {
         failedQueue.push({ resolve, reject });

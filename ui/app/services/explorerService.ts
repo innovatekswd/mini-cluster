@@ -248,6 +248,7 @@ export const explorerService = {
     const { data } = await apiClient.post(`${API_BASE}/upload`, formData, {
       params: { path: targetPath },
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 300_000, // 5 min for file uploads
       onUploadProgress: (progressEvent) => {
         if (onProgress && progressEvent.total) {
           const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);

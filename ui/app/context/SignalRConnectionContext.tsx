@@ -33,22 +33,31 @@ export const SignalRConnectionProvider: React.FC<{ children: React.ReactNode }> 
     };
   }, []);
 
+  const startConnection = useCallback((connection: HubConnection) => {
+    connection.start().then(() => {
+      setIsConnected(true);
+    }).catch(err => {
+      console.error("SignalR connection error:", err);
+      setIsConnected(false);
+    });
+  }, []);
+
   const getConnection = useCallback((): HubConnection => {
     if (!connectionRef.current) {
       const connection = new HubConnectionBuilder()
         .withUrl("/loghub")
-        .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-        .withServerTimeout(60000) // Match server's 60s ClientTimeoutInterval
-        .withKeepAliveInterval(30000) // Match server's 30s KeepAliveInterval
+        .withAutomaticReconnect({
+          nextRetryDelayInMilliseconds: (retryContext) => {
+            // Exponential backoff capped at 60s — retries indefinitely
+            return Math.min(1000 * 2 ** retryContext.previousRetryCount, 60_000);
+          }
+        })
+        .withServerTimeout(120_000) // Match server's 120s ClientTimeoutInterval
+        .withKeepAliveInterval(15_000) // Match server's 15s KeepAliveInterval
         .build();
       connectionRef.current = connection;
 
-      connection.start().then(() => {
-        setIsConnected(true);
-      }).catch(err => {
-        console.error("SignalR connection error:", err);
-        setIsConnected(false);
-      });
+      startConnection(connection);
 
       connection.onreconnecting(() => {
         setIsConnected(false);
@@ -70,6 +79,13 @@ export const SignalRConnectionProvider: React.FC<{ children: React.ReactNode }> 
 
       connection.onclose(() => {
         setIsConnected(false);
+        // Auto-reconnect after onclose — the built-in retry policy exhausted
+        // means the connection truly closed. Restart after a short delay.
+        setTimeout(() => {
+          if (connectionRef.current === connection) {
+            startConnection(connection);
+          }
+        }, 5_000);
       });
 
       // Set up log handler
