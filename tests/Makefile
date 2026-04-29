@@ -45,3 +45,14 @@ test-coverage: deps
 # Quick smoke test
 smoke: deps
 	go test -v ./tests -run "TestAppCreate|TestServiceStartStop" -timeout 2m
+
+# Run tests against the Go backend (server must be running)
+# Usage: make test-go  (requires: MINICLUSTER_API_URL=http://localhost:8080)
+test-go: deps
+	MINICLUSTER_API_URL=http://localhost:8080 go test -v ./tests -timeout 5m
+
+# Run only API-level tests against Go backend (no CLI required scenarios)
+test-go-api: deps
+	MINICLUSTER_API_URL=http://localhost:8080 go test -v ./tests \
+		-run "TestAuth|TestHealth|TestEnvironment|TestCron|TestGroup|TestProxy|TestSettings" \
+		-timeout 3m
