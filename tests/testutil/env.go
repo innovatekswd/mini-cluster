@@ -391,6 +391,44 @@ func (c *APIClient) Post(ctx context.Context, path string, body interface{}, res
 	return nil
 }
 
+// Put performs a PUT request
+func (c *APIClient) Put(ctx context.Context, path string, body interface{}, result interface{}) error {
+	var reqBody io.Reader
+	if body != nil {
+		data, err := json.Marshal(body)
+		if err != nil {
+			return err
+		}
+		reqBody = bytes.NewReader(data)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "PUT", c.BaseURL+path, reqBody)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	if c.AuthToken != "" {
+		req.Header.Set("Authorization", "Bearer "+c.AuthToken)
+	}
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("API error %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	if result != nil {
+		return json.NewDecoder(resp.Body).Decode(result)
+	}
+	return nil
+}
+
 // Delete performs a DELETE request
 func (c *APIClient) Delete(ctx context.Context, path string) error {
 	req, err := http.NewRequestWithContext(ctx, "DELETE", c.BaseURL+path, nil)
