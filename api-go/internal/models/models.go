@@ -451,13 +451,14 @@ type Package struct {
 
 // PackageInstall tracks installation of a package on this node
 type PackageInstall struct {
-	ID          string    `gorm:"type:text;primaryKey" json:"id"`
-	PackageID   string    `gorm:"type:text;not null;index" json:"packageId"`
-	PackageName string    `gorm:"type:text;not null" json:"packageName"`
-	Version     string    `gorm:"type:text;not null" json:"version"`
-	Status      string    `gorm:"type:text;not null;default:'pending'" json:"status"` // pending|installing|installed|failed|removed
-	Error       string    `gorm:"type:text" json:"error"`
+	ID          string     `gorm:"type:text;primaryKey" json:"id"`
+	PackageID   string     `gorm:"type:text;not null;index" json:"packageId"`
+	PackageName string     `gorm:"type:text;not null" json:"packageName"`
+	Version     string     `gorm:"type:text;not null" json:"version"`
+	ServiceID   string     `gorm:"type:text;index" json:"serviceId"` // service created by this install
+	Status      string     `gorm:"type:text;not null;default:'pending'" json:"status"` // pending|installing|installed|failed|removed
+	Error       string     `gorm:"type:text" json:"error"`
 	InstalledAt *time.Time `json:"installedAt"`
 	RemovedAt   *time.Time `json:"removedAt"`
-	CreatedAt   time.Time `json:"createdAt"`
+	CreatedAt   time.Time  `json:"createdAt"`
 }

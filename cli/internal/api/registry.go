@@ -36,6 +36,7 @@ type PackageInstall struct {
 	PackageID   string     `json:"packageId"`
 	PackageName string     `json:"packageName"`
 	Version     string     `json:"version"`
+	ServiceID   string     `json:"serviceId"`
 	Status      string     `json:"status"`
 	Error       string     `json:"error"`
 	InstalledAt *time.Time `json:"installedAt"`
@@ -144,8 +145,13 @@ func (c *Client) ListInstalls(ctx context.Context) ([]PackageInstall, error) {
 }
 
 // InstallPackage installs a package by name (and optional version)
-func (c *Client) InstallPackage(ctx context.Context, name, version string) (*PackageInstall, error) {
-	body := map[string]string{"name": name, "version": version}
+func (c *Client) InstallPackage(ctx context.Context, name, version string, env map[string]string, autoStart bool) (*PackageInstall, error) {
+	body := map[string]interface{}{
+		"name":      name,
+		"version":   version,
+		"env":       env,
+		"autoStart": autoStart,
+	}
 	var result PackageInstall
 	if err := c.Post(ctx, "/api/registry/install", body, &result); err != nil {
 		return nil, err
