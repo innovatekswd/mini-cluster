@@ -54,17 +54,21 @@ public class ServiceProcessManager : IServiceProcessManager
     private readonly IServiceScopeFactory _scopeFactory;
     
     private readonly ILogBatchService _logBatchService;
+    
+    private readonly ILogRingBufferService _ringBuffer;
 
     public ServiceProcessManager(
         IServiceScopeFactory scopeFactory, 
         ILogger<ServiceProcessManager> logger, 
         IHubContext<LogHub> hub,
-        ILogBatchService logBatchService)
+        ILogBatchService logBatchService,
+        ILogRingBufferService ringBuffer)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
         _hub = hub;
         _logBatchService = logBatchService;
+        _ringBuffer = ringBuffer;
     }
 
 
@@ -272,13 +276,15 @@ public class ServiceProcessManager : IServiceProcessManager
                             }
 
                             // Queue log for batched database write
-                            _logBatchService.QueueLog(new SessionLogEntry
+                            var logEntry = new SessionLogEntry
                             {
                                 SessionId = session.SessionId,
                                 LogType = "stdout",
                                 Timestamp = DateTime.UtcNow,
                                 Line = e.Data
-                            });
+                            };
+                            _logBatchService.QueueLog(logEntry);
+                            _ringBuffer.Add(serviceId, logEntry);
                         });
                     }
                 };
@@ -308,13 +314,15 @@ public class ServiceProcessManager : IServiceProcessManager
                             }
 
                             // Queue log for batched database write
-                            _logBatchService.QueueLog(new SessionLogEntry
+                            var logEntry = new SessionLogEntry
                             {
                                 SessionId = session.SessionId,
                                 LogType = "stderr",
                                 Timestamp = DateTime.UtcNow,
                                 Line = e.Data
-                            });
+                            };
+                            _logBatchService.QueueLog(logEntry);
+                            _ringBuffer.Add(serviceId, logEntry);
                         });
                     }
                 };
@@ -472,6 +480,7 @@ public class ServiceProcessManager : IServiceProcessManager
         }
 
         _runningServices.TryRemove(metadata.ServiceId, out _);
+        _ringBuffer.Clear(metadata.ServiceId);
         _logger.LogInformation($"Service '{metadata.Service.Name}' exited with code {metadata.Process.ExitCode}");
     }
 

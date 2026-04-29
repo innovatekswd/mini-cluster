@@ -9,6 +9,7 @@ import {
   type MetricsDataPoint,
   type PeakMetricsResponse
 } from "~/services/metricsService";
+import { sessionsService, type SessionInfo, formatSessionDuration } from "~/services/sessionsService";
 import { useSignalRConnection, useSignalRServiceGroup } from "~/context/SignalRConnectionContext";
 import { useAppStatusContext } from "~/context/AppStatusContext";
 import { useTabVisible } from "~/hooks/useTabVisible";
@@ -47,6 +48,8 @@ export function ProcessMetrics({ serviceId, serviceName }: ProcessMetricsProps) 
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [sessions, setSessions] = useState<SessionInfo[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string>("live");
 
   // Check if service is running from batch status (more reactive than currentMetrics)
   const serviceStatusFromContext = statuses[serviceId] || "Unknown";
@@ -56,12 +59,22 @@ export function ProcessMetrics({ serviceId, serviceName }: ProcessMetricsProps) 
   const fetchData = useCallback(async () => {
     try {
       setError(null);
-      const rangeMinutes = timeRangeOptions.find(o => o.value === timeRange)?.minutes || 15;
-      const from = new Date(Date.now() - rangeMinutes * 60 * 1000);
+      let from: Date;
+      let to: Date = new Date();
+
+      // If a specific session is selected, scope to its time range
+      const session = sessions.find(s => s.sessionId === selectedSessionId);
+      if (session) {
+        from = new Date(session.startTimestamp);
+        to = session.endTimestamp ? new Date(session.endTimestamp) : new Date();
+      } else {
+        const rangeMinutes = timeRangeOptions.find(o => o.value === timeRange)?.minutes || 15;
+        from = new Date(Date.now() - rangeMinutes * 60 * 1000);
+      }
       
       const [current, history, peaks] = await Promise.all([
         metricsService.getServiceLiveMetrics(serviceId).catch(() => null),
-        metricsService.getHistoricalMetrics(serviceId, from, new Date(), 500).catch(() => ({ dataPoints: [] })),
+        metricsService.getHistoricalMetrics(serviceId, from, to, 500).catch(() => ({ dataPoints: [] })),
         metricsService.getPeakMetrics(serviceId, from).catch(() => null),
       ]);
       
@@ -76,12 +89,19 @@ export function ProcessMetrics({ serviceId, serviceName }: ProcessMetricsProps) 
     } finally {
       setLoading(false);
     }
-  }, [serviceId, timeRange]);
+  }, [serviceId, timeRange, selectedSessionId, sessions]);
 
   // Initial load and time range changes (also re-fetch when service becomes running)
   useEffect(() => {
     fetchData();
   }, [fetchData, isServiceRunning]);
+
+  // Fetch recent sessions for session picker
+  useEffect(() => {
+    sessionsService.getSessions(serviceId, 1, 10).then((res) => {
+      setSessions(res.sessions);
+    }).catch(() => {});
+  }, [serviceId]);
 
   // Subscribe to real-time updates via SignalR (only for running services)
   useEffect(() => {
@@ -202,6 +222,23 @@ export function ProcessMetrics({ serviceId, serviceName }: ProcessMetricsProps) 
         </div>
         
         <div className="flex items-center gap-2">
+          {/* Session Picker */}
+          {sessions.length > 0 && (
+            <select
+              value={selectedSessionId}
+              onChange={(e) => setSelectedSessionId(e.target.value)}
+              className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-lg px-2 py-1.5 max-w-[160px]"
+              title="Scope metrics to a session"
+            >
+              <option value="live">Live / Time Range</option>
+              {sessions.map((s) => (
+                <option key={s.sessionId} value={s.sessionId}>
+                  {new Date(s.startTimestamp).toLocaleTimeString()} ({formatSessionDuration(s.durationSeconds)})
+                </option>
+              ))}
+            </select>
+          )}
+
           {/* Time Range Selector */}
           <div className="flex bg-slate-800 rounded-lg p-1">
             {timeRangeOptions.map((opt) => (

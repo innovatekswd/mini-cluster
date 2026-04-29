@@ -55,12 +55,47 @@ namespace Innovatek.Parallel.MiniCluster.Api.Controllers
             return Ok(session);
         }
 
-        // Get list of sessions for a service
+        // Get list of sessions for a service (with log line counts, paginated, newest first)
         [HttpGet]
-        public async Task<IActionResult> GetSessions(Guid serviceId)
+        public async Task<IActionResult> GetSessions(
+            Guid serviceId,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] DateTime? from = null,
+            [FromQuery] DateTime? to = null)
         {
-            var sessions = await _logsDb.ServiceSessions.Where(s => s.ServiceId == serviceId).ToListAsync();
-            return Ok(sessions);
+            var query = _logsDb.ServiceSessions.Where(s => s.ServiceId == serviceId);
+            
+            if (from.HasValue)
+                query = query.Where(s => s.StartTimestamp >= from.Value);
+            if (to.HasValue)
+                query = query.Where(s => s.StartTimestamp <= to.Value);
+
+            var total = await query.CountAsync();
+
+            var sessions = await query
+                .OrderByDescending(s => s.StartTimestamp)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(s => new
+                {
+                    s.SessionId,
+                    s.ServiceId,
+                    s.StartTimestamp,
+                    s.EndTimestamp,
+                    s.AutoStart,
+                    s.ExitReason,
+                    s.ExitCode,
+                    s.WorkingDirectory,
+                    s.CommandLineArguments,
+                    LineCount = _logsDb.SessionLogs.Count(l => l.SessionId == s.SessionId),
+                    DurationSeconds = s.EndTimestamp.HasValue
+                        ? (int)(s.EndTimestamp.Value - s.StartTimestamp).TotalSeconds
+                        : (int?)null,
+                })
+                .ToListAsync();
+
+            return Ok(new { total, page, pageSize, sessions });
         }
 
         // Get session details (including logs) for a particular session
@@ -79,21 +114,40 @@ namespace Innovatek.Parallel.MiniCluster.Api.Controllers
         }
 
         [HttpGet("{sessionId:guid}/logs")]
-        public async Task<IActionResult> SearchLogs(Guid serviceId, Guid sessionId, [FromQuery] DateTime? from, [FromQuery] DateTime? to)
+        public async Task<IActionResult> SearchLogs(
+            Guid serviceId,
+            Guid sessionId,
+            [FromQuery] DateTime? from,
+            [FromQuery] DateTime? to,
+            [FromQuery] string? query = null,
+            [FromQuery] string? type = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 500)
         {
-            var query = _logsDb.SessionLogs.AsQueryable().Where(l => l.SessionId == sessionId);
+            const int maxPageSize = 1000;
+            pageSize = Math.Min(pageSize, maxPageSize);
+
+            var logQuery = _logsDb.SessionLogs.AsQueryable().Where(l => l.SessionId == sessionId);
 
             if (from.HasValue)
-            {
-                query = query.Where(l => l.Timestamp >= from.Value);
-            }
+                logQuery = logQuery.Where(l => l.Timestamp >= from.Value);
             if (to.HasValue)
-            {
-                query = query.Where(l => l.Timestamp <= to.Value);
-            }
+                logQuery = logQuery.Where(l => l.Timestamp <= to.Value);
+            if (!string.IsNullOrWhiteSpace(query))
+                logQuery = logQuery.Where(l => EF.Functions.Like(l.Line, $"%{query}%"));
+            if (!string.IsNullOrWhiteSpace(type))
+                logQuery = logQuery.Where(l => l.LogType == type);
 
-            var logs = await query.OrderBy(l => l.Timestamp).ToListAsync();
-            return Ok(logs);
+            var total = await logQuery.CountAsync();
+
+            var logs = await logQuery
+                .OrderBy(l => l.Timestamp)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .AsNoTracking()
+                .ToListAsync();
+
+            return Ok(new { total, page, pageSize, results = logs });
         }
 
     }

@@ -5,6 +5,9 @@ import { useSystemMetricsHistory } from "~/hooks/useSystemMetricsHistory";
 import { useAppsWithStatsQuery } from "~/hooks/useAppsQueries";
 import { useTabVisible } from "~/hooks/useTabVisible";
 import { metricsService, formatBytes, formatBytesPerSecond, formatDuration, formatPercent, type ProcessMetricsSnapshot } from "~/services/metricsService";
+import { sessionsService, type SessionCorrelationResponse } from "~/services/sessionsService";
+import { SessionTimeline } from "~/components/SessionTimeline";
+import { ActiveSessionsFeed } from "~/components/ActiveSessionsFeed";
 import {
   AreaChart,
   Area,
@@ -19,6 +22,7 @@ import {
   BarChart,
   Bar,
   Legend,
+  ReferenceArea,
 } from "recharts";
 import {
   FaMicrochip,
@@ -37,6 +41,8 @@ import {
   FaThermometerHalf,
   FaBolt,
   FaLayerGroup,
+  FaHistory,
+  FaStream,
 } from "react-icons/fa";
 
 // Chart colors
@@ -75,6 +81,7 @@ export default function HomePage() {
 
   const [liveMetrics, setLiveMetrics] = useState<ProcessMetricsSnapshot[]>([]);
   const [chartHistory, setChartHistory] = useState<HistoryPoint[]>([]);
+  const [sessionCorrelation, setSessionCorrelation] = useState<SessionCorrelationResponse | null>(null);
 
   const isTabVisible = useTabVisible();
 
@@ -91,6 +98,23 @@ export default function HomePage() {
     };
     fetchLiveMetrics();
     const interval = setInterval(fetchLiveMetrics, 5000);
+    return () => clearInterval(interval);
+  }, [isTabVisible]);
+
+  // Fetch session correlation data for timeline + events feed
+  useEffect(() => {
+    if (!isTabVisible) return;
+    const fetchSessions = async () => {
+      try {
+        const from = new Date(Date.now() - 60 * 60 * 1000);
+        const res = await sessionsService.getSessionCorrelation(from, new Date());
+        setSessionCorrelation(res);
+      } catch (err) {
+        // non-critical — dashboard still works without session data
+      }
+    };
+    fetchSessions();
+    const interval = setInterval(fetchSessions, 30000);
     return () => clearInterval(interval);
   }, [isTabVisible]);
 
@@ -296,6 +320,11 @@ export default function HomePage() {
             </ChartCard>
           </div>
 
+          {/* Session Timeline */}
+          <ChartCard title="Session Timeline" icon={<FaStream className="text-cyan-400" />}>
+            <SessionTimeline correlationData={sessionCorrelation} />
+          </ChartCard>
+
           {/* Secondary Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Service Status Distribution */}
@@ -416,8 +445,8 @@ export default function HomePage() {
             </ChartCard>
           </div>
 
-          {/* Bottom Row - Top CPU & Quick Links */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Bottom Row - Top CPU & Events & Quick Links */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Top CPU Consumers */}
             <ChartCard title="Top CPU Usage" icon={<FaMicrochip className="text-cyan-400" />}>
               {topByCpu.length > 0 ? (
@@ -446,6 +475,11 @@ export default function HomePage() {
                   No running services
                 </div>
               )}
+            </ChartCard>
+
+            {/* Active Sessions Feed */}
+            <ChartCard title="Recent Events" icon={<FaHistory className="text-emerald-400" />}>
+              <ActiveSessionsFeed correlationData={sessionCorrelation} maxItems={8} />
             </ChartCard>
 
             {/* Quick Actions / Navigation */}

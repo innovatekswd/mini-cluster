@@ -1,6 +1,7 @@
 ﻿using Innovatek.Parallel.MiniCluster.Api.Data;
 using Innovatek.Parallel.MiniCluster.Api.Models;
 using Innovatek.Parallel.MiniCluster.Api.Services;
+using Innovatek.Parallel.MiniCluster.Core.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -70,23 +71,43 @@ public class LogsController : ControllerBase
             return NotFound(result.Error);
         }
 
-        // Use efficient query instead of Last()
-        var lastServiceSession = await _logsDb.ServiceSessions
-            .Where(s => s.ServiceId == result.Value)
-            .OrderByDescending(s => s.StartTimestamp)
-            .FirstOrDefaultAsync(cancellationToken);
-            
-        if (lastServiceSession == null)
-        {
-            return NotFound(new { Message = "No sessions found for this service" });
-        }
-
         // Add max page size limit
         const int maxPageSize = 1000;
         var pageSize = Math.Min(request.PageSize, maxPageSize);
 
-        var query = _logsDb.SessionLogs
-            .Where(l => l.SessionId == lastServiceSession.SessionId);
+        IQueryable<SessionLogEntry> query;
+
+        var sessionScope = request.SessionId?.Trim().ToLowerInvariant();
+        
+        if (sessionScope == "all")
+        {
+            // Search across ALL sessions for this service
+            var sessionIds = _logsDb.ServiceSessions
+                .Where(s => s.ServiceId == result.Value)
+                .Select(s => s.SessionId);
+
+            query = _logsDb.SessionLogs.Where(l => sessionIds.Contains(l.SessionId));
+        }
+        else if (Guid.TryParse(sessionScope, out var specificSessionId))
+        {
+            // Search within a specific session
+            query = _logsDb.SessionLogs.Where(l => l.SessionId == specificSessionId);
+        }
+        else
+        {
+            // Default: search latest session
+            var lastServiceSession = await _logsDb.ServiceSessions
+                .Where(s => s.ServiceId == result.Value)
+                .OrderByDescending(s => s.StartTimestamp)
+                .FirstOrDefaultAsync(cancellationToken);
+                
+            if (lastServiceSession == null)
+            {
+                return Ok(new { total = 0, page = 1, pageSize, maxPageSize, results = Array.Empty<object>() });
+            }
+
+            query = _logsDb.SessionLogs.Where(l => l.SessionId == lastServiceSession.SessionId);
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Query))
             query = query.Where(l => EF.Functions.Like(l.Line, $"%{request.Query}%"));

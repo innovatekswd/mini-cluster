@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import Editor from "@monaco-editor/react";
 import type { LogViewerProps } from "../types/LogViewerProps";
 import { useLogContext } from "../context/LogContext";
-import { FaDownload, FaTrash, FaFilter, FaSearch, FaTerminal, FaTimes, FaDatabase, FaStream, FaSync } from "react-icons/fa";
+import { FaDownload, FaTrash, FaFilter, FaSearch, FaTerminal, FaTimes, FaDatabase, FaStream, FaSync, FaGlobe } from "react-icons/fa";
 import apiClient from "~/lib/apiClient";
 
 interface DbSearchResult {
@@ -33,6 +33,7 @@ export const LogViewer: React.FC<LogViewerProps> = ({ appId, miniView = false })
   const [dbSearchPage, setDbSearchPage] = useState(1);
   const [dbSearchQuery, setDbSearchQuery] = useState("");
   const [logType, setLogType] = useState<"all" | "stdout" | "stderr">("all");
+  const [sessionScope, setSessionScope] = useState<"latest" | "all">("latest");
   const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   // Load recent logs from DB on mount when live logs are empty
@@ -80,6 +81,7 @@ export const LogViewer: React.FC<LogViewerProps> = ({ appId, miniView = false })
       const params = new URLSearchParams();
       if (query) params.append("query", query);
       if (logType !== "all") params.append("type", logType);
+      if (sessionScope !== "latest") params.append("sessionId", sessionScope);
       params.append("page", page.toString());
       params.append("pageSize", "500");
       
@@ -96,7 +98,7 @@ export const LogViewer: React.FC<LogViewerProps> = ({ appId, miniView = false })
     } finally {
       setDbSearchLoading(false);
     }
-  }, [appId, logType]);
+  }, [appId, logType, sessionScope]);
 
   // Handle DB search on Enter key
   const handleDbSearch = useCallback(() => {
@@ -104,12 +106,12 @@ export const LogViewer: React.FC<LogViewerProps> = ({ appId, miniView = false })
     searchDbLogs(search, 1);
   }, [search, searchDbLogs]);
 
-  // Refresh DB search when log type changes
+  // Refresh DB search when log type or session scope changes
   useEffect(() => {
     if (searchMode === "db" && dbSearchQuery !== undefined) {
       searchDbLogs(dbSearchQuery, 1);
     }
-  }, [logType, searchMode]);
+  }, [logType, sessionScope, searchMode]);
 
   // Initial load of DB logs when switching to DB mode
   useEffect(() => {
@@ -223,6 +225,18 @@ export const LogViewer: React.FC<LogViewerProps> = ({ appId, miniView = false })
               <option value="all">All Types</option>
               <option value="stdout">stdout</option>
               <option value="stderr">stderr</option>
+            </select>
+          )}
+
+          {/* Session Scope (DB mode only) */}
+          {searchMode === "db" && (
+            <select
+              value={sessionScope}
+              onChange={(e) => setSessionScope(e.target.value as "latest" | "all")}
+              className="bg-slate-700/50 text-slate-300 px-3 py-2 rounded-lg border border-slate-600/50 text-xs"
+            >
+              <option value="latest">Latest Session</option>
+              <option value="all">All Sessions</option>
             </select>
           )}
 

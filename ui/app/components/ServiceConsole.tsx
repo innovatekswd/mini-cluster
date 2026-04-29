@@ -7,7 +7,8 @@ import { ServiceConfigForm } from "./ServiceConfigForm";
 import { FileManager } from "./FileManager"; 
 const LogViewer = lazy(() => import("./LogViewer").then(m => ({ default: m.LogViewer })));
 import { ProcessMetrics } from "./ProcessMetrics";
-import { FaExpand, FaCompress, FaExternalLinkAlt, FaServer, FaTerminal, FaFolder, FaCog, FaChartLine } from "react-icons/fa";
+import { SessionExplorer } from "./SessionExplorer";
+import { FaExpand, FaCompress, FaExternalLinkAlt, FaServer, FaTerminal, FaFolder, FaCog, FaChartLine, FaHistory } from "react-icons/fa";
 import { useServiceStatus } from "../hooks/useServiceStatus";
 import { useLogStream } from "../hooks/useLogStream";
 
@@ -159,6 +160,7 @@ export const ServiceConsole: React.FC<ServiceConsoleProps> = (props) => {
           onTabChange={onTabChange}
           tabs={[
             { key: "logs", label: "Logs" },
+            { key: "sessions", label: "Sessions" },
             { key: "metrics", label: "Metrics" },
             { key: "files", label: "Files" },
             { key: "config", label: "Configuration" },
@@ -173,6 +175,11 @@ export const ServiceConsole: React.FC<ServiceConsoleProps> = (props) => {
           <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-500">Loading logs...</div>}>
             <LogViewer appId={appId} />
           </Suspense>
+        </div>
+
+        {/* Sessions Tab */}
+        <div className={`flex-1 min-h-0 ${activeTab === "sessions" ? "flex flex-col" : "hidden"}`}>
+          <SessionExplorer serviceId={appId} serviceName={service.name} />
         </div>
         
         {/* Metrics Tab */}

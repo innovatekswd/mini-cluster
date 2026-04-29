@@ -97,6 +97,53 @@ public class MetricsController : ControllerBase
     }
 
     /// <summary>
+    /// Get system metrics history with session correlation — returns recent session spans for the dashboard
+    /// </summary>
+    [HttpGet("system/sessions")]
+    public async Task<IActionResult> GetSessionCorrelatedMetrics(
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] int limit = 100)
+    {
+        try
+        {
+            var fromDate = from ?? DateTime.UtcNow.AddHours(-2);
+            var toDate = to ?? DateTime.UtcNow;
+
+            // Fetch session spans that overlap the time range
+            var sessionSpans = await _logsDb.ServiceSessions
+                .Where(s => s.StartTimestamp <= toDate && (s.EndTimestamp == null || s.EndTimestamp >= fromDate))
+                .OrderByDescending(s => s.StartTimestamp)
+                .Take(50)
+                .Select(s => new
+                {
+                    s.SessionId,
+                    s.ServiceId,
+                    s.StartTimestamp,
+                    s.EndTimestamp,
+                    s.ExitCode,
+                    s.ExitReason,
+                    s.CommandLineArguments,
+                })
+                .ToListAsync();
+
+            // Get recent lifecycle events for the activity feed
+            var recentEvents = await _logsDb.LifecycleEvents
+                .Where(e => e.Timestamp >= fromDate && e.Timestamp <= toDate)
+                .OrderByDescending(e => e.Timestamp)
+                .Take(20)
+                .ToListAsync();
+
+            return Ok(new { sessionSpans, recentEvents });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting session correlated metrics");
+            return StatusCode(500, new { message = "Failed to get session correlated metrics" });
+        }
+    }
+
+    /// <summary>
     /// Get all running system processes
     /// </summary>
     [HttpGet("processes")]

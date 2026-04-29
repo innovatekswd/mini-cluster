@@ -9,6 +9,7 @@ public static class ProcessManagementExtensions
         // Process management and logging
         services.AddSingleton<IServiceProcessManager, ServiceProcessManager>();
         services.AddSingleton<ILogBatchService, LogBatchService>();
+        services.AddSingleton<ILogRingBufferService, LogRingBufferService>();
         services.AddHostedService(provider => (LogBatchService)provider.GetRequiredService<ILogBatchService>());
         services.AddHostedService<ProcessMonitoringService>();
         services.AddHostedService<LogCleanupService>();

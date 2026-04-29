@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useRef, useCallback, useState } from "react";
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from "@microsoft/signalr";
-import { useLogContext } from "./LogContext";
+import { useLogContext, type LogEntry } from "./LogContext";
 
 type ReconnectCallback = () => void;
 type JoinedGroups = Set<string>;
@@ -20,7 +20,7 @@ export const SignalRConnectionProvider: React.FC<{ children: React.ReactNode }> 
   const joinedGroupsRef = useRef<JoinedGroups>(new Set());
   const reconnectCallbacksRef = useRef<Set<ReconnectCallback>>(new Set());
   const [isConnected, setIsConnected] = useState(false);
-  const { addLog } = useLogContext();
+  const { addLog, addStructuredLog, addStructuredLogs, setCurrentSessionId } = useLogContext();
 
   const notifyReconnect = useCallback(() => {
     reconnectCallbacksRef.current.forEach(callback => callback());
@@ -88,24 +88,50 @@ export const SignalRConnectionProvider: React.FC<{ children: React.ReactNode }> 
         }, 5_000);
       });
 
-      // Set up log handler
+      // Set up log handler — structured entries
       connection.on("ReceiveLog", (logData: any) => {
-        let logLine: string;
-        let serviceId: string = "";
-        
         if (typeof logData === "object" && logData !== null) {
-          logLine = `${logData.line}`;
-          serviceId = logData.appId || logData.serviceId || "";
+          const serviceId = logData.serviceId || logData.appId || "";
+          if (serviceId) {
+            const entry: LogEntry = {
+              timestamp: logData.timestamp || new Date().toISOString(),
+              type: logData.type === "stderr" ? "stderr" : "stdout",
+              line: logData.line || "",
+              sessionId: logData.sessionId || undefined,
+            };
+            addStructuredLog(serviceId, entry);
+            if (entry.sessionId) {
+              setCurrentSessionId(serviceId, entry.sessionId);
+            }
+          }
         } else {
-          logLine = String(logData);
+          // Legacy fallback
+          const logLine = String(logData);
+          addLog("", logLine);
         }
-        if (serviceId) {
-          addLog(serviceId, logLine);
+      });
+
+      // Replay buffered logs on join (batch)
+      connection.on("ReplayLogs", (logEntries: any[]) => {
+        if (!Array.isArray(logEntries) || logEntries.length === 0) return;
+        const serviceId = logEntries[0]?.serviceId || "";
+        if (!serviceId) return;
+
+        const entries: LogEntry[] = logEntries.map(l => ({
+          timestamp: l.timestamp || new Date().toISOString(),
+          type: l.type === "stderr" ? "stderr" as const : "stdout" as const,
+          line: l.line || "",
+          sessionId: l.sessionId || undefined,
+        }));
+        addStructuredLogs(serviceId, entries);
+        const lastSessionId = entries[entries.length - 1]?.sessionId;
+        if (lastSessionId) {
+          setCurrentSessionId(serviceId, lastSessionId);
         }
       });
     }
     return connectionRef.current;
-  }, [addLog, notifyReconnect]);
+  }, [addLog, addStructuredLog, addStructuredLogs, setCurrentSessionId, notifyReconnect]);
 
   const joinServiceGroup = useCallback(async (serviceId: string) => {
     const connection = getConnection();
