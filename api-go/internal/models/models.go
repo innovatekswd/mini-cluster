@@ -427,3 +427,37 @@ type ServiceFile struct {
 }
 
 func (ServiceFile) TableName() string { return "app_files" }
+
+// ─── Registry / Packages ───────────────────────────────────────────────────
+
+// Package represents a published .mcpkg package in the registry
+type Package struct {
+	ID          string           `gorm:"type:text;primaryKey" json:"id"`
+	Name        string           `gorm:"type:text;not null;uniqueIndex:idx_pkg_name_version" json:"name"`
+	Version     string           `gorm:"type:text;not null;uniqueIndex:idx_pkg_name_version" json:"version"`
+	Description string           `gorm:"type:text" json:"description"`
+	Author      string           `gorm:"type:text" json:"author"`
+	Tags        string           `gorm:"type:text" json:"tags"` // JSON array of strings
+	Manifest    string           `gorm:"type:text" json:"manifest"` // full manifest JSON
+	FilePath    string           `gorm:"type:text" json:"filePath"` // server-side path to .mcpkg
+	FileSize    int64            `json:"fileSize"`
+	Checksum    string           `gorm:"type:text" json:"checksum"` // sha256 hex
+	IsPublic    bool             `gorm:"default:true" json:"isPublic"`
+	Downloads   int              `gorm:"default:0" json:"downloads"`
+	CreatedAt   time.Time        `json:"createdAt"`
+	UpdatedAt   time.Time        `json:"updatedAt"`
+	Installs    []PackageInstall `gorm:"foreignKey:PackageID" json:"installs,omitempty"`
+}
+
+// PackageInstall tracks installation of a package on this node
+type PackageInstall struct {
+	ID          string    `gorm:"type:text;primaryKey" json:"id"`
+	PackageID   string    `gorm:"type:text;not null;index" json:"packageId"`
+	PackageName string    `gorm:"type:text;not null" json:"packageName"`
+	Version     string    `gorm:"type:text;not null" json:"version"`
+	Status      string    `gorm:"type:text;not null;default:'pending'" json:"status"` // pending|installing|installed|failed|removed
+	Error       string    `gorm:"type:text" json:"error"`
+	InstalledAt *time.Time `json:"installedAt"`
+	RemovedAt   *time.Time `json:"removedAt"`
+	CreatedAt   time.Time `json:"createdAt"`
+}

@@ -86,6 +86,8 @@ func migrateApp(db *gorm.DB) error {
 		&models.ServiceVersion{},
 		&models.ServiceFile{},
 		&models.ContainerConfig{},
+		&models.Package{},
+		&models.PackageInstall{},
 	)
 }
 

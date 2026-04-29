@@ -169,6 +169,7 @@ func main() {
 	importHandler := handlers.NewImportHandler(databases.App)
 	healthHandler := handlers.NewHealthHandler(databases.App, databases.Logs)
 	containerHandler := handlers.NewContainerHandler(containerSvc, databases.App, databases.Logs, log)
+	registryHandler := handlers.NewRegistryHandler(databases.App, cfg.Registry.StorageDir, log)
 
 	// ─── SignalR servers ─────────────────────────────────────────────────────
 	logHubServer, err := signalr.NewServer(ctx,
@@ -284,6 +285,19 @@ func main() {
 			r.Delete("/", containerHandler.DeleteConfig)
 			r.Get("/stats", containerHandler.GetStats)
 			r.Post("/exec", containerHandler.Exec)
+		})
+
+		// package registry
+		r.Route("/registry", func(r chi.Router) {
+			r.Get("/packages", registryHandler.ListPackages)
+			r.Get("/packages/{name}", registryHandler.ListVersions)
+			r.Get("/packages/{name}/{version}", registryHandler.GetPackage)
+			r.Post("/packages", registryHandler.PublishPackage)
+			r.Delete("/packages/{name}/{version}", registryHandler.UnpublishPackage)
+			r.Get("/packages/{name}/{version}/download", registryHandler.DownloadPackage)
+			r.Get("/installs", registryHandler.ListInstalls)
+			r.Post("/install", registryHandler.InstallPackage)
+			r.Delete("/installs/{id}", registryHandler.RemoveInstall)
 		})
 	})
 

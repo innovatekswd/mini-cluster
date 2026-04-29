@@ -17,6 +17,7 @@ type Config struct {
 	Agent            AgentConfig            `mapstructure:"agent"`
 	SignalR          SignalRConfig          `mapstructure:"signalr"`
 	ContainerRuntime ContainerRuntimeConfig `mapstructure:"container_runtime"`
+	Registry         RegistryConfig         `mapstructure:"registry"`
 }
 
 type AuthConfig struct {
@@ -66,8 +67,12 @@ type SignalRConfig struct {
 
 type ContainerRuntimeConfig struct {
 	Enabled     bool   `mapstructure:"enabled"`
-	SocketPath  string `mapstructure:"socket_path"`   // empty = platform default
-	StopTimeout int    `mapstructure:"stop_timeout"`  // seconds, default 10
+	SocketPath  string `mapstructure:"socket_path"`  // empty = platform default
+	StopTimeout int    `mapstructure:"stop_timeout"` // seconds, default 10
+}
+
+type RegistryConfig struct {
+	StorageDir string `mapstructure:"storage_dir"` // where .mcpkg files are stored
 }
 
 // Load reads configuration from file and environment, returning populated Config.
@@ -93,6 +98,7 @@ func Load() (*Config, error) {
 	v.SetDefault("explorer.max_edit_file_size_mb", 10)
 	v.SetDefault("explorer.enable_terminal", true)
 	v.SetDefault("explorer.show_hidden_files", false)
+	v.SetDefault("registry.storage_dir", "registry-packages")
 	v.SetDefault("agent.heartbeat_interval_seconds", 30)
 	v.SetDefault("signalr.max_message_size_kb", 256)
 	v.SetDefault("signalr.keepalive_interval_seconds", 15)
