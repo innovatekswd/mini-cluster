@@ -10,12 +10,13 @@ type Config struct {
 	Port    int    `mapstructure:"port"`
 	DataDir string `mapstructure:"data_dir"`
 
-	Authentication AuthConfig       `mapstructure:"authentication"`
-	Cors           CorsConfig       `mapstructure:"cors"`
-	LogCleanup     LogCleanupConfig `mapstructure:"log_cleanup"`
-	Explorer       ExplorerConfig   `mapstructure:"explorer"`
-	Agent          AgentConfig      `mapstructure:"agent"`
-	SignalR        SignalRConfig    `mapstructure:"signalr"`
+	Authentication   AuthConfig             `mapstructure:"authentication"`
+	Cors             CorsConfig             `mapstructure:"cors"`
+	LogCleanup       LogCleanupConfig       `mapstructure:"log_cleanup"`
+	Explorer         ExplorerConfig         `mapstructure:"explorer"`
+	Agent            AgentConfig            `mapstructure:"agent"`
+	SignalR          SignalRConfig          `mapstructure:"signalr"`
+	ContainerRuntime ContainerRuntimeConfig `mapstructure:"container_runtime"`
 }
 
 type AuthConfig struct {
@@ -61,6 +62,12 @@ type SignalRConfig struct {
 	MaxMessageSizeKB   int `mapstructure:"max_message_size_kb"`
 	KeepAliveIntervalS int `mapstructure:"keepalive_interval_seconds"`
 	ClientTimeoutS     int `mapstructure:"client_timeout_seconds"`
+}
+
+type ContainerRuntimeConfig struct {
+	Enabled     bool   `mapstructure:"enabled"`
+	SocketPath  string `mapstructure:"socket_path"`   // empty = platform default
+	StopTimeout int    `mapstructure:"stop_timeout"`  // seconds, default 10
 }
 
 // Load reads configuration from file and environment, returning populated Config.

@@ -87,11 +87,94 @@ const (
 	CaptureModeBoth   CaptureMode = "Both"
 )
 
+// ─── Container Support ─────────────────────────────────────────────────────
+
+type ServiceType string
+
+const (
+	ServiceTypeProcess ServiceType = "Process"
+	ServiceTypeDocker  ServiceType = "Docker"
+	ServiceTypePodman  ServiceType = "Podman"
+)
+
+type PullPolicy string
+
+const (
+	PullAlways       PullPolicy = "Always"
+	PullIfNotPresent PullPolicy = "IfNotPresent"
+	PullNever        PullPolicy = "Never"
+)
+
+// ContainerConfig holds Docker/Podman configuration for a Service.
+// It is a 1-to-1 optional extension of Service (uniqueIndex on ServiceID).
+type ContainerConfig struct {
+	ID        string `gorm:"type:text;primaryKey" json:"id"`
+	ServiceID string `gorm:"type:text;not null;uniqueIndex" json:"serviceId"`
+
+	// Image
+	Image      string     `gorm:"type:text;not null" json:"image"`
+	Tag        string     `gorm:"type:text;not null;default:'latest'" json:"tag"`
+	Registry   string     `gorm:"type:text" json:"registry"`
+	PullPolicy PullPolicy `gorm:"type:text;not null;default:'IfNotPresent'" json:"pullPolicy"`
+
+	// Runtime state (written at execution time)
+	ContainerID   string `gorm:"type:text" json:"containerId"`
+	ContainerName string `gorm:"type:text" json:"containerName"`
+	ImageID       string `gorm:"type:text" json:"imageId"`
+
+	// Networking — JSON-encoded []PortMapping
+	Ports       string `gorm:"type:text" json:"ports"`
+	NetworkMode string `gorm:"type:text" json:"networkMode"`
+
+	// Storage — JSON-encoded []VolumeMount
+	Volumes string `gorm:"type:text" json:"volumes"`
+
+	// Resource limits
+	MemoryLimitBytes *int64   `json:"memoryLimitBytes"`
+	CpuLimit         *float64 `json:"cpuLimit"`
+
+	// Execution overrides
+	Entrypoint   string `gorm:"type:text" json:"entrypoint"`
+	Command      string `gorm:"type:text" json:"command"`
+	User         string `gorm:"type:text" json:"user"`
+	WorkingDir   string `gorm:"type:text" json:"workingDir"`
+	Privileged   bool   `gorm:"not null;default:false" json:"privileged"`
+	ReadOnly     bool   `gorm:"not null;default:false" json:"readOnly"`
+	RemoveOnStop bool   `gorm:"not null;default:false" json:"removeOnStop"`
+
+	// Labels — JSON-encoded map[string]string
+	Labels string `gorm:"type:text" json:"labels"`
+
+	CreatedAt  time.Time `json:"createdAt"`
+	ModifiedAt time.Time `json:"modifiedAt"`
+
+	Service *Service `gorm:"foreignKey:ServiceID" json:"-"`
+}
+
+// PortMapping represents a host→container port binding.
+type PortMapping struct {
+	HostPort      int    `json:"hostPort"`
+	ContainerPort int    `json:"containerPort"`
+	Protocol      string `json:"protocol"` // tcp | udp
+	HostIP        string `json:"hostIp"`   // default 0.0.0.0
+}
+
+// VolumeMount represents a volume or bind-mount.
+type VolumeMount struct {
+	Type     string `json:"type"`     // bind | volume | tmpfs
+	Source   string `json:"source"`
+	Target   string `json:"target"`
+	ReadOnly bool   `json:"readOnly"`
+}
+
+// ─── Service ───────────────────────────────────────────────────────────────
+
 type Service struct {
 	ID                   string          `gorm:"type:text;primaryKey" json:"id"`
 	Name                 string          `gorm:"type:text;not null" json:"name"`
 	Slug                 string          `gorm:"type:text;not null" json:"slug"`
-	ExecutablePath       string          `gorm:"type:text;not null" json:"executablePath"`
+	ServiceType          ServiceType     `gorm:"type:text;not null;default:'Process'" json:"serviceType"`
+	ExecutablePath       string          `gorm:"type:text" json:"executablePath"`
 	Arguments            string          `gorm:"type:text" json:"arguments"`
 	EnvironmentVariables string          `gorm:"type:text" json:"environmentVariables"` // JSON map
 	WorkingDirectory     string          `gorm:"type:text" json:"workingDirectory"`
@@ -111,6 +194,8 @@ type Service struct {
 	OrderIndex           int             `gorm:"not null;default:0" json:"orderIndex"`
 	CreatedAt            time.Time       `json:"createdAt"`
 	ModifiedAt           time.Time       `json:"modifiedAt"`
+
+	ContainerConfig *ContainerConfig `gorm:"foreignKey:ServiceID" json:"containerConfig,omitempty"`
 }
 
 // ─── Environments ──────────────────────────────────────────────────────────

@@ -69,18 +69,37 @@ func main() {
 	// ─── Process manager ────────────────────────────────────────────────────
 	procMgr := services.NewProcessManager(databases.App, databases.Logs, log)
 
+	// ─── Container runtime (optional) ───────────────────────────────────────
+	var containerSvc services.IContainerService
+	var containerMgr *services.ContainerManager
+	if cfg.ContainerRuntime.Enabled {
+		dockerSvc, err := services.NewDockerService(cfg.ContainerRuntime.SocketPath)
+		if err != nil {
+			log.Warn("container runtime unavailable", zap.Error(err))
+		} else if err := dockerSvc.Ping(context.Background()); err != nil {
+			log.Warn("container runtime not reachable", zap.Error(err))
+		} else {
+			containerSvc = dockerSvc
+			containerMgr = services.NewContainerManager(containerSvc, databases.App, databases.Logs, log)
+			log.Info("container runtime ready")
+		}
+	}
+
+	// ─── Unified service executor ────────────────────────────────────────────
+	executor := services.NewServiceExecutor(procMgr, containerMgr, databases.App, log)
+
 	// ─── Hubs ───────────────────────────────────────────────────────────────
 	logHub := hubs.NewLogHub(log)
 	terminalHub := hubs.NewTerminalHub(log)
 
 	// wire process events → SignalR broadcasts
-	procMgr.OnStarted = func(serviceID, sessionID string) {
+	onStarted := func(serviceID, sessionID string) {
 		logHub.SendServiceEvent("ServiceStarted", serviceID, sessionID)
 	}
-	procMgr.OnStopped = func(serviceID, sessionID string, _ int) {
+	onStopped := func(serviceID, sessionID string, _ int) {
 		logHub.SendServiceEvent("ServiceStopped", serviceID, sessionID)
 	}
-	procMgr.OnLogLine = func(serviceID, sessionID string, logType models.LogType, line string) {
+	onLogLine := func(serviceID, sessionID string, logType models.LogType, line string) {
 		logHub.BroadcastLog(hubs.LogEntry{
 			ServiceID: serviceID,
 			SessionID: sessionID,
@@ -88,6 +107,14 @@ func main() {
 			Line:      line,
 			Timestamp: time.Now().UTC(),
 		})
+	}
+	procMgr.OnStarted = onStarted
+	procMgr.OnStopped = onStopped
+	procMgr.OnLogLine = onLogLine
+	if containerMgr != nil {
+		containerMgr.OnStarted = onStarted
+		containerMgr.OnStopped = onStopped
+		containerMgr.OnLogLine = onLogLine
 	}
 
 	// ─── Workers ────────────────────────────────────────────────────────────
@@ -102,8 +129,8 @@ func main() {
 	cronSched := workers.NewCronScheduler(databases.App, log)
 	autoRestart := workers.NewAutoRestartWorker(databases.App, procMgr, log)
 
-	healthChecker.OnTriggerStart = func(serviceID string) { _, _ = procMgr.StartService(serviceID) }
-	cronSched.OnTriggerStart = func(serviceID string) { _, _ = procMgr.StartService(serviceID) }
+	healthChecker.OnTriggerStart = func(serviceID string) { _, _ = executor.StartService(serviceID) }
+	cronSched.OnTriggerStart = func(serviceID string) { _, _ = executor.StartService(serviceID) }
 
 	for _, worker := range []func(context.Context){
 		metricsCollector.Run,
@@ -116,8 +143,8 @@ func main() {
 		go worker(ctx)
 	}
 
-	// auto-start services
-	go procMgr.AutoStartServices()
+	// auto-start services (process + container)
+	go executor.AutoStartServices()
 
 	// ─── Handlers ────────────────────────────────────────────────────────────
 	authHandler := handlers.NewAuthHandler(authSvc)
@@ -141,6 +168,7 @@ func main() {
 	explorerHandler := handlers.NewExplorerHandler(explorerCfg)
 	importHandler := handlers.NewImportHandler(databases.App)
 	healthHandler := handlers.NewHealthHandler(databases.App, databases.Logs)
+	containerHandler := handlers.NewContainerHandler(containerSvc, databases.App, databases.Logs, log)
 
 	// ─── SignalR servers ─────────────────────────────────────────────────────
 	logHubServer, err := signalr.NewServer(ctx,
@@ -244,6 +272,19 @@ func main() {
 		// explorer
 		r.Mount("/explorer", explorerHandler.Routes())
 		r.Mount("/files", explorerHandler.FileRoutes())
+
+		// container infrastructure
+		r.Get("/containers/runtime", containerHandler.GetRuntime)
+		r.Get("/images", containerHandler.ListImages)
+		r.Post("/images/pull", containerHandler.PullImage)
+		r.Delete("/images/{name}", containerHandler.RemoveImage)
+		r.Route("/services/{id}/container", func(r chi.Router) {
+			r.Get("/", containerHandler.GetConfig)
+			r.Put("/", containerHandler.UpsertConfig)
+			r.Delete("/", containerHandler.DeleteConfig)
+			r.Get("/stats", containerHandler.GetStats)
+			r.Post("/exec", containerHandler.Exec)
+		})
 	})
 
 	// SignalR hubs — chi.Router satisfies MappableRouter with this adapter
