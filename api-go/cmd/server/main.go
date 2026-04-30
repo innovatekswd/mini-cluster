@@ -125,9 +125,9 @@ func main() {
 	hbMonitor := workers.NewHeartbeatMonitor(databases.App, log)
 	logCleanup := workers.NewLogCleanupWorker(databases.Logs,
 		cfg.LogCleanup.IntervalMinutes, cfg.LogCleanup.RetentionHours, cfg.LogCleanup.AutoVacuum, log)
-	healthChecker := workers.NewHealthCheckWorker(databases.App, log)
+	healthChecker := workers.NewHealthCheckWorker(databases.App, executor, log)
 	cronSched := workers.NewCronScheduler(databases.App, log)
-	autoRestart := workers.NewAutoRestartWorker(databases.App, procMgr, log)
+	autoRestart := workers.NewAutoRestartWorker(databases.App, executor, log)
 
 	healthChecker.OnTriggerStart = func(serviceID string) { _, _ = executor.StartService(serviceID) }
 	cronSched.OnTriggerStart = func(serviceID string) { _, _ = executor.StartService(serviceID) }
@@ -148,8 +148,8 @@ func main() {
 
 	// ─── Handlers ────────────────────────────────────────────────────────────
 	authHandler := handlers.NewAuthHandler(authSvc)
-	appsHandler := handlers.NewAppsHandler(databases.App, procMgr)
-	svcHandler := handlers.NewServicesHandler(databases.App, procMgr)
+	appsHandler := handlers.NewAppsHandler(databases.App, executor)
+	svcHandler := handlers.NewServicesHandler(databases.App, executor)
 	envHandler := handlers.NewEnvironmentsHandler(databases.App)
 	logsHandler := handlers.NewLogsHandler(databases.App, databases.Logs)
 	sessionsHandler := handlers.NewSessionsHandler(databases.Logs, databases.App)
@@ -279,11 +279,18 @@ func main() {
 		r.Get("/images", containerHandler.ListImages)
 		r.Post("/images/pull", containerHandler.PullImage)
 		r.Delete("/images/{name}", containerHandler.RemoveImage)
+		r.Get("/volumes", containerHandler.ListVolumes)
+		r.Post("/volumes", containerHandler.CreateVolume)
+		r.Delete("/volumes/{name}", containerHandler.RemoveVolume)
+		r.Get("/networks", containerHandler.ListNetworks)
+		r.Post("/networks", containerHandler.CreateNetwork)
+		r.Delete("/networks/{id}", containerHandler.RemoveNetwork)
 		r.Route("/services/{id}/container", func(r chi.Router) {
 			r.Get("/", containerHandler.GetConfig)
 			r.Put("/", containerHandler.UpsertConfig)
 			r.Delete("/", containerHandler.DeleteConfig)
 			r.Get("/stats", containerHandler.GetStats)
+			r.Get("/logs", containerHandler.StreamContainerLogs)
 			r.Post("/exec", containerHandler.Exec)
 		})
 

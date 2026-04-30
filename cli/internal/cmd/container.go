@@ -343,5 +343,136 @@ func init() {
 	f.StringVar(&ccLabels, "labels", "", "Labels JSON")
 
 	containerCmd.AddCommand(containerRuntimeCmd, imagesCmd, containerConfigCmd, containerStatsCmd, containerExecCmd)
-	rootCmd.AddCommand(containerCmd)
+        containerCmd.AddCommand(volumesCmd, networksCmd)
+        rootCmd.AddCommand(containerCmd)
+}
+
+// ── mc container volumes ───────────────────────────────────────────────────
+
+var volumesCmd = &cobra.Command{
+	Use:   "volumes",
+	Short: "Manage Docker volumes",
+}
+
+var volumesListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List named volumes",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		client := GetClient()
+		out := GetFormatter()
+		vols, err := client.ListVolumes(context.Background())
+		if err != nil {
+			return err
+		}
+		headers := []string{"NAME", "DRIVER", "MOUNTPOINT"}
+		rows := make([][]string, len(vols))
+		for i, v := range vols {
+			rows[i] = []string{v.Name, v.Driver, v.Mountpoint}
+		}
+		return out.OutputTable(headers, rows)
+	},
+}
+
+var volumesCreateCmd = &cobra.Command{
+	Use:   "create <name>",
+	Short: "Create a named volume",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		client := GetClient()
+		out := GetFormatter()
+		vol, err := client.CreateVolume(context.Background(), args[0])
+		if err != nil {
+			return err
+		}
+		out.Success("Volume %s created (%s)", vol.Name, vol.Mountpoint)
+		return nil
+	},
+}
+
+var volumesRemoveCmd = &cobra.Command{
+	Use:     "remove <name>",
+	Aliases: []string{"rm"},
+	Short:   "Remove a named volume",
+	Args:    cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		force, _ := cmd.Flags().GetBool("force")
+		client := GetClient()
+		out := GetFormatter()
+		if err := client.RemoveVolume(context.Background(), args[0], force); err != nil {
+			return err
+		}
+		out.Success("Volume %s removed", args[0])
+		return nil
+	},
+}
+
+// ── mc container networks ──────────────────────────────────────────────────
+
+var networksCmd = &cobra.Command{
+	Use:   "networks",
+	Short: "Manage Docker networks",
+}
+
+var networksListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List Docker networks",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		client := GetClient()
+		out := GetFormatter()
+		nets, err := client.ListNetworks(context.Background())
+		if err != nil {
+			return err
+		}
+		headers := []string{"ID", "NAME", "DRIVER", "SCOPE"}
+		rows := make([][]string, len(nets))
+		for i, n := range nets {
+			id := n.ID
+			if len(id) > 12 {
+				id = id[:12]
+			}
+			rows[i] = []string{id, n.Name, n.Driver, n.Scope}
+		}
+		return out.OutputTable(headers, rows)
+	},
+}
+
+var networksCreateCmd = &cobra.Command{
+	Use:   "create <name>",
+	Short: "Create a Docker network",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		driver, _ := cmd.Flags().GetString("driver")
+		client := GetClient()
+		out := GetFormatter()
+		net, err := client.CreateNetwork(context.Background(), args[0], driver)
+		if err != nil {
+			return err
+		}
+		out.Success("Network %s created (id: %s)", net.Name, net.ID[:12])
+		return nil
+	},
+}
+
+var networksRemoveCmd = &cobra.Command{
+	Use:     "remove <id|name>",
+	Aliases: []string{"rm"},
+	Short:   "Remove a Docker network",
+	Args:    cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		client := GetClient()
+		out := GetFormatter()
+		if err := client.RemoveNetwork(context.Background(), args[0]); err != nil {
+			return err
+		}
+		out.Success("Network %s removed", args[0])
+		return nil
+	},
+}
+
+func init() {
+	volumesCmd.AddCommand(volumesListCmd, volumesCreateCmd, volumesRemoveCmd)
+	volumesRemoveCmd.Flags().Bool("force", false, "Force removal")
+
+	networksCmd.AddCommand(networksListCmd, networksCreateCmd, networksRemoveCmd)
+	networksCreateCmd.Flags().String("driver", "bridge", "Network driver")
 }

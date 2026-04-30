@@ -79,6 +79,22 @@ func (cm *ContainerManager) ClearManuallyStopped(serviceID string) {
 	cm.mu.Unlock()
 }
 
+// ExecInService runs a command inside the running container for serviceID.
+// Returns the exit code, or an error if the service is not running.
+func (cm *ContainerManager) ExecInService(ctx context.Context, serviceID string, cmd []string) (int, error) {
+	cm.mu.RLock()
+	rc, ok := cm.running[serviceID]
+	cm.mu.RUnlock()
+	if !ok {
+		return -1, fmt.Errorf("service %s is not running", serviceID)
+	}
+	result, err := cm.svc.Exec(ctx, rc.containerID, cmd)
+	if err != nil {
+		return -1, err
+	}
+	return result.ExitCode, nil
+}
+
 // StartService pulls the image if needed, creates the container, starts it,
 // opens a session record, and launches background goroutines to watch it.
 func (cm *ContainerManager) StartService(serviceID string) (string, error) {
@@ -181,6 +197,7 @@ func (cm *ContainerManager) StartService(serviceID string) (string, error) {
 }
 
 // StopService gracefully stops the container (SIGTERM → 10s → SIGKILL).
+// If ContainerConfig.RemoveOnStop is set, removes the container afterwards.
 func (cm *ContainerManager) StopService(serviceID string) error {
 	cm.mu.Lock()
 	rc, ok := cm.running[serviceID]
@@ -197,6 +214,17 @@ func (cm *ContainerManager) StopService(serviceID string) error {
 	if err := cm.svc.StopContainer(context.Background(), containerID, timeout); err != nil {
 		cm.log.Warn("container stop error", zap.String("service", serviceID), zap.Error(err))
 	}
+
+	// Remove container if RemoveOnStop is configured
+	var cfg models.ContainerConfig
+	if err := cm.appDB.Where("service_id = ?", serviceID).First(&cfg).Error; err == nil && cfg.RemoveOnStop {
+		if err := cm.svc.RemoveContainer(context.Background(), containerID, false); err != nil {
+			cm.log.Warn("container remove error", zap.String("service", serviceID), zap.Error(err))
+		} else {
+			cm.appDB.Model(&cfg).Update("container_id", "")
+		}
+	}
+
 	return nil
 }
 

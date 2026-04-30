@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/innovatek/minicluster/internal/models"
@@ -96,6 +97,15 @@ func (e *ServiceExecutor) ClearManuallyStopped(serviceID string) {
 	if e.containerManager != nil {
 		e.containerManager.ClearManuallyStopped(serviceID)
 	}
+}
+
+// ExecContainer runs a command inside a running container for the given service.
+// Returns the exit code (or error if the service is not a container or not running).
+func (e *ServiceExecutor) ExecContainer(ctx context.Context, serviceID string, cmd []string) (int, error) {
+	if e.containerManager == nil {
+		return -1, fmt.Errorf("container runtime not configured")
+	}
+	return e.containerManager.ExecInService(ctx, serviceID, cmd)
 }
 
 // AutoStartServices starts all services with AutoStart=true on boot.

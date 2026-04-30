@@ -190,3 +190,77 @@ func (c *Client) ExecContainer(ctx context.Context, serviceID string, command []
 	}
 	return &result, nil
 }
+
+// ── Volume management ─────────────────────────────────────────────────────
+
+// VolumeInfo describes a named volume.
+type VolumeInfo struct {
+	Name       string            `json:"name"`
+	Driver     string            `json:"driver"`
+	Mountpoint string            `json:"mountpoint"`
+	Labels     map[string]string `json:"labels"`
+	CreatedAt  string            `json:"createdAt"`
+}
+
+// NetworkInfo describes a Docker network.
+type NetworkInfo struct {
+	ID     string            `json:"id"`
+	Name   string            `json:"name"`
+	Driver string            `json:"driver"`
+	Scope  string            `json:"scope"`
+	Labels map[string]string `json:"labels"`
+}
+
+// ListVolumes returns all named volumes on the host.
+func (c *Client) ListVolumes(ctx context.Context) ([]VolumeInfo, error) {
+	var result []VolumeInfo
+	if err := c.Get(ctx, "/api/volumes", &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// CreateVolume creates a named volume.
+func (c *Client) CreateVolume(ctx context.Context, name string) (*VolumeInfo, error) {
+	body := map[string]string{"name": name}
+	var result VolumeInfo
+	if err := c.Post(ctx, "/api/volumes", body, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// RemoveVolume removes a named volume.
+func (c *Client) RemoveVolume(ctx context.Context, name string, force bool) error {
+	path := "/api/volumes/" + name
+	if force {
+		path += "?force=true"
+	}
+	return c.Delete(ctx, path)
+}
+
+// ── Network management ────────────────────────────────────────────────────
+
+// ListNetworks returns all Docker networks.
+func (c *Client) ListNetworks(ctx context.Context) ([]NetworkInfo, error) {
+	var result []NetworkInfo
+	if err := c.Get(ctx, "/api/networks", &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// CreateNetwork creates a Docker network.
+func (c *Client) CreateNetwork(ctx context.Context, name, driver string) (*NetworkInfo, error) {
+	body := map[string]string{"name": name, "driver": driver}
+	var result NetworkInfo
+	if err := c.Post(ctx, "/api/networks", body, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// RemoveNetwork removes a Docker network by ID or name.
+func (c *Client) RemoveNetwork(ctx context.Context, id string) error {
+	return c.Delete(ctx, "/api/networks/"+id)
+}

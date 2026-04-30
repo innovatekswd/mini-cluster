@@ -14,6 +14,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
+	dockervolume "github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/innovatek/minicluster/internal/models"
@@ -59,7 +60,23 @@ type RuntimeInfo struct {
 	OSType      string
 	Architecture string
 }
+// VolumeInfo describes a named volume.
+type VolumeInfo struct {
+	Name       string            `json:"name"`
+	Driver     string            `json:"driver"`
+	Mountpoint string            `json:"mountpoint"`
+	Labels     map[string]string `json:"labels"`
+	CreatedAt  string            `json:"createdAt"`
+}
 
+// NetworkInfo describes a Docker network.
+type NetworkInfo struct {
+	ID     string            `json:"id"`
+	Name   string            `json:"name"`
+	Driver string            `json:"driver"`
+	Scope  string            `json:"scope"`
+	Labels map[string]string `json:"labels"`
+}
 // ExecResult holds the output of a container exec.
 type ExecResult struct {
 	ExitCode int
@@ -90,6 +107,16 @@ type IContainerService interface {
 	GetStats(ctx context.Context, containerID string) (*ContainerStats, error)
 	StreamLogs(ctx context.Context, containerID string, follow bool) (io.ReadCloser, error)
 	Exec(ctx context.Context, containerID string, cmd []string) (*ExecResult, error)
+
+	// Volume management
+	ListVolumes(ctx context.Context) ([]VolumeInfo, error)
+	CreateVolume(ctx context.Context, name string, labels map[string]string) (*VolumeInfo, error)
+	RemoveVolume(ctx context.Context, name string, force bool) error
+
+	// Network management
+	ListNetworks(ctx context.Context) ([]NetworkInfo, error)
+	CreateNetwork(ctx context.Context, name string, driver string, labels map[string]string) (*NetworkInfo, error)
+	RemoveNetwork(ctx context.Context, networkID string) error
 
 	// Runtime info
 	Ping(ctx context.Context) error
@@ -479,6 +506,90 @@ func (d *DockerService) Exec(ctx context.Context, containerID string, cmd []stri
 		Stdout:   stdout.String(),
 		Stderr:   stderr.String(),
 	}, nil
+}
+
+// ─── Volume management ──────────────────────────────────────────────────────
+
+func (d *DockerService) ListVolumes(ctx context.Context) ([]VolumeInfo, error) {
+	resp, err := d.cli.VolumeList(ctx, dockervolume.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	volumes := make([]VolumeInfo, len(resp.Volumes))
+	for i, v := range resp.Volumes {
+		volumes[i] = VolumeInfo{
+			Name:       v.Name,
+			Driver:     v.Driver,
+			Mountpoint: v.Mountpoint,
+			Labels:     v.Labels,
+			CreatedAt:  v.CreatedAt,
+		}
+	}
+	return volumes, nil
+}
+
+func (d *DockerService) CreateVolume(ctx context.Context, name string, labels map[string]string) (*VolumeInfo, error) {
+	v, err := d.cli.VolumeCreate(ctx, dockervolume.CreateOptions{
+		Name:   name,
+		Labels: labels,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &VolumeInfo{
+		Name:       v.Name,
+		Driver:     v.Driver,
+		Mountpoint: v.Mountpoint,
+		Labels:     v.Labels,
+		CreatedAt:  v.CreatedAt,
+	}, nil
+}
+
+func (d *DockerService) RemoveVolume(ctx context.Context, name string, force bool) error {
+	return d.cli.VolumeRemove(ctx, name, force)
+}
+
+// ─── Network management ─────────────────────────────────────────────────────
+
+func (d *DockerService) ListNetworks(ctx context.Context) ([]NetworkInfo, error) {
+	nets, err := d.cli.NetworkList(ctx, dockertypes.NetworkListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]NetworkInfo, len(nets))
+	for i, n := range nets {
+		result[i] = NetworkInfo{
+			ID:     n.ID,
+			Name:   n.Name,
+			Driver: n.Driver,
+			Scope:  n.Scope,
+			Labels: n.Labels,
+		}
+	}
+	return result, nil
+}
+
+func (d *DockerService) CreateNetwork(ctx context.Context, name string, driver string, labels map[string]string) (*NetworkInfo, error) {
+	if driver == "" {
+		driver = "bridge"
+	}
+	resp, err := d.cli.NetworkCreate(ctx, name, dockertypes.NetworkCreate{
+		Driver: driver,
+		Labels: labels,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &NetworkInfo{
+		ID:     resp.ID,
+		Name:   name,
+		Driver: driver,
+		Labels: labels,
+	}, nil
+}
+
+func (d *DockerService) RemoveNetwork(ctx context.Context, networkID string) error {
+	return d.cli.NetworkRemove(ctx, networkID)
 }
 
 // ─── Helper: Docker log stream demultiplexer ────────────────────────────────

@@ -274,3 +274,155 @@ func (h *ContainerHandler) requireRuntime(w http.ResponseWriter) error {
 	}
 	return nil
 }
+
+// ─── Volume management ────────────────────────────────────────────────────
+
+func (h *ContainerHandler) ListVolumes(w http.ResponseWriter, r *http.Request) {
+	if err := h.requireRuntime(w); err != nil {
+		return
+	}
+	volumes, err := h.svc.ListVolumes(r.Context())
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, volumes)
+}
+
+func (h *ContainerHandler) CreateVolume(w http.ResponseWriter, r *http.Request) {
+	if err := h.requireRuntime(w); err != nil {
+		return
+	}
+	var req struct {
+		Name   string            `json:"name"`
+		Labels map[string]string `json:"labels"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
+		return
+	}
+	vol, err := h.svc.CreateVolume(r.Context(), req.Name, req.Labels)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusCreated, vol)
+}
+
+func (h *ContainerHandler) RemoveVolume(w http.ResponseWriter, r *http.Request) {
+	if err := h.requireRuntime(w); err != nil {
+		return
+	}
+	name := chi.URLParam(r, "name")
+	force := r.URL.Query().Get("force") == "true"
+	if err := h.svc.RemoveVolume(r.Context(), name, force); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"message": "volume removed"})
+}
+
+// ─── Network management ───────────────────────────────────────────────────
+
+func (h *ContainerHandler) ListNetworks(w http.ResponseWriter, r *http.Request) {
+	if err := h.requireRuntime(w); err != nil {
+		return
+	}
+	nets, err := h.svc.ListNetworks(r.Context())
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, nets)
+}
+
+func (h *ContainerHandler) CreateNetwork(w http.ResponseWriter, r *http.Request) {
+	if err := h.requireRuntime(w); err != nil {
+		return
+	}
+	var req struct {
+		Name   string            `json:"name"`
+		Driver string            `json:"driver"`
+		Labels map[string]string `json:"labels"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
+		return
+	}
+	net, err := h.svc.CreateNetwork(r.Context(), req.Name, req.Driver, req.Labels)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusCreated, net)
+}
+
+func (h *ContainerHandler) RemoveNetwork(w http.ResponseWriter, r *http.Request) {
+	if err := h.requireRuntime(w); err != nil {
+		return
+	}
+	id := chi.URLParam(r, "id")
+	if err := h.svc.RemoveNetwork(r.Context(), id); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"message": "network removed"})
+}
+
+// ─── Container log streaming (SSE) ────────────────────────────────────────
+
+// StreamContainerLogs streams container logs as Server-Sent Events.
+// Query params: follow=true (default), tail=100
+func (h *ContainerHandler) StreamContainerLogs(w http.ResponseWriter, r *http.Request) {
+	if err := h.requireRuntime(w); err != nil {
+		return
+	}
+	svcID := chi.URLParam(r, "id")
+
+	var cfg models.ContainerConfig
+	if err := h.appDB.Where("service_id = ?", svcID).First(&cfg).Error; err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "no container config"})
+		return
+	}
+	if cfg.ContainerID == "" {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "container not running"})
+		return
+	}
+
+	follow := r.URL.Query().Get("follow") != "false"
+	reader, err := h.svc.StreamLogs(r.Context(), cfg.ContainerID, follow)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	defer reader.Close()
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("X-Accel-Buffering", "no")
+	flusher, canFlush := w.(http.Flusher)
+
+	for {
+		frame, err := services.ReadDockerLogStream(reader)
+		if err != nil {
+			break
+		}
+		lines := strings.Split(strings.TrimRight(string(frame.Data), "\n\r"), "\n")
+		stream := "stdout"
+		if frame.IsStderr {
+			stream = "stderr"
+		}
+		for _, line := range lines {
+			if line == "" {
+				continue
+			}
+			data, _ := json.Marshal(map[string]string{"stream": stream, "line": line})
+			w.Write([]byte("data: "))
+			w.Write(data)
+			w.Write([]byte("\n\n"))
+		}
+		if canFlush {
+			flusher.Flush()
+		}
+	}
+}
