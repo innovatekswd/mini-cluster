@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -34,6 +35,7 @@ type PackageInstall struct {
 	ID          string     `json:"id"`
 	PackageName string     `json:"packageName"`
 	Version     string     `json:"version"`
+	ServiceID   string     `json:"serviceId"`
 	Status      string     `json:"status"`
 	InstalledAt *time.Time `json:"installedAt"`
 }
@@ -43,9 +45,7 @@ type PackageInstall struct {
 func TestRegistryPublishAndList(t *testing.T) {
 	ctx := context.Background()
 
-	// Publish a minimal fake .mcpkg file via multipart
-	pkgContent := []byte(`{"name":"test-pkg","version":"1.0.0","description":"test"}`)
-	pkgID := publishTestPackage(t, ctx, "test-pkg-list", "1.0.0", pkgContent)
+	pkgID := publishTestPackage(t, ctx, "test-pkg-list", "1.0.0", nil)
 	t.Cleanup(func() {
 		_ = apiClient.Delete(ctx, "/api/registry/packages/test-pkg-list/1.0.0")
 	})
@@ -63,8 +63,7 @@ func TestRegistryPublishAndList(t *testing.T) {
 func TestRegistryGetPackage(t *testing.T) {
 	ctx := context.Background()
 
-	pkgContent := []byte(`{"name":"test-pkg-get","version":"2.0.0"}`)
-	publishTestPackage(t, ctx, "test-pkg-get", "2.0.0", pkgContent)
+	publishTestPackage(t, ctx, "test-pkg-get", "2.0.0", nil)
 	t.Cleanup(func() {
 		_ = apiClient.Delete(ctx, "/api/registry/packages/test-pkg-get/2.0.0")
 	})
@@ -128,7 +127,7 @@ func TestRegistryDuplicateConflict(t *testing.T) {
 func TestRegistryInstall(t *testing.T) {
 	ctx := context.Background()
 
-	publishTestPackage(t, ctx, "test-pkg-install", "1.0.0", []byte("fake"))
+	publishTestPackage(t, ctx, "test-pkg-install", "1.0.0", nil)
 	t.Cleanup(func() {
 		_ = apiClient.Delete(ctx, "/api/registry/packages/test-pkg-install/1.0.0")
 	})
@@ -139,9 +138,12 @@ func TestRegistryInstall(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "installed", install.Status)
 	assert.Equal(t, "test-pkg-install", install.PackageName)
+	assert.NotEmpty(t, install.ServiceID)
 
-	// Cleanup install record
 	t.Cleanup(func() {
+		if install.ServiceID != "" {
+			_ = apiClient.Delete(ctx, "/api/services/"+install.ServiceID)
+		}
 		_ = apiClient.Delete(ctx, "/api/registry/installs/"+install.ID)
 	})
 
@@ -162,7 +164,7 @@ func TestRegistryInstall(t *testing.T) {
 func TestRegistryInstallLatest(t *testing.T) {
 	ctx := context.Background()
 
-	publishTestPackage(t, ctx, "test-pkg-latest", "3.0.0", []byte("fake"))
+	publishTestPackage(t, ctx, "test-pkg-latest", "3.0.0", nil)
 	t.Cleanup(func() {
 		_ = apiClient.Delete(ctx, "/api/registry/packages/test-pkg-latest/3.0.0")
 	})
@@ -175,6 +177,9 @@ func TestRegistryInstallLatest(t *testing.T) {
 	assert.Equal(t, "3.0.0", install.Version)
 
 	t.Cleanup(func() {
+		if install.ServiceID != "" {
+			_ = apiClient.Delete(ctx, "/api/services/"+install.ServiceID)
+		}
 		_ = apiClient.Delete(ctx, "/api/registry/installs/"+install.ID)
 	})
 }
@@ -225,13 +230,15 @@ func TestCLIInstall(t *testing.T) {
 
 // ─── helpers ─────────────────────────────────────────────────────────────
 
-// publishTestPackage uploads a fake .mcpkg to the registry and returns its ID
-func publishTestPackage(t *testing.T, ctx context.Context, name, version string, content []byte) string {
+// publishTestPackage builds a valid .mcpkg ZIP and uploads it to the registry.
+// The content parameter is ignored — a valid ZIP is always generated from name+version.
+func publishTestPackage(t *testing.T, ctx context.Context, name, version string, _ []byte) string {
 	t.Helper()
+	zipData := makeTestMCPKG(name, version)
 	body := &bytes.Buffer{}
 	w := multipart.NewWriter(body)
 	part, _ := w.CreateFormFile("package", name+"@"+version+".mcpkg")
-	part.Write(content)
+	part.Write(zipData)
 	w.WriteField("name", name)
 	w.WriteField("version", version)
 	w.WriteField("description", "test package "+name)
@@ -251,7 +258,8 @@ func publishTestPackage(t *testing.T, ctx context.Context, name, version string,
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		t.Fatalf("publish failed: status %d", resp.StatusCode)
+		body2, _ := io.ReadAll(resp.Body)
+		t.Fatalf("publish failed: status %d: %s", resp.StatusCode, string(body2))
 	}
 
 	var pkg RegistryPackage
@@ -260,12 +268,32 @@ func publishTestPackage(t *testing.T, ctx context.Context, name, version string,
 	return pkg.ID
 }
 
+// makeTestMCPKG creates a minimal valid .mcpkg ZIP for the given name+version.
+func makeTestMCPKG(name, version string) []byte {
+	mf := map[string]interface{}{
+		"name":    name,
+		"version": version,
+		"runtime": map[string]string{
+			"type":    "process",
+			"command": "echo",
+		},
+	}
+	mfJSON, _ := json.Marshal(mf)
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	w, _ := zw.Create("manifest.json")
+	w.Write(mfJSON)
+	zw.Close()
+	return buf.Bytes()
+}
+
 // publishTestPackageErr publishes a package and returns any error (used to test conflict)
-func publishTestPackageErr(ctx context.Context, name, version string, content []byte) error {
+func publishTestPackageErr(ctx context.Context, name, version string, _ []byte) error {
+	zipData := makeTestMCPKG(name, version)
 	body := &bytes.Buffer{}
 	w := multipart.NewWriter(body)
 	part, _ := w.CreateFormFile("package", name+".mcpkg")
-	part.Write(content)
+	part.Write(zipData)
 	w.WriteField("name", name)
 	w.WriteField("version", version)
 	w.Close()
