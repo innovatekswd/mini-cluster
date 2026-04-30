@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -348,6 +349,267 @@ var registryUninstallCmd = &cobra.Command{
 	},
 }
 
+// ── mc registry search <query> ────────────────────────────────────────────
+
+var registrySearchCmd = &cobra.Command{
+	Use:   "search <query>",
+	Short: "Search packages by name or tag",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		client := GetClient()
+		out := GetFormatter()
+		pkgs, err := client.SearchPackages(context.Background(), args[0])
+		if err != nil {
+			return err
+		}
+		if len(pkgs) == 0 {
+			fmt.Println("No packages found.")
+			return nil
+		}
+		headers := []string{"NAME", "VERSION", "DESCRIPTION", "DOWNLOADS"}
+		rows := make([][]string, len(pkgs))
+		for i, p := range pkgs {
+			desc := p.Description
+			if len(desc) > 50 {
+				desc = desc[:47] + "..."
+			}
+			rows[i] = []string{p.Name, p.Version, desc, fmt.Sprintf("%d", p.Downloads)}
+		}
+		return out.OutputTable(headers, rows)
+	},
+}
+
+// ── mc inspect <name>[@version] ───────────────────────────────────────────
+
+var inspectCmd = &cobra.Command{
+	Use:   "inspect <name>[@version]",
+	Short: "Inspect a package — show components and required env vars",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		name, version := splitNameVersion(args[0])
+		client := GetClient()
+
+		pkg, err := client.GetPackage(context.Background(), name, version)
+		if err != nil {
+			return err
+		}
+
+		if version == "" {
+			version = "latest"
+		}
+		comps, err := client.GetComponents(context.Background(), name, version)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Package: %s@%s\n", pkg.Name, pkg.Version)
+		if pkg.Description != "" {
+			fmt.Printf("Description: %s\n", pkg.Description)
+		}
+		if pkg.Author != "" {
+			fmt.Printf("Author: %s\n", pkg.Author)
+		}
+		fmt.Printf("Size: %s  Checksum: %s\n", formatImageBytes(pkg.FileSize), shortChecksum(pkg.Checksum))
+		fmt.Printf("\nComponents (%d):\n", len(comps))
+		for _, c := range comps {
+			fmt.Printf("  %-20s %-10s", c.Name, c.Type)
+			if c.Image != "" {
+				fmt.Printf(" image=%s", c.Image)
+			}
+			if c.Command != "" {
+				fmt.Printf(" cmd=%s", c.Command)
+			}
+			fmt.Println()
+			if len(c.DependsOn) > 0 {
+				fmt.Printf("    dependsOn: %s\n", strings.Join(c.DependsOn, ", "))
+			}
+			if len(c.RequiredEnv) > 0 {
+				fmt.Printf("    required env: %s\n", strings.Join(c.RequiredEnv, ", "))
+			}
+		}
+		return nil
+	},
+}
+
+// ── mc package ────────────────────────────────────────────────────────────
+
+var packageCmd = &cobra.Command{
+	Use:   "package",
+	Short: "Build and manage .mcpkg packages",
+}
+
+var packageInitCmd = &cobra.Command{
+	Use:   "init [directory]",
+	Short: "Scaffold a manifest.json in the current directory",
+	Args:  cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		dir := "."
+		if len(args) > 0 {
+			dir = args[0]
+		}
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
+		}
+		dest := filepath.Join(dir, "manifest.json")
+		if _, err := os.Stat(dest); err == nil {
+			return fmt.Errorf("manifest.json already exists in %s", dir)
+		}
+		skeleton := `{
+  "schemaVersion": "2.0",
+  "name": "my-package",
+  "version": "1.0.0",
+  "description": "My MiniCluster package",
+  "author": "",
+  "components": [
+    {
+      "name": "app",
+      "type": "process",
+      "bundled": true,
+      "binaryPath": "app/my-binary",
+      "arguments": "",
+      "healthCheck": {
+        "type": "http",
+        "port": 8080,
+        "path": "/health",
+        "interval": "15s",
+        "retries": 3
+      }
+    }
+  ]
+}
+`
+		if err := os.WriteFile(dest, []byte(skeleton), 0644); err != nil {
+			return err
+		}
+		fmt.Printf("Created %s\n", dest)
+		return nil
+	},
+}
+
+var packageValidateCmd = &cobra.Command{
+	Use:   "validate [directory]",
+	Short: "Validate a package manifest.json",
+	Args:  cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		dir := "."
+		if len(args) > 0 {
+			dir = args[0]
+		}
+		manifestPath := filepath.Join(dir, "manifest.json")
+		data, err := os.ReadFile(manifestPath)
+		if err != nil {
+			return fmt.Errorf("cannot read %s: %w", manifestPath, err)
+		}
+		// Call registry validate endpoint with raw JSON
+		client := GetClient()
+		var result map[string]interface{}
+		if err := client.Post(context.Background(), "/api/registry/validate", json.RawMessage(data), &result); err != nil {
+			// Surface validation error
+			return fmt.Errorf("validation failed: %w", err)
+		}
+		fmt.Printf("✓ Valid manifest: %s@%s\n", result["name"], result["version"])
+		if n, ok := result["components"].(float64); ok && n > 0 {
+			fmt.Printf("  Components: %d\n", int(n))
+		}
+		return nil
+	},
+}
+
+var packageBuildCmd = &cobra.Command{
+	Use:   "build [directory]",
+	Short: "Build a .mcpkg archive from a directory",
+	Args:  cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		dir := "."
+		if len(args) > 0 {
+			dir = args[0]
+		}
+		output, _ := cmd.Flags().GetString("output")
+		return buildPackage(dir, output)
+	},
+}
+
+// buildPackage zips a directory into a .mcpkg file (same logic as push, but local only)
+func buildPackage(dir, output string) error {
+	manifestPath := filepath.Join(dir, "manifest.json")
+	manifestData, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return fmt.Errorf("cannot read manifest.json: %w", err)
+	}
+
+	var meta struct {
+		Name    string `json:"name"`
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(manifestData, &meta); err != nil {
+		return fmt.Errorf("invalid manifest.json: %w", err)
+	}
+	if meta.Name == "" || meta.Version == "" {
+		return fmt.Errorf("manifest.json must have name and version")
+	}
+
+	if output == "" {
+		output = fmt.Sprintf("%s-%s.mcpkg", meta.Name, meta.Version)
+	}
+
+	ignores := loadMcIgnore(dir)
+	buf := &bytes.Buffer{}
+	zw := zip.NewWriter(buf)
+
+	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return err
+		}
+		rel, _ := filepath.Rel(dir, path)
+		rel = filepath.ToSlash(rel)
+		if isIgnored(rel, ignores) {
+			return nil
+		}
+		w, err := zw.Create(rel)
+		if err != nil {
+			return err
+		}
+		f, err := os.Open(path) //nolint:gosec
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		_, err = io.Copy(w, f)
+		return err
+	})
+	if err != nil {
+		return fmt.Errorf("build failed: %w", err)
+	}
+	if err := zw.Close(); err != nil {
+		return err
+	}
+	if err := os.WriteFile(output, buf.Bytes(), 0644); err != nil {
+		return fmt.Errorf("write failed: %w", err)
+	}
+	fmt.Printf("Built %s (%s)\n", output, formatImageBytes(int64(buf.Len())))
+	return nil
+}
+
+var packagePushCmd = &cobra.Command{
+	Use:   "push [directory]",
+	Short: "Build and push a package to the registry",
+	Args:  cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		dir := "."
+		if len(args) > 0 {
+			dir = args[0]
+		}
+		tmp := fmt.Sprintf("_build-%d.mcpkg", time.Now().UnixNano())
+		defer os.Remove(tmp)
+		if err := buildPackage(dir, tmp); err != nil {
+			return err
+		}
+		// Delegate to registryPushCmd logic by invoking with temp file
+		registryPushCmd.SetArgs([]string{tmp})
+		return registryPushCmd.RunE(registryPushCmd, []string{tmp})
+	},
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────
 
 func splitNameVersion(s string) (name, version string) {
@@ -368,7 +630,7 @@ func shortChecksum(s string) string {
 
 func init() {
 	// registry subcommands
-	registryCmd.AddCommand(registryListCmd, registryVersionsCmd, registryShowCmd)
+	registryCmd.AddCommand(registryListCmd, registryVersionsCmd, registryShowCmd, registrySearchCmd)
 	registryCmd.AddCommand(registryPushCmd, registryDeleteCmd)
 	registryCmd.AddCommand(registryInstallsCmd, registryUninstallCmd)
 
@@ -384,6 +646,12 @@ func init() {
 	installCmd.Flags().StringArray("env", nil, "Environment variable override KEY=VALUE (repeatable)")
 	installCmd.Flags().Bool("auto-start", true, "Automatically start the installed service")
 
+	// package subcommands
+	packageCmd.AddCommand(packageInitCmd, packageValidateCmd, packageBuildCmd, packagePushCmd)
+	packageBuildCmd.Flags().String("output", "", "Output file path (default: <name>-<version>.mcpkg)")
+
 	rootCmd.AddCommand(registryCmd)
 	rootCmd.AddCommand(installCmd)
+	rootCmd.AddCommand(inspectCmd)
+	rootCmd.AddCommand(packageCmd)
 }

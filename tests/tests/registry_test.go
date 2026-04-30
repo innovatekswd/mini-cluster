@@ -36,6 +36,7 @@ type PackageInstall struct {
 	PackageName string     `json:"packageName"`
 	Version     string     `json:"version"`
 	ServiceID   string     `json:"serviceId"`
+	Components  string     `json:"components"`
 	Status      string     `json:"status"`
 	InstalledAt *time.Time `json:"installedAt"`
 }
@@ -323,4 +324,217 @@ func publishTestPackageErr(ctx context.Context, name, version string, _ []byte) 
 // decodeJSON decodes a JSON reader into v
 func decodeJSON(r io.Reader, v interface{}) error {
 	return json.NewDecoder(r).Decode(v)
+}
+
+// ─── V2 multi-component manifest tests ───────────────────────────────────
+
+// makeV2TestMCPKG creates a minimal v2 .mcpkg with two components (container + process).
+func makeV2TestMCPKG(name, version string) []byte {
+	mf := map[string]interface{}{
+		"schemaVersion": "2.0",
+		"name":          name,
+		"version":       version,
+		"description":   "test v2 package",
+		"components": []map[string]interface{}{
+			{
+				"name":  "db",
+				"type":  "container",
+				"image": "redis:7-alpine",
+				"ports": []map[string]interface{}{{"host": 6399, "container": 6379}},
+			},
+			{
+				"name":    "api",
+				"type":    "process",
+				"command": "echo",
+				"arguments": "hello",
+				"dependsOn": []map[string]interface{}{
+					{"component": "db", "condition": "running"},
+				},
+			},
+		},
+	}
+	mfJSON, _ := json.Marshal(mf)
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	w, _ := zw.Create("manifest.json")
+	w.Write(mfJSON)
+	zw.Close()
+	return buf.Bytes()
+}
+
+func TestRegistryValidateV1Manifest(t *testing.T) {
+	ctx := context.Background()
+
+	mf := map[string]interface{}{
+		"name":    "validate-test",
+		"version": "1.0.0",
+		"runtime": map[string]string{"type": "process", "command": "echo"},
+	}
+	var result map[string]interface{}
+	err := apiClient.Post(ctx, "/api/registry/validate", mf, &result)
+	require.NoError(t, err)
+	assert.Equal(t, true, result["valid"])
+	assert.Equal(t, "validate-test", result["name"])
+}
+
+func TestRegistryValidateV2Manifest(t *testing.T) {
+	ctx := context.Background()
+
+	mf := map[string]interface{}{
+		"schemaVersion": "2.0",
+		"name":          "validate-v2-test",
+		"version":       "1.0.0",
+		"components": []map[string]interface{}{
+			{"name": "svc", "type": "container", "image": "alpine:latest"},
+		},
+	}
+	var result map[string]interface{}
+	err := apiClient.Post(ctx, "/api/registry/validate", mf, &result)
+	require.NoError(t, err)
+	assert.Equal(t, true, result["valid"])
+	assert.Equal(t, float64(1), result["components"])
+}
+
+func TestRegistryValidateInvalidManifest(t *testing.T) {
+	ctx := context.Background()
+
+	// Container component missing image — should return 422
+	mf := map[string]interface{}{
+		"schemaVersion": "2.0",
+		"name":          "bad-pkg",
+		"version":       "1.0.0",
+		"components": []map[string]interface{}{
+			{"name": "svc", "type": "container"}, // no image
+		},
+	}
+	var result map[string]interface{}
+	err := apiClient.Post(ctx, "/api/registry/validate", mf, &result)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "422")
+}
+
+func TestRegistryGetManifest(t *testing.T) {
+	ctx := context.Background()
+
+	publishTestPackage(t, ctx, "test-manifest-ep", "1.0.0", nil)
+	t.Cleanup(func() {
+		_ = apiClient.Delete(ctx, "/api/registry/packages/test-manifest-ep/1.0.0")
+	})
+
+	var mf map[string]interface{}
+	err := apiClient.Get(ctx, "/api/registry/packages/test-manifest-ep/1.0.0/manifest", &mf)
+	require.NoError(t, err)
+	assert.Equal(t, "test-manifest-ep", mf["name"])
+}
+
+func TestRegistryGetComponentsV1(t *testing.T) {
+	ctx := context.Background()
+
+	publishTestPackage(t, ctx, "test-comp-v1", "1.0.0", nil)
+	t.Cleanup(func() {
+		_ = apiClient.Delete(ctx, "/api/registry/packages/test-comp-v1/1.0.0")
+	})
+
+	type ComponentSummary struct {
+		Name    string `json:"name"`
+		Type    string `json:"type"`
+		Command string `json:"command,omitempty"`
+	}
+	var comps []ComponentSummary
+	err := apiClient.Get(ctx, "/api/registry/packages/test-comp-v1/1.0.0/components", &comps)
+	require.NoError(t, err)
+	require.Len(t, comps, 1)
+	assert.Equal(t, "main", comps[0].Name)
+	assert.Equal(t, "process", comps[0].Type)
+}
+
+func TestRegistryGetComponentsV2(t *testing.T) {
+	ctx := context.Background()
+
+	// Publish a v2 package
+	zipData := makeV2TestMCPKG("test-comp-v2", "1.0.0")
+	body := &bytes.Buffer{}
+	mw := multipart.NewWriter(body)
+	part, _ := mw.CreateFormFile("package", "test-comp-v2.mcpkg")
+	part.Write(zipData)
+	mw.WriteField("name", "test-comp-v2")
+	mw.WriteField("version", "1.0.0")
+	mw.Close()
+
+	url := testEnv.APIServerURL + "/api/registry/packages"
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	if testEnv.AuthToken != "" {
+		req.Header.Set("Authorization", "Bearer "+testEnv.AuthToken)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	resp.Body.Close()
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	t.Cleanup(func() {
+		_ = apiClient.Delete(ctx, "/api/registry/packages/test-comp-v2/1.0.0")
+	})
+
+	type ComponentSummary struct {
+		Name      string   `json:"name"`
+		Type      string   `json:"type"`
+		DependsOn []string `json:"dependsOn,omitempty"`
+	}
+	var comps []ComponentSummary
+	err = apiClient.Get(ctx, "/api/registry/packages/test-comp-v2/1.0.0/components", &comps)
+	require.NoError(t, err)
+	require.Len(t, comps, 2)
+
+	names := map[string]bool{}
+	for _, c := range comps {
+		names[c.Name] = true
+	}
+	assert.True(t, names["db"])
+	assert.True(t, names["api"])
+}
+
+func TestRegistryInstallV2Package(t *testing.T) {
+	ctx := context.Background()
+
+	// Publish v2 package
+	zipData := makeV2TestMCPKG("test-install-v2", "1.0.0")
+	body := &bytes.Buffer{}
+	mw := multipart.NewWriter(body)
+	part, _ := mw.CreateFormFile("package", "test-install-v2.mcpkg")
+	part.Write(zipData)
+	mw.WriteField("name", "test-install-v2")
+	mw.WriteField("version", "1.0.0")
+	mw.Close()
+
+	url := testEnv.APIServerURL + "/api/registry/packages"
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	if testEnv.AuthToken != "" {
+		req.Header.Set("Authorization", "Bearer "+testEnv.AuthToken)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	resp.Body.Close()
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	t.Cleanup(func() {
+		_ = apiClient.Delete(ctx, "/api/registry/packages/test-install-v2/1.0.0")
+	})
+
+	// Install — v2 creates multiple services
+	var install PackageInstall
+	err = apiClient.Post(ctx, "/api/registry/install", map[string]interface{}{
+		"name":      "test-install-v2",
+		"version":   "1.0.0",
+		"autoStart": false,
+	}, &install)
+	require.NoError(t, err)
+	assert.Equal(t, "installed", install.Status)
+	// v2 install — ServiceID empty, Components should have entries
+	assert.Empty(t, install.ServiceID, "v2 installs should not set serviceId")
+
+	t.Cleanup(func() {
+		_ = apiClient.Delete(ctx, "/api/registry/installs/"+install.ID)
+	})
 }

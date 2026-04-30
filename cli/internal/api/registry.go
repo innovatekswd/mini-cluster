@@ -135,6 +135,47 @@ func (c *Client) UnpublishPackage(ctx context.Context, name, version string) err
 	return c.Delete(ctx, fmt.Sprintf("/api/registry/packages/%s/%s", name, version))
 }
 
+// SearchPackages lists packages filtered by a search query (server-side name/tag match)
+func (c *Client) SearchPackages(ctx context.Context, query string) ([]Package, error) {
+	return c.ListPackages(ctx, "", query)
+}
+
+// ComponentSummary describes a single component of a package
+type ComponentSummary struct {
+	Name        string   `json:"name"`
+	Type        string   `json:"type"`
+	Image       string   `json:"image,omitempty"`
+	Command     string   `json:"command,omitempty"`
+	DependsOn   []string `json:"dependsOn,omitempty"`
+	RequiredEnv []string `json:"requiredEnv,omitempty"`
+}
+
+// GetComponents returns the component summaries for a package version
+func (c *Client) GetComponents(ctx context.Context, name, version string) ([]ComponentSummary, error) {
+	if version == "" {
+		version = "latest"
+	}
+	var result []ComponentSummary
+	if err := c.Get(ctx, fmt.Sprintf("/api/registry/packages/%s/%s/components", name, version), &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// GetManifest returns the raw manifest JSON string for a package version
+func (c *Client) GetManifest(ctx context.Context, name, version string) (string, error) {
+	if version == "" {
+		version = "latest"
+	}
+	// The endpoint returns raw JSON; decode as map to re-marshal prettily
+	var raw map[string]interface{}
+	if err := c.Get(ctx, fmt.Sprintf("/api/registry/packages/%s/%s/manifest", name, version), &raw); err != nil {
+		return "", err
+	}
+	b, _ := json.MarshalIndent(raw, "", "  ")
+	return string(b), nil
+}
+
 // ListInstalls returns all package installations on this node
 func (c *Client) ListInstalls(ctx context.Context) ([]PackageInstall, error) {
 	var result []PackageInstall

@@ -3,6 +3,7 @@ package handlers
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -18,6 +19,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/innovatek/minicluster/internal/manifest"
 	"github.com/innovatek/minicluster/internal/models"
+	"github.com/innovatek/minicluster/internal/services"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -260,11 +262,13 @@ func (h *RegistryHandler) ListInstalls(w http.ResponseWriter, r *http.Request) {
 // ── Install ───────────────────────────────────────────────────────────────
 
 type installRequest struct {
-	Name    string            `json:"name"`
-	Version string            `json:"version"`
-	Env     map[string]string `json:"env"`     // caller-supplied env overrides
-	AppID   *string           `json:"appId"`   // attach to this app
-	AutoStart bool            `json:"autoStart"`
+	Name      string            `json:"name"`
+	Version   string            `json:"version"`
+	Env       map[string]string `json:"env"`       // caller-supplied env overrides
+	AppID     *string           `json:"appId"`     // attach to this app
+	AutoStart bool              `json:"autoStart"`
+	// v2: optional subset of component names to install
+	Components []string `json:"components"`
 }
 
 func (h *RegistryHandler) InstallPackage(w http.ResponseWriter, r *http.Request) {
@@ -296,12 +300,18 @@ func (h *RegistryHandler) InstallPackage(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	appID := ""
+	if req.AppID != nil {
+		appID = *req.AppID
+	}
+
 	// Create install record (pending)
 	install := models.PackageInstall{
 		ID:          newUUID(),
 		PackageID:   pkg.ID,
 		PackageName: pkg.Name,
 		Version:     pkg.Version,
+		AppID:       appID,
 		Status:      "installing",
 		CreatedAt:   time.Now(),
 	}
@@ -311,7 +321,7 @@ func (h *RegistryHandler) InstallPackage(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Perform install synchronously (fast for local packages)
-	svcID, installErr := h.performInstall(pkg, req)
+	svcID, componentsJSON, installErr := h.performInstall(pkg, req)
 
 	now := time.Now()
 	if installErr != nil {
@@ -322,6 +332,7 @@ func (h *RegistryHandler) InstallPackage(w http.ResponseWriter, r *http.Request)
 		install.Status = "installed"
 		install.InstalledAt = &now
 		install.ServiceID = svcID
+		install.Components = componentsJSON
 	}
 	h.appDB.Save(&install)
 
@@ -337,34 +348,57 @@ func (h *RegistryHandler) InstallPackage(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusCreated, install)
 }
 
-// performInstall extracts the package and creates a Service (+ ContainerConfig if docker).
-// Returns the created service ID.
-func (h *RegistryHandler) performInstall(pkg models.Package, req installRequest) (string, error) {
+// performInstall extracts the package and creates Service records.
+// For v1 manifests returns (serviceID, "", nil).
+// For v2 manifests returns ("", componentsJSON, nil) where componentsJSON is map[name]serviceID.
+func (h *RegistryHandler) performInstall(pkg models.Package, req installRequest) (string, string, error) {
 	// 1. Parse manifest from stored file
 	zipData, err := os.ReadFile(pkg.FilePath)
 	if err != nil {
-		return "", fmt.Errorf("cannot read package file: %w", err)
+		return "", "", fmt.Errorf("cannot read package file: %w", err)
 	}
 	mf, err := manifest.ParseFromBytes(zipData)
 	if err != nil {
-		return "", fmt.Errorf("cannot parse manifest: %w", err)
+		return "", "", fmt.Errorf("cannot parse manifest: %w", err)
 	}
 
 	// 2. Extract to data/installed/{name}/{version}/
 	extractDir := filepath.Join(filepath.Dir(filepath.Dir(pkg.FilePath)), "..", "installed", pkg.Name, pkg.Version)
 	extractDir = filepath.Clean(extractDir)
 	if err := extractZIP(zipData, extractDir); err != nil {
-		return "", fmt.Errorf("extract failed: %w", err)
+		return "", "", fmt.Errorf("extract failed: %w", err)
 	}
 
 	// 3. Run pre-install script if present
 	if mf.Scripts.PreInstall != "" {
 		if err := runScript(filepath.Join(extractDir, mf.Scripts.PreInstall), extractDir); err != nil {
-			return "", fmt.Errorf("pre-install script failed: %w", err)
+			return "", "", fmt.Errorf("pre-install script failed: %w", err)
 		}
 	}
 
-	// 4. Build environment variables: manifest defaults + caller overrides
+	var svcID, componentsJSON string
+	if mf.IsV2() {
+		componentsJSON, err = h.installV2(mf, pkg, req, extractDir)
+	} else {
+		svcID, err = h.installV1(mf, pkg, req, extractDir)
+	}
+	if err != nil {
+		return "", "", err
+	}
+
+	// Post-install script
+	if mf.Scripts.PostInstall != "" {
+		if scriptErr := runScript(filepath.Join(extractDir, mf.Scripts.PostInstall), extractDir); scriptErr != nil {
+			h.log.Warn("post-install script failed", zap.String("name", pkg.Name), zap.Error(scriptErr))
+		}
+	}
+
+	return svcID, componentsJSON, nil
+}
+
+// ── v1 single-runtime install ─────────────────────────────────────────────
+
+func (h *RegistryHandler) installV1(mf *manifest.Manifest, pkg models.Package, req installRequest, extractDir string) (string, error) {
 	envMap := make(map[string]string)
 	for k, v := range mf.Env {
 		if v.Default != "" {
@@ -376,19 +410,14 @@ func (h *RegistryHandler) performInstall(pkg models.Package, req installRequest)
 	}
 	envJSON, _ := json.Marshal(envMap)
 
-	// 5. Build working directory
 	workDir := extractDir
 	if mf.Runtime.WorkingDirectory != "" {
 		workDir = filepath.Join(extractDir, mf.Runtime.WorkingDirectory)
 	}
 
-	// 6. Health check fields
 	hcType := models.HealthCheckNone
-	hcURL := ""
-	hcCmd := ""
-	hcInterval := 30
-	hcTimeout := 5
-	hcRetries := 3
+	hcURL, hcCmd := "", ""
+	hcInterval, hcTimeout, hcRetries := 30, 5, 3
 	if mf.HealthCheck != nil {
 		switch mf.HealthCheck.Type {
 		case "http":
@@ -413,7 +442,6 @@ func (h *RegistryHandler) performInstall(pkg models.Package, req installRequest)
 
 	svcID := newUUID()
 	svcSlug := slugify(fmt.Sprintf("%s-%s", pkg.Name, pkg.Version))
-
 	now := time.Now()
 
 	switch mf.Runtime.Type {
@@ -449,26 +477,25 @@ func (h *RegistryHandler) performInstall(pkg models.Package, req installRequest)
 
 	case manifest.RuntimeDocker:
 		svc := models.Service{
-			ID:                  svcID,
-			Name:                fmt.Sprintf("%s@%s", pkg.Name, pkg.Version),
-			Slug:                svcSlug,
-			ServiceType:         models.ServiceTypeDocker,
+			ID:                   svcID,
+			Name:                 fmt.Sprintf("%s@%s", pkg.Name, pkg.Version),
+			Slug:                 svcSlug,
+			ServiceType:          models.ServiceTypeDocker,
 			EnvironmentVariables: string(envJSON),
-			AutoStart:           req.AutoStart,
-			AppID:               req.AppID,
-			HealthCheckType:     hcType,
-			HealthCheckUrl:      hcURL,
-			HealthCheckInterval: hcInterval,
-			HealthCheckTimeout:  hcTimeout,
-			HealthCheckRetries:  hcRetries,
-			RestartPolicy:       models.RestartOnFailure,
-			CreatedAt:           now,
-			ModifiedAt:          now,
+			AutoStart:            req.AutoStart,
+			AppID:                req.AppID,
+			HealthCheckType:      hcType,
+			HealthCheckUrl:       hcURL,
+			HealthCheckInterval:  hcInterval,
+			HealthCheckTimeout:   hcTimeout,
+			HealthCheckRetries:   hcRetries,
+			RestartPolicy:        models.RestartOnFailure,
+			CreatedAt:            now,
+			ModifiedAt:           now,
 		}
 		if err := h.appDB.Create(&svc).Error; err != nil {
 			return "", fmt.Errorf("failed to create service: %w", err)
 		}
-
 		tag := mf.Runtime.Tag
 		if tag == "" {
 			tag = "latest"
@@ -478,27 +505,426 @@ func (h *RegistryHandler) performInstall(pkg models.Package, req installRequest)
 			pullPolicy = models.PullIfNotPresent
 		}
 		cc := models.ContainerConfig{
+			ID:           newUUID(),
 			ServiceID:    svcID,
 			Image:        mf.Runtime.Image,
 			Tag:          tag,
 			Registry:     mf.Runtime.Registry,
 			PullPolicy:   pullPolicy,
 			RemoveOnStop: true,
+			CreatedAt:    now,
+			ModifiedAt:   now,
 		}
 		if err := h.appDB.Create(&cc).Error; err != nil {
 			return "", fmt.Errorf("failed to create container config: %w", err)
 		}
 	}
 
-	// 7. Run post-install script
-	if mf.Scripts.PostInstall != "" {
-		if err := runScript(filepath.Join(extractDir, mf.Scripts.PostInstall), extractDir); err != nil {
-			h.log.Warn("post-install script failed", zap.String("name", pkg.Name), zap.Error(err))
-			// non-fatal
+	return svcID, nil
+}
+
+// ── v2 multi-component install ────────────────────────────────────────────
+
+func (h *RegistryHandler) installV2(mf *manifest.Manifest, pkg models.Package, req installRequest, extractDir string) (string, error) {
+	// Build component filter (if caller requested a subset)
+	only := make(map[string]bool)
+	for _, n := range req.Components {
+		only[n] = true
+	}
+
+	// Topological order
+	levels, err := mf.TopologicalOrder()
+	if err != nil {
+		return "", fmt.Errorf("dependency ordering: %w", err)
+	}
+
+	acq := services.NewAcquisitionService(h.log)
+	componentMap := make(map[string]string) // componentName → serviceID
+
+	for _, level := range levels {
+		for _, compName := range level {
+			if len(only) > 0 && !only[compName] {
+				continue
+			}
+			// Find component
+			var comp *manifest.Component
+			for i := range mf.Components {
+				if mf.Components[i].Name == compName {
+					comp = &mf.Components[i]
+					break
+				}
+			}
+			if comp == nil {
+				continue
+			}
+
+			svcID, err := h.installComponent(comp, mf, pkg, req, extractDir, acq, componentMap)
+			if err != nil {
+				return "", fmt.Errorf("component %q: %w", compName, err)
+			}
+			componentMap[compName] = svcID
+		}
+	}
+
+	b, _ := json.Marshal(componentMap)
+	return string(b), nil
+}
+
+// installComponent registers one component as a Service (and ContainerConfig for docker).
+func (h *RegistryHandler) installComponent(
+	comp *manifest.Component,
+	mf *manifest.Manifest,
+	pkg models.Package,
+	req installRequest,
+	extractDir string,
+	acq *services.AcquisitionService,
+	componentMap map[string]string,
+) (string, error) {
+	svcID := newUUID()
+	now := time.Now()
+	svcSlug := slugify(fmt.Sprintf("%s-%s-%s", pkg.Name, pkg.Version, comp.Name))
+	svcName := fmt.Sprintf("%s/%s@%s", pkg.Name, comp.Name, pkg.Version)
+
+	// Build env
+	envMap := buildComponentEnv(comp, req.Env)
+
+	// Compute built-in cross-component env bindings
+	for k, ev := range comp.Env {
+		if ev.FromComponent != "" {
+			// MC_COMPONENT_<NAME>_HOST / _PORT pattern — placeholder for now
+			envMap[k] = fmt.Sprintf("${MC_COMPONENT_%s}", strings.ToUpper(ev.FromComponent))
+			if srcID, ok := componentMap[ev.FromComponent]; ok {
+				_ = srcID // future: resolve actual port from running config
+			}
+		}
+	}
+	envJSON, _ := json.Marshal(envMap)
+
+	// Health check
+	hcType := models.HealthCheckNone
+	hcURL, hcCmd := "", ""
+	hcInterval, hcTimeout, hcRetries := 30, 5, 3
+	if comp.HealthCheck != nil {
+		switch comp.HealthCheck.Type {
+		case "http":
+			hcType = models.HealthCheckHttp
+			hcURL = fmt.Sprintf("http://localhost:%d%s", comp.HealthCheck.Port, comp.HealthCheck.Path)
+		case "tcp":
+			hcType = models.HealthCheckTcp
+		case "exec":
+			hcType = models.HealthCheckExec
+			hcCmd = strings.Join(comp.HealthCheck.Command, " ")
+		}
+		if n := durationSeconds(comp.HealthCheck.Interval); n > 0 {
+			hcInterval = n
+		}
+		if n := durationSeconds(comp.HealthCheck.Timeout); n > 0 {
+			hcTimeout = n
+		}
+		if comp.HealthCheck.Retries > 0 {
+			hcRetries = comp.HealthCheck.Retries
+		}
+	}
+
+	restartPolicy := models.RestartOnFailure
+	if comp.RestartPolicy == "always" {
+		restartPolicy = models.RestartAlways
+	}
+
+	switch comp.Type {
+	case manifest.ComponentContainer:
+		svc := models.Service{
+			ID:                   svcID,
+			Name:                 svcName,
+			Slug:                 svcSlug,
+			ServiceType:          models.ServiceTypeDocker,
+			EnvironmentVariables: string(envJSON),
+			AutoStart:            req.AutoStart,
+			AppID:                req.AppID,
+			HealthCheckType:      hcType,
+			HealthCheckUrl:       hcURL,
+			HealthCheckCommand:   hcCmd,
+			HealthCheckInterval:  hcInterval,
+			HealthCheckTimeout:   hcTimeout,
+			HealthCheckRetries:   hcRetries,
+			RestartPolicy:        restartPolicy,
+			CreatedAt:            now,
+			ModifiedAt:           now,
+		}
+		if err := h.appDB.Create(&svc).Error; err != nil {
+			return "", fmt.Errorf("create service: %w", err)
+		}
+
+		tag := "latest"
+		if idx := strings.Index(comp.Image, ":"); idx >= 0 {
+			tag = comp.Image[idx+1:]
+			comp.Image = comp.Image[:idx]
+		}
+		pullPolicy := models.PullPolicy(comp.PullPolicy)
+		if pullPolicy == "" {
+			pullPolicy = models.PullIfNotPresent
+		}
+
+		// Build port mappings JSON
+		var ports []models.PortMapping
+		for _, p := range comp.Ports {
+			ports = append(ports, models.PortMapping{
+				HostPort:      p.Host,
+				ContainerPort: p.Container,
+				Protocol:      p.Protocol,
+			})
+		}
+		portsJSON, _ := json.Marshal(ports)
+
+		// Build volume mounts JSON
+		var vols []models.VolumeMount
+		for _, v := range comp.Volumes {
+			vols = append(vols, models.VolumeMount{
+				Type:   v.Type,
+				Source: v.Source,
+				Target: v.Target,
+			})
+		}
+		volsJSON, _ := json.Marshal(vols)
+
+		cc := models.ContainerConfig{
+			ID:           newUUID(),
+			ServiceID:    svcID,
+			Image:        comp.Image,
+			Tag:          tag,
+			Registry:     comp.Registry,
+			PullPolicy:   pullPolicy,
+			Ports:        string(portsJSON),
+			Volumes:      string(volsJSON),
+			RemoveOnStop: false,
+			CreatedAt:    now,
+			ModifiedAt:   now,
+		}
+		if err := h.appDB.Create(&cc).Error; err != nil {
+			return "", fmt.Errorf("create container config: %w", err)
+		}
+
+	case manifest.ComponentProcess:
+		// Acquire binary if needed
+		if comp.Acquire != nil {
+			acquireDir := filepath.Join(extractDir, "bin", comp.Name)
+			if err := acq.Install(context.Background(), comp.Acquire, acquireDir, func(msg string) {
+				h.log.Info("acquire", zap.String("component", comp.Name), zap.String("msg", msg))
+			}); err != nil {
+				return "", fmt.Errorf("acquisition failed: %w", err)
+			}
+		}
+
+		execPath := comp.Command
+		if comp.Bundled && execPath == "" {
+			execPath = filepath.Join(extractDir, comp.BinaryPath)
+		}
+
+		svc := models.Service{
+			ID:                   svcID,
+			Name:                 svcName,
+			Slug:                 svcSlug,
+			ServiceType:          models.ServiceTypeProcess,
+			ExecutablePath:       execPath,
+			Arguments:            comp.Arguments,
+			EnvironmentVariables: string(envJSON),
+			WorkingDirectory:     extractDir,
+			AutoStart:            req.AutoStart,
+			AppID:                req.AppID,
+			HealthCheckType:      hcType,
+			HealthCheckUrl:       hcURL,
+			HealthCheckCommand:   hcCmd,
+			HealthCheckInterval:  hcInterval,
+			HealthCheckTimeout:   hcTimeout,
+			HealthCheckRetries:   hcRetries,
+			RestartPolicy:        restartPolicy,
+			CreatedAt:            now,
+			ModifiedAt:           now,
+		}
+		if err := h.appDB.Create(&svc).Error; err != nil {
+			return "", fmt.Errorf("create service: %w", err)
 		}
 	}
 
 	return svcID, nil
+}
+
+// buildComponentEnv merges component env defaults with caller overrides.
+func buildComponentEnv(comp *manifest.Component, overrides map[string]string) map[string]string {
+	env := make(map[string]string)
+	for k, v := range comp.Env {
+		if v.FromComponent == "" && v.Default != "" {
+			env[k] = v.Default
+		}
+	}
+	for k, v := range overrides {
+		env[k] = v
+	}
+	return env
+}
+
+// durationSeconds parses a simple duration string like "10s", "1m" to seconds.
+func durationSeconds(s string) int {
+	if s == "" {
+		return 0
+	}
+	mul := 1
+	if strings.HasSuffix(s, "m") {
+		mul = 60
+		s = s[:len(s)-1]
+	} else if strings.HasSuffix(s, "s") {
+		s = s[:len(s)-1]
+	}
+	var n int
+	fmt.Sscanf(s, "%d", &n) //nolint:errcheck
+	return n * mul
+}
+
+// ── Get raw manifest ──────────────────────────────────────────────────────
+
+func (h *RegistryHandler) GetManifest(w http.ResponseWriter, r *http.Request) {
+	name := chi.URLParam(r, "name")
+	version := chi.URLParam(r, "version")
+	if version == "" || version == "latest" {
+		var pkg models.Package
+		if err := h.appDB.Where("name = ?", name).Order("created_at desc").First(&pkg).Error; err != nil {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "package not found"})
+			return
+		}
+		version = pkg.Version
+	}
+	var pkg models.Package
+	if err := h.appDB.Where("name = ? AND version = ?", name, version).First(&pkg).Error; err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "package not found"})
+		return
+	}
+	// Return the stored manifest JSON directly
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(pkg.Manifest))
+}
+
+// ── Get components ────────────────────────────────────────────────────────
+
+type componentSummary struct {
+	Name          string   `json:"name"`
+	Type          string   `json:"type"`
+	Image         string   `json:"image,omitempty"`
+	Command       string   `json:"command,omitempty"`
+	DependsOn     []string `json:"dependsOn,omitempty"`
+	RequiredEnv   []string `json:"requiredEnv,omitempty"`
+}
+
+func (h *RegistryHandler) GetComponents(w http.ResponseWriter, r *http.Request) {
+	name := chi.URLParam(r, "name")
+	version := chi.URLParam(r, "version")
+	if version == "" || version == "latest" {
+		var pkg models.Package
+		if err := h.appDB.Where("name = ?", name).Order("created_at desc").First(&pkg).Error; err != nil {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "package not found"})
+			return
+		}
+		version = pkg.Version
+	}
+	var pkg models.Package
+	if err := h.appDB.Where("name = ? AND version = ?", name, version).First(&pkg).Error; err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "package not found"})
+		return
+	}
+
+	var mf manifest.Manifest
+	if err := json.Unmarshal([]byte(pkg.Manifest), &mf); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cannot parse manifest"})
+		return
+	}
+
+	if !mf.IsV2() {
+		// v1: synthesise a single component summary
+		reqEnv := []string{}
+		for k, v := range mf.Env {
+			if v.Required {
+				reqEnv = append(reqEnv, k)
+			}
+		}
+		writeJSON(w, http.StatusOK, []componentSummary{{
+			Name:        "main",
+			Type:        string(mf.Runtime.Type),
+			Image:       mf.Runtime.Image,
+			Command:     mf.Runtime.Command,
+			RequiredEnv: reqEnv,
+		}})
+		return
+	}
+
+	summaries := make([]componentSummary, 0, len(mf.Components))
+	for _, c := range mf.Components {
+		deps := make([]string, 0, len(c.DependsOn))
+		for _, d := range c.DependsOn {
+			deps = append(deps, d.Component)
+		}
+		reqEnv := []string{}
+		for k, v := range c.Env {
+			if v.Required {
+				reqEnv = append(reqEnv, k)
+			}
+		}
+		summaries = append(summaries, componentSummary{
+			Name:        c.Name,
+			Type:        string(c.Type),
+			Image:       c.Image,
+			Command:     c.Command,
+			DependsOn:   deps,
+			RequiredEnv: reqEnv,
+		})
+	}
+	writeJSON(w, http.StatusOK, summaries)
+}
+
+// ── Validate manifest ─────────────────────────────────────────────────────
+
+func (h *RegistryHandler) ValidateManifest(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		// Try raw JSON body
+		var mf manifest.Manifest
+		if jsonErr := json.NewDecoder(r.Body).Decode(&mf); jsonErr != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "provide a manifest.json body or a multipart 'package' .mcpkg file"})
+			return
+		}
+		if err := mf.Validate(); err != nil {
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"valid": "false", "error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"valid": true, "schemaVersion": mf.SchemaVersion, "name": mf.Name, "version": mf.Version})
+		return
+	}
+
+	file, _, err := r.FormFile("package")
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing 'package' file"})
+		return
+	}
+	defer file.Close()
+	zipData, err := io.ReadAll(file)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "read error"})
+		return
+	}
+	mf, err := manifest.ParseFromBytes(zipData)
+	if err != nil {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"valid": "false", "error": err.Error()})
+		return
+	}
+	if err := mf.Validate(); err != nil {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"valid": "false", "error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"valid":         true,
+		"schemaVersion": mf.SchemaVersion,
+		"name":          mf.Name,
+		"version":       mf.Version,
+		"components":    len(mf.Components),
+	})
 }
 
 // ── Remove install record ─────────────────────────────────────────────────

@@ -194,3 +194,85 @@ func TestCLIContainerConfigSetGet(t *testing.T) {
 	assert.Equal(t, 0, result.ExitCode, result.Stderr)
 	assert.Contains(t, result.Stdout, "alpine")
 }
+
+// ─── Volume endpoints ─────────────────────────────────────────────────────
+
+func dockerSkip(t *testing.T) {
+	t.Helper()
+	var info ContainerRuntimeInfo
+	err := apiClient.Get(context.Background(), "/api/containers/runtime", &info)
+	if err != nil || !info.Available {
+		t.Skip("Docker runtime not available — skipping test")
+	}
+}
+
+func TestVolumesCRUD(t *testing.T) {
+	dockerSkip(t)
+	ctx := context.Background()
+	volName := "test-vol-" + fmt.Sprintf("%d", time.Now().UnixNano()%100000)
+
+	// List (baseline)
+	var before []map[string]interface{}
+	require.NoError(t, apiClient.Get(ctx, "/api/volumes", &before))
+
+	// Create
+	var created map[string]interface{}
+	err := apiClient.Post(ctx, "/api/volumes", map[string]interface{}{"name": volName, "driver": "local"}, &created)
+	require.NoError(t, err)
+	assert.Equal(t, volName, created["name"])
+	t.Cleanup(func() {
+		_ = apiClient.Delete(ctx, "/api/volumes/"+volName)
+	})
+
+	// List — should contain new volume
+	var after []map[string]interface{}
+	require.NoError(t, apiClient.Get(ctx, "/api/volumes", &after))
+	assert.Greater(t, len(after), len(before))
+
+	// Delete
+	err = apiClient.Delete(ctx, "/api/volumes/"+volName)
+	assert.NoError(t, err)
+}
+
+func TestCLIVolumesList(t *testing.T) {
+	dockerSkip(t)
+	result := testEnv.RunCLI("container", "volumes", "list")
+	assert.Equal(t, 0, result.ExitCode, result.Stderr)
+}
+
+// ─── Network endpoints ────────────────────────────────────────────────────
+
+func TestNetworksCRUD(t *testing.T) {
+	dockerSkip(t)
+	ctx := context.Background()
+	netName := "test-net-" + fmt.Sprintf("%d", time.Now().UnixNano()%100000)
+
+	// List (baseline)
+	var before []map[string]interface{}
+	require.NoError(t, apiClient.Get(ctx, "/api/networks", &before))
+
+	// Create
+	var created map[string]interface{}
+	err := apiClient.Post(ctx, "/api/networks", map[string]interface{}{"name": netName, "driver": "bridge"}, &created)
+	require.NoError(t, err)
+	assert.NotEmpty(t, created["id"])
+	netID, _ := created["id"].(string)
+	t.Cleanup(func() {
+		_ = apiClient.Delete(ctx, "/api/networks/"+netID)
+	})
+
+	// List — should contain new network
+	var after []map[string]interface{}
+	require.NoError(t, apiClient.Get(ctx, "/api/networks", &after))
+	assert.Greater(t, len(after), len(before))
+
+	// Delete
+	err = apiClient.Delete(ctx, "/api/networks/"+netID)
+	assert.NoError(t, err)
+}
+
+func TestCLINetworksList(t *testing.T) {
+	dockerSkip(t)
+	result := testEnv.RunCLI("container", "networks", "list")
+	assert.Equal(t, 0, result.ExitCode, result.Stderr)
+}

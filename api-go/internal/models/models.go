@@ -449,13 +449,18 @@ type Package struct {
 	Installs    []PackageInstall `gorm:"foreignKey:PackageID" json:"installs,omitempty"`
 }
 
-// PackageInstall tracks installation of a package on this node
+// PackageInstall tracks installation of a package on this node.
+// For v1 (single runtime) packages, ServiceID holds the created service ID.
+// For v2 (multi-component) packages, Components holds a JSON map[componentName]serviceID
+// and ServiceID is left empty.
 type PackageInstall struct {
 	ID          string     `gorm:"type:text;primaryKey" json:"id"`
 	PackageID   string     `gorm:"type:text;not null;index" json:"packageId"`
 	PackageName string     `gorm:"type:text;not null" json:"packageName"`
 	Version     string     `gorm:"type:text;not null" json:"version"`
-	ServiceID   string     `gorm:"type:text;index" json:"serviceId"` // service created by this install
+	AppID       string     `gorm:"type:text;index" json:"appId"`
+	ServiceID   string     `gorm:"type:text;index" json:"serviceId"`   // v1: single service
+	Components  string     `gorm:"type:text" json:"components"`        // v2: JSON map[name]serviceID
 	Status      string     `gorm:"type:text;not null;default:'pending'" json:"status"` // pending|installing|installed|failed|removed
 	Error       string     `gorm:"type:text" json:"error"`
 	InstalledAt *time.Time `json:"installedAt"`
