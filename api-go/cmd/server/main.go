@@ -122,6 +122,9 @@ func main() {
 	defer cancel()
 
 	metricsCollector := workers.NewMetricsCollector(databases.Logs, 5, log)
+	if containerMgr != nil {
+		metricsCollector.SetContainerManager(containerMgr, databases.App)
+	}
 	hbMonitor := workers.NewHeartbeatMonitor(databases.App, log)
 	logCleanup := workers.NewLogCleanupWorker(databases.Logs,
 		cfg.LogCleanup.IntervalMinutes, cfg.LogCleanup.RetentionHours, cfg.LogCleanup.AutoVacuum, log)

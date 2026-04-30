@@ -329,6 +329,29 @@ func (cm *ContainerManager) closeSession(sessionID, serviceID string, exitCode i
 	})
 }
 
+// GetStats returns a resource-usage snapshot for the running container
+// backing the given service. Returns (nil, nil) if the service is not running.
+func (cm *ContainerManager) GetStats(ctx context.Context, serviceID string) (*ContainerStats, error) {
+	cm.mu.RLock()
+	rc, ok := cm.running[serviceID]
+	cm.mu.RUnlock()
+	if !ok {
+		return nil, nil
+	}
+	return cm.svc.GetStats(ctx, rc.containerID)
+}
+
+// RunningServiceIDs returns the IDs of all currently running container services.
+func (cm *ContainerManager) RunningServiceIDs() []string {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+	ids := make([]string, 0, len(cm.running))
+	for id := range cm.running {
+		ids = append(ids, id)
+	}
+	return ids
+}
+
 // parseEnvMap deserializes the JSON env-var map stored on Service.
 func parseEnvMap(envJSON string) map[string]string {
 	if envJSON == "" {
