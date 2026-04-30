@@ -31,28 +31,28 @@ type ImageInfo struct {
 
 // ContainerConfig holds configuration for a container-type service
 type ContainerConfig struct {
-	ID              uint   `json:"id"`
-	ServiceID       string `json:"serviceId"`
-	Image           string `json:"image"`
-	Tag             string `json:"tag"`
-	Registry        string `json:"registry"`
-	PullPolicy      string `json:"pullPolicy"`
-	ContainerID     string `json:"containerId"`
-	ContainerName   string `json:"containerName"`
-	ImageID         string `json:"imageId"`
-	Ports           string `json:"ports"`
-	NetworkMode     string `json:"networkMode"`
-	Volumes         string `json:"volumes"`
-	MemoryLimitBytes int64 `json:"memoryLimitBytes"`
-	CpuLimit        float64 `json:"cpuLimit"`
-	Entrypoint      string `json:"entrypoint"`
-	Command         string `json:"command"`
-	User            string `json:"user"`
-	WorkingDir      string `json:"workingDir"`
-	Privileged      bool   `json:"privileged"`
-	ReadOnly        bool   `json:"readOnly"`
-	RemoveOnStop    bool   `json:"removeOnStop"`
-	Labels          string `json:"labels"`
+	ID               uint    `json:"id"`
+	ServiceID        string  `json:"serviceId"`
+	Image            string  `json:"image"`
+	Tag              string  `json:"tag"`
+	Registry         string  `json:"registry"`
+	PullPolicy       string  `json:"pullPolicy"`
+	ContainerID      string  `json:"containerId"`
+	ContainerName    string  `json:"containerName"`
+	ImageID          string  `json:"imageId"`
+	Ports            string  `json:"ports"`
+	NetworkMode      string  `json:"networkMode"`
+	Volumes          string  `json:"volumes"`
+	MemoryLimitBytes int64   `json:"memoryLimitBytes"`
+	CpuLimit         float64 `json:"cpuLimit"`
+	Entrypoint       string  `json:"entrypoint"`
+	Command          string  `json:"command"`
+	User             string  `json:"user"`
+	WorkingDir       string  `json:"workingDir"`
+	Privileged       bool    `json:"privileged"`
+	ReadOnly         bool    `json:"readOnly"`
+	RemoveOnStop     bool    `json:"removeOnStop"`
+	Labels           string  `json:"labels"`
 }
 
 // ContainerStats holds runtime stats for a container

@@ -161,7 +161,7 @@ type PortMapping struct {
 
 // VolumeMount represents a volume or bind-mount.
 type VolumeMount struct {
-	Type     string `json:"type"`     // bind | volume | tmpfs
+	Type     string `json:"type"` // bind | volume | tmpfs
 	Source   string `json:"source"`
 	Target   string `json:"target"`
 	ReadOnly bool   `json:"readOnly"`
@@ -437,7 +437,7 @@ type Package struct {
 	Version     string           `gorm:"type:text;not null;uniqueIndex:idx_pkg_name_version" json:"version"`
 	Description string           `gorm:"type:text" json:"description"`
 	Author      string           `gorm:"type:text" json:"author"`
-	Tags        string           `gorm:"type:text" json:"tags"` // JSON array of strings
+	Tags        string           `gorm:"type:text" json:"tags"`     // JSON array of strings
 	Manifest    string           `gorm:"type:text" json:"manifest"` // full manifest JSON
 	FilePath    string           `gorm:"type:text" json:"filePath"` // server-side path to .mcpkg
 	FileSize    int64            `json:"fileSize"`
@@ -459,8 +459,8 @@ type PackageInstall struct {
 	PackageName string     `gorm:"type:text;not null" json:"packageName"`
 	Version     string     `gorm:"type:text;not null" json:"version"`
 	AppID       string     `gorm:"type:text;index" json:"appId"`
-	ServiceID   string     `gorm:"type:text;index" json:"serviceId"`   // v1: single service
-	Components  string     `gorm:"type:text" json:"components"`        // v2: JSON map[name]serviceID
+	ServiceID   string     `gorm:"type:text;index" json:"serviceId"`                   // v1: single service
+	Components  string     `gorm:"type:text" json:"components"`                        // v2: JSON map[name]serviceID
 	Status      string     `gorm:"type:text;not null;default:'pending'" json:"status"` // pending|installing|installed|failed|removed
 	Error       string     `gorm:"type:text" json:"error"`
 	InstalledAt *time.Time `json:"installedAt"`

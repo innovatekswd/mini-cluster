@@ -119,24 +119,24 @@ type ComponentHealthCheck struct {
 
 // Component is a single deployable unit in a v2 manifest
 type Component struct {
-	Name          string               `json:"name"`
-	Type          ComponentType        `json:"type"`
+	Name string        `json:"name"`
+	Type ComponentType `json:"type"`
 	// container fields
 	Image      string     `json:"image"`
 	Registry   string     `json:"registry"`
 	PullPolicy PullPolicy `json:"pullPolicy"`
 	// process fields
-	Bundled    bool          `json:"bundled"`
-	BinaryPath string        `json:"binaryPath"`
+	Bundled    bool           `json:"bundled"`
+	BinaryPath string         `json:"binaryPath"`
 	Acquire    *AcquireConfig `json:"acquire"`
-	Command    string        `json:"command"`
-	Arguments  string        `json:"arguments"`
+	Command    string         `json:"command"`
+	Arguments  string         `json:"arguments"`
 	// common
 	Env           map[string]ComponentEnvVar `json:"env"`
 	Ports         []ComponentPort            `json:"ports"`
 	Volumes       []ComponentVolume          `json:"volumes"`
 	HealthCheck   *ComponentHealthCheck      `json:"healthCheck"`
-	DependsOn     []DependsOn               `json:"dependsOn"`
+	DependsOn     []DependsOn                `json:"dependsOn"`
 	RestartPolicy string                     `json:"restartPolicy"`
 }
 
@@ -211,12 +211,12 @@ type VolumeDeclaration struct {
 // Manifest is the manifest.json schema.
 // SchemaVersion "2.0" uses Components; anything else (or absent) is v1 with Runtime.
 type Manifest struct {
-	SchemaVersion string `json:"schemaVersion"`
-	Name          string `json:"name"`
-	Version       string `json:"version"`
-	Description   string `json:"description"`
-	Author        string `json:"author"`
-	License       string `json:"license"`
+	SchemaVersion string   `json:"schemaVersion"`
+	Name          string   `json:"name"`
+	Version       string   `json:"version"`
+	Description   string   `json:"description"`
+	Author        string   `json:"author"`
+	License       string   `json:"license"`
 	Tags          []string `json:"tags"`
 
 	// v1 fields

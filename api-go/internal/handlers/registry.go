@@ -26,16 +26,16 @@ import (
 
 // RegistryHandler provides package registry endpoints.
 //
-//   GET    /api/registry/packages                      → list packages
-//   GET    /api/registry/packages/{name}               → list versions
-//   GET    /api/registry/packages/{name}/{version}     → get details
-//   POST   /api/registry/packages                      → publish (multipart ZIP)
-//   DELETE /api/registry/packages/{name}/{version}     → unpublish
-//   GET    /api/registry/packages/{name}/{version}/download → download file
+//	GET    /api/registry/packages                      → list packages
+//	GET    /api/registry/packages/{name}               → list versions
+//	GET    /api/registry/packages/{name}/{version}     → get details
+//	POST   /api/registry/packages                      → publish (multipart ZIP)
+//	DELETE /api/registry/packages/{name}/{version}     → unpublish
+//	GET    /api/registry/packages/{name}/{version}/download → download file
 //
-//   GET    /api/registry/installs                      → list installs
-//   POST   /api/registry/install                       → install a package
-//   DELETE /api/registry/installs/{id}                 → remove install record
+//	GET    /api/registry/installs                      → list installs
+//	POST   /api/registry/install                       → install a package
+//	DELETE /api/registry/installs/{id}                 → remove install record
 type RegistryHandler struct {
 	appDB      *gorm.DB
 	storageDir string
@@ -264,8 +264,8 @@ func (h *RegistryHandler) ListInstalls(w http.ResponseWriter, r *http.Request) {
 type installRequest struct {
 	Name      string            `json:"name"`
 	Version   string            `json:"version"`
-	Env       map[string]string `json:"env"`       // caller-supplied env overrides
-	AppID     *string           `json:"appId"`     // attach to this app
+	Env       map[string]string `json:"env"`   // caller-supplied env overrides
+	AppID     *string           `json:"appId"` // attach to this app
 	AutoStart bool              `json:"autoStart"`
 	// v2: optional subset of component names to install
 	Components []string `json:"components"`
@@ -807,12 +807,12 @@ func (h *RegistryHandler) GetManifest(w http.ResponseWriter, r *http.Request) {
 // ── Get components ────────────────────────────────────────────────────────
 
 type componentSummary struct {
-	Name          string   `json:"name"`
-	Type          string   `json:"type"`
-	Image         string   `json:"image,omitempty"`
-	Command       string   `json:"command,omitempty"`
-	DependsOn     []string `json:"dependsOn,omitempty"`
-	RequiredEnv   []string `json:"requiredEnv,omitempty"`
+	Name        string   `json:"name"`
+	Type        string   `json:"type"`
+	Image       string   `json:"image,omitempty"`
+	Command     string   `json:"command,omitempty"`
+	DependsOn   []string `json:"dependsOn,omitempty"`
+	RequiredEnv []string `json:"requiredEnv,omitempty"`
 }
 
 func (h *RegistryHandler) GetComponents(w http.ResponseWriter, r *http.Request) {
@@ -894,7 +894,13 @@ func (h *RegistryHandler) ValidateManifest(w http.ResponseWriter, r *http.Reques
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"valid": "false", "error": err.Error()})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]interface{}{"valid": true, "schemaVersion": mf.SchemaVersion, "name": mf.Name, "version": mf.Version})
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"valid":         true,
+			"schemaVersion": mf.SchemaVersion,
+			"name":          mf.Name,
+			"version":       mf.Version,
+			"components":    len(mf.Components),
+		})
 		return
 	}
 

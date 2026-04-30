@@ -343,8 +343,8 @@ func init() {
 	f.StringVar(&ccLabels, "labels", "", "Labels JSON")
 
 	containerCmd.AddCommand(containerRuntimeCmd, imagesCmd, containerConfigCmd, containerStatsCmd, containerExecCmd)
-        containerCmd.AddCommand(volumesCmd, networksCmd)
-        rootCmd.AddCommand(containerCmd)
+	containerCmd.AddCommand(volumesCmd, networksCmd)
+	rootCmd.AddCommand(containerCmd)
 }
 
 // ── mc container volumes ───────────────────────────────────────────────────

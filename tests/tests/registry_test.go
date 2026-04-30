@@ -343,9 +343,9 @@ func makeV2TestMCPKG(name, version string) []byte {
 				"ports": []map[string]interface{}{{"host": 6399, "container": 6379}},
 			},
 			{
-				"name":    "api",
-				"type":    "process",
-				"command": "echo",
+				"name":      "api",
+				"type":      "process",
+				"command":   "echo",
 				"arguments": "hello",
 				"dependsOn": []map[string]interface{}{
 					{"component": "db", "condition": "running"},

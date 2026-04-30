@@ -113,9 +113,11 @@ are read from manifest.json (use --name/--version to override).`,
 		author, _ := cmd.Flags().GetString("author")
 		tags, _ := cmd.Flags().GetString("tags")
 
-		var (reader *bytes.Reader
-			fileName string
-			name, version string)
+		var (
+			reader        *bytes.Reader
+			fileName      string
+			name, version string
+		)
 
 		info, err := os.Stat(path)
 		if err != nil {

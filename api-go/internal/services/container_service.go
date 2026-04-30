@@ -35,13 +35,13 @@ type ContainerInfo struct {
 
 // ContainerStats holds a single resource-usage snapshot.
 type ContainerStats struct {
-	CPUPercent   float64
-	MemoryUsage  int64
-	MemoryLimit  int64
-	NetworkRxB   int64
-	NetworkTxB   int64
-	BlockReadB   int64
-	BlockWriteB  int64
+	CPUPercent  float64
+	MemoryUsage int64
+	MemoryLimit int64
+	NetworkRxB  int64
+	NetworkTxB  int64
+	BlockReadB  int64
+	BlockWriteB int64
 }
 
 // ImageInfo describes a locally available image.
@@ -54,12 +54,13 @@ type ImageInfo struct {
 
 // RuntimeInfo describes the Docker/Podman daemon.
 type RuntimeInfo struct {
-	Name        string // "Docker" | "Podman"
-	Version     string
-	APIVersion  string
-	OSType      string
+	Name         string // "Docker" | "Podman"
+	Version      string
+	APIVersion   string
+	OSType       string
 	Architecture string
 }
+
 // VolumeInfo describes a named volume.
 type VolumeInfo struct {
 	Name       string            `json:"name"`
@@ -77,6 +78,7 @@ type NetworkInfo struct {
 	Scope  string            `json:"scope"`
 	Labels map[string]string `json:"labels"`
 }
+
 // ExecResult holds the output of a container exec.
 type ExecResult struct {
 	ExitCode int
@@ -319,13 +321,13 @@ func (d *DockerService) CreateContainer(ctx context.Context, cfg *models.Contain
 	}
 
 	hostCfg := &container.HostConfig{
-		PortBindings: portBindings,
-		Binds:        binds,
-		NetworkMode:  container.NetworkMode(cfg.NetworkMode),
-		Privileged:   cfg.Privileged,
+		PortBindings:   portBindings,
+		Binds:          binds,
+		NetworkMode:    container.NetworkMode(cfg.NetworkMode),
+		Privileged:     cfg.Privileged,
 		ReadonlyRootfs: cfg.ReadOnly,
-		Resources:    resources,
-		RestartPolicy: container.RestartPolicy{Name: "no"}, // MiniCluster manages restarts
+		Resources:      resources,
+		RestartPolicy:  container.RestartPolicy{Name: "no"}, // MiniCluster manages restarts
 	}
 
 	networkCfg := &network.NetworkingConfig{}
