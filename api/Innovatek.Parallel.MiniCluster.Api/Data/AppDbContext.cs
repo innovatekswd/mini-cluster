@@ -45,7 +45,12 @@ public class AppDbContext : DbContext, IIdentityDbContext
     public DbSet<DeploymentConfig> DeploymentConfigs { get; set; }
     public DbSet<AppSnapshot> AppSnapshots { get; set; }
     public DbSet<AppSnapshotEntry> AppSnapshotEntries { get; set; }
-    
+
+    // Post-MVP: Alerting & Threshold Rules (Spec 023)
+    public DbSet<AlertRule> AlertRules { get; set; }
+    public DbSet<AlertEvent> AlertEvents { get; set; }
+    public DbSet<NotificationChannel> NotificationChannels { get; set; }
+
     // Authentication
     public DbSet<User> Users { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
@@ -356,6 +361,39 @@ public class AppDbContext : DbContext, IIdentityDbContext
                 .WithMany(s => s.Entries)
                 .HasForeignKey(e => e.AppSnapshotId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── Alerting entities (Spec 023) ──────────────────────────────────────
+
+        modelBuilder.Entity<AlertRule>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.IsEnabled);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.NotifyChannels).HasMaxLength(500).HasDefaultValue("all");
+            entity.Property(e => e.Metric).HasConversion<int>();
+            entity.Property(e => e.Operator).HasConversion<int>();
+            entity.Property(e => e.Severity).HasConversion<int>();
+        });
+
+        modelBuilder.Entity<AlertEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.AlertRuleId);
+            entity.HasIndex(e => e.Timestamp);
+            entity.Property(e => e.EventType).HasConversion<int>();
+            entity.HasOne(e => e.AlertRule)
+                .WithMany()
+                .HasForeignKey(e => e.AlertRuleId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<NotificationChannel>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.IsEnabled);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Type).HasConversion<int>();
         });
     }
 }

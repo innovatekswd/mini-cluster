@@ -1,5 +1,6 @@
 using Innovatek.Parallel.MiniCluster.Api.Services;
 using Innovatek.Parallel.TemplateEngine;
+using Microsoft.Extensions.Options;
 using Yarp.ReverseProxy.Configuration;
 
 namespace Innovatek.Parallel.MiniCluster.Api.Configuration;
@@ -53,6 +54,12 @@ public static class PlatformServiceExtensions
         services.AddSingleton<IProxyConfigProvider>(sp => sp.GetRequiredService<DatabaseProxyConfigProvider>());
         services.AddSingleton<IProxyConfigNotifier>(sp => sp.GetRequiredService<DatabaseProxyConfigProvider>());
         services.AddReverseProxy();
+
+        // Alerting & Threshold Rules (Spec 023 Phase 13a)
+        services.Configure<AlertingOptions>(configuration.GetSection(AlertingOptions.SectionName));
+        services.AddSingleton<IAlertMetricsProvider, LiveMetricsProvider>();
+        services.AddScoped<IAlertNotifier, AlertNotifier>();
+        services.AddHostedService<AlertEvaluatorService>();
 
         return services;
     }
