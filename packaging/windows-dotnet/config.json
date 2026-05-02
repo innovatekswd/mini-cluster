@@ -1,0 +1,51 @@
+{
+  "Urls": "http://0.0.0.0:__PORT__",
+  "ConnectionStrings": {
+    "DefaultConnection": "Data Source=__DB_PATH__;Mode=ReadWriteCreate;Cache=Shared;Pooling=True",
+    "LogsConnection": "Data Source=__LOG_PATH__;Mode=ReadWriteCreate;Cache=Shared;Pooling=True"
+  },
+  "Authentication": {
+    "Enabled": true,
+    "JwtSecret": "CHANGE-THIS-SECRET-KEY-TO-A-LONG-RANDOM-STRING-256bits",
+    "JwtIssuer": "MiniCluster",
+    "JwtAudience": "MiniCluster",
+    "AccessTokenExpiryMinutes": 30,
+    "RefreshTokenExpiryDays": 7,
+    "AllowAnonymousInDevelopment": false
+  },
+  "LogCleanup": {
+    "IntervalMinutes": 10,
+    "RetentionHours": 24,
+    "AutoVacuum": true
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft": "Warning",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "Cors": {
+    "AllowedOrigins": []
+  },
+  "Explorer": {
+    "AllowedPaths": [
+      "C:\\"
+    ],
+    "BlockedPaths": [],
+    "MaxUploadSizeMB": 100,
+    "MaxEditFileSizeMB": 10,
+    "EnableTerminal": true,
+    "ShowHiddenFiles": false
+  },
+  "Agent": {
+    "Enabled": false,
+    "ControllerUrl": "",
+    "ApiKey": "",
+    "Name": "",
+    "HeartbeatIntervalSeconds": 30,
+    "AdvertiseEndpoint": "",
+    "Labels": {}
+  }
+}

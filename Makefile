@@ -1,5 +1,6 @@
 .PHONY: build build-linux build-linux-arm build-mac build-mac-arm build-windows build-all \
         build-go-linux build-go-linux-arm build-go-windows build-go-all \
+        build-dotnet-windows \
         build-cli build-cli-linux build-cli-windows build-cli-all \
         clean dev test
 
@@ -39,7 +40,7 @@ build-cli-all: ## Build CLI for all platforms
 
 build: build-go-linux build-cli-linux ## Default: build Go API + CLI for Linux
 
-build-all: build-go-all build-cli-all ## Build Go API + CLI for all platforms
+build-all: build-go-all build-dotnet-windows build-cli-all ## Build Go API + .NET API (Windows) + CLI for all platforms
 
 # ── Legacy .NET single-binary builds (kept for reference) ─────
 
@@ -55,7 +56,10 @@ build-mac: ## [legacy] .NET single-file binary for macOS Intel
 build-mac-arm: ## [legacy] .NET single-file binary for macOS Apple Silicon
 	MINICLUSTER_VERSION=$(VERSION) ./packaging/scripts/build-single-binary.sh osx-arm64
 
-build-windows: ## [legacy] .NET single-file binary for Windows x64
+build-dotnet-windows: ## Build .NET API server — Windows x64 (.zip + PowerShell installer)
+	MINICLUSTER_VERSION=$(VERSION) ./packaging/scripts/build-dotnet-windows.sh $(VERSION)
+
+build-windows: ## [legacy] .NET single-file binary for Windows x64 (raw binary, no packaging)
 	MINICLUSTER_VERSION=$(VERSION) ./packaging/scripts/build-single-binary.sh win-x64
 
 # ── Development ──────────────────────────────────────────────
