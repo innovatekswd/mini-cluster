@@ -225,26 +225,25 @@ func main() {
 		r.Use(middleware.AuthBypass(!cfg.Authentication.Enabled))
 		r.Use(middleware.RoleBasedAccess)
 
-		// apps
-		r.Mount("/apps", appsHandler.Routes())
+// apps — also mount /Apps for .NET-compatible casing used by the UI
+			r.Mount("/apps", appsHandler.Routes())
+			r.Mount("/Apps", appsHandler.Routes())
 
-		// services
-		r.Route("/services", func(r chi.Router) {
-			r.Mount("/", svcHandler.Routes())
-			r.Route("/{identifier}", func(r chi.Router) {
-				r.Mount("/", versionsHandler.ServiceRoutes())
-			})
-		})
-		r.Mount("/service-versions", versionsHandler.StandaloneRoutes())
+		// services — mount svcHandler directly so its static routes (e.g.
+		// /statuses) always win over any parametric /{identifier} pattern.
+		// Versions and logs sub-routes are injected via AddSubRoutes so they
+		// live inside the /{identifier} group in svcHandler.Routes(), not as
+		// competing siblings at this level.
+		svcHandler.
+			AddSubRoutes(func(r chi.Router) { r.Mount("/", versionsHandler.ServiceRoutes()) }).
+			AddSubRoutes(func(r chi.Router) { r.Mount("/", logsHandler.Routes()) })
+		r.Mount("/services", svcHandler.Routes())
 		r.Post("/services/import", importHandler.Import)
+		r.Mount("/service-versions", versionsHandler.StandaloneRoutes())
 
-		// environments
+		// environments — also mount /envs to match the .NET [Route("api/envs")] convention
 		r.Mount("/environments", envHandler.Routes())
-
-		// logs (rooted at /api/services/{id}/...)
-		r.Route("/services/{identifier}", func(r chi.Router) {
-			r.Mount("/", logsHandler.Routes())
-		})
+		r.Mount("/envs", envHandler.Routes())
 
 		// sessions
 		r.Mount("/sessions", sessionsHandler.Routes())

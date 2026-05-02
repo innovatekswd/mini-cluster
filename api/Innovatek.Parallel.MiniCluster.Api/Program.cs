@@ -3,6 +3,9 @@ using Innovatek.Parallel.MiniCluster.Api.Middleware;
 using Innovatek.Parallel.MiniCluster.Api.Configuration;
 using Microsoft.AspNetCore.ResponseCompression;
 using System.IO.Compression;
+using System.Security.Cryptography;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 
 
@@ -29,6 +32,17 @@ builder.Configuration
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false)
     .AddEnvironmentVariables();
 
+// Bind listen port from config ("Port") or env var ASPNETCORE_URLS / DOTNET_URLS.
+// Default is 5000 (same as the Go backend) so both binaries work out-of-the-box
+// on the same port without any configuration change.
+// Override: set "Port": 8080 in appsettings.json, or ASPNETCORE_URLS=http://*:8080 env var.
+if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")) &&
+    string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOTNET_URLS")))
+{
+    var port = builder.Configuration.GetValue<int?>("Port") ?? 5000;
+    builder.WebHost.UseUrls($"http://*:{port}");
+}
+
 var webRootPath = Path.Combine(exeDir, "wwwroot");
 if (Directory.Exists(webRootPath))
 {
@@ -44,6 +58,12 @@ if (!Directory.Exists(dataDirectory))
 {
     Directory.CreateDirectory(dataDirectory);
 }
+
+// ── First-run setup ─────────────────────────────────────────────────────────
+// Generate a random JWT secret and persist it to appsettings.json when the
+// configured value is empty or still set to the well-known default.
+// This runs before AddAuth() so the in-memory config is updated in time.
+EnsureJwtSecret(exeDir, builder.Configuration);
 
 // ── Services ────────────────────────────────────────────────────────────────
 
@@ -86,7 +106,7 @@ builder.Services.AddSignalR(options =>
 });
 
 // AutoMapper
-builder.Services.AddAutoMapper(typeof(Program));
+builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
 
 builder.Services.AddSwaggerGen();
 
@@ -161,3 +181,61 @@ app.MapFallback(async context =>
 });
 
 app.Run();
+
+// ── First-run helpers ────────────────────────────────────────────────────────
+
+/// <summary>
+/// Generates a cryptographically random JWT secret and persists it to
+/// appsettings.json when the current value is missing or still the well-known
+/// default shipped in the repository.  Also patches the live IConfiguration
+/// so AddAuth() picks up the new value without requiring a restart.
+/// </summary>
+static void EnsureJwtSecret(string exeDir, IConfiguration configuration)
+{
+    const string sectionKey = "Authentication:JwtSecret";
+    const string defaultSecret = "MiniCluster-Super-Secret-Key-That-Should-Be-Changed-In-Production-256bits!";
+
+    var current = configuration[sectionKey];
+    if (!string.IsNullOrEmpty(current) && current != defaultSecret)
+        return; // already configured with a custom secret
+
+    var newSecret = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+
+    // Patch the live IConfiguration so AddAuth() gets the new value immediately.
+    ((IConfigurationRoot)configuration)[sectionKey] = newSecret;
+
+    // Persist to appsettings.json so it survives restarts.
+    var configPath = Path.Combine(exeDir, "appsettings.json");
+    try
+    {
+        JsonNode root;
+        if (File.Exists(configPath))
+        {
+            var text = File.ReadAllText(configPath);
+            root = JsonNode.Parse(text, nodeOptions: new JsonNodeOptions { PropertyNameCaseInsensitive = true })
+                   ?? new JsonObject();
+        }
+        else
+        {
+            root = new JsonObject();
+        }
+
+        // Navigate/create Authentication section.
+        if (root["Authentication"] is not JsonObject authNode)
+        {
+            authNode = new JsonObject();
+            root["Authentication"] = authNode;
+        }
+        authNode["JwtSecret"] = newSecret;
+
+        var options = new JsonSerializerOptions { WriteIndented = true };
+        File.WriteAllText(configPath, root.ToJsonString(options));
+
+        Console.WriteLine($"[MiniCluster] First run: generated JWT secret and saved to {configPath}");
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"[MiniCluster] Warning: could not persist JWT secret to {configPath}: {ex.Message}");
+        // Non-fatal — the in-memory patch means this run will work fine.
+    }
+}

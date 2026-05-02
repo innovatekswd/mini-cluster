@@ -6,7 +6,7 @@ export const appsApiService = {
    * Get all apps with service statistics
    */
   async getAll(): Promise<AppWithStats[]> {
-    const res = await apiClient.get("/api/Apps");
+    const res = await apiClient.get("/api/apps");
     return res.data;
   },
 
@@ -14,7 +14,7 @@ export const appsApiService = {
    * Get a single app by ID
    */
   async getById(id: string): Promise<App> {
-    const res = await apiClient.get(`/api/Apps/${id}`);
+    const res = await apiClient.get(`/api/apps/${id}`);
     return res.data;
   },
 
@@ -22,7 +22,7 @@ export const appsApiService = {
    * Create a new app
    */
   async create(data: CreateAppDto): Promise<App> {
-    const res = await apiClient.post("/api/Apps", data);
+    const res = await apiClient.post("/api/apps", data);
     return res.data;
   },
 
@@ -30,28 +30,28 @@ export const appsApiService = {
    * Update an existing app
    */
   async update(id: string, data: UpdateAppDto): Promise<void> {
-    await apiClient.put(`/api/Apps/${id}`, data);
+    await apiClient.put(`/api/apps/${id}`, data);
   },
 
   /**
    * Delete an app (services become unassigned)
    */
   async delete(id: string): Promise<void> {
-    await apiClient.delete(`/api/Apps/${id}`);
+    await apiClient.delete(`/api/apps/${id}`);
   },
 
   /**
    * Reorder apps by providing ordered array of IDs
    */
   async reorder(orderedIds: string[]): Promise<void> {
-    await apiClient.post("/api/Apps/reorder", orderedIds);
+    await apiClient.post("/api/apps/reorder", orderedIds);
   },
 
   /**
    * Clone an app (creates a copy with all its services)
    */
   async clone(id: string): Promise<App> {
-    const res = await apiClient.post(`/api/Apps/${id}/clone`);
+    const res = await apiClient.post(`/api/apps/${id}/clone`);
     return res.data;
   },
 
@@ -59,7 +59,7 @@ export const appsApiService = {
    * Seed sample apps and services for testing
    */
   async seed(): Promise<{ message: string }> {
-    const res = await apiClient.post("/api/Apps/seed");
+    const res = await apiClient.post("/api/apps/seed");
     return res.data;
   },
 };

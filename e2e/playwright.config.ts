@@ -3,12 +3,19 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * MiniCluster E2E Test Configuration
  *
- * Run against a locally running dev stack:
- *   Backend:  dotnet run (port 5147)
- *   Frontend: npm run dev  (port 5173, proxies /api → 5147)
+ * Supports two backend targets:
+ *   BACKEND=go    → Go API  on port 5000 (UI served by binary, or dev proxy)
+ *   BACKEND=dotnet → .NET API on port 5147 (default, dev proxy on 5173)
  *
- * Playwright hits the frontend origin; the Vite proxy forwards API calls.
+ * Run examples:
+ *   npx playwright test                    # .NET backend (default)
+ *   BACKEND=go npx playwright test         # Go backend (binary on :5000)
+ *   BACKEND=go BASE_URL=http://127.0.0.1:5000 npx playwright test
  */
+
+const backend  = (process.env.BACKEND  ?? 'dotnet') as 'dotnet' | 'go';
+const baseURL  = process.env.BASE_URL  ?? (backend === 'go' ? 'http://127.0.0.1:5000' : 'http://localhost:5173');
+
 export default defineConfig({
   testDir: './tests',
   fullyParallel: true,
@@ -22,10 +29,11 @@ export default defineConfig({
     : [['html', { open: 'on-failure' }]],
 
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    extraHTTPHeaders: { Accept: 'application/json' },
   },
 
   projects: [

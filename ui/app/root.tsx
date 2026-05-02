@@ -67,6 +67,11 @@ export default function App() {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {/* Inline critical styles prevent the flash of unstyled white content
+            before the Tailwind/app CSS bundle is parsed and applied. */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          html,body{background:#0f172a;color:#e2e8f0;margin:0}
+        ` }} />
         <Meta />
         <Links />
       </head>
@@ -77,6 +82,30 @@ export default function App() {
           </AuthGate>
         </AppProviders>
         <ScrollRestoration />
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+
+// SPA mode hydration fallback — prevents "Hey developer 👋" React Router warning
+export function HydrateFallback() {
+  return (
+    <html lang="en">
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <style dangerouslySetInnerHTML={{ __html: `
+          html,body{background:#0f172a;color:#e2e8f0;margin:0}
+        ` }} />
+        <Meta />
+        <Links />
+      </head>
+      <body className="h-dvh bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto" />
+          <p className="mt-4 text-gray-400">Loading...</p>
+        </div>
         <Scripts />
       </body>
     </html>

@@ -64,7 +64,7 @@ public class DatabaseProxyConfigProvider : IProxyConfigProvider, IProxyConfigNot
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
             var proxyRoutes = db.ProxyRoutes.Where(r => r.IsEnabled).ToList();
-            var settings = db.ProxySettings.FirstOrDefault() ?? new ProxySettings();
+            var settings = db.ProxySettings.OrderBy(p => p.Id).FirstOrDefault() ?? new ProxySettings();
 
             foreach (var route in proxyRoutes)
             {
