@@ -14,16 +14,25 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseWindowsService(options => options.ServiceName = "MiniCluster");
 builder.Host.UseSystemd();
 
-// For single-file deployments the runtime extracts to a temp dir, so
-// AppContext.BaseDirectory won't contain wwwroot. Point WebRoot at the
-// directory that actually contains the exe instead.
+// For single-file deployments (and Windows Service mode where CWD is System32),
+// always anchor ContentRoot to the exe directory so appsettings.json and wwwroot
+// are found regardless of the working directory.
 var exeDir = Path.GetDirectoryName(Environment.ProcessPath ?? AppContext.BaseDirectory)
     ?? Directory.GetCurrentDirectory();
+
+builder.WebHost.UseContentRoot(exeDir);
+
+// Explicitly load appsettings from the exe directory (needed for single-file + service mode).
+builder.Configuration
+    .SetBasePath(exeDir)
+    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false)
+    .AddEnvironmentVariables();
+
 var webRootPath = Path.Combine(exeDir, "wwwroot");
 if (Directory.Exists(webRootPath))
 {
     builder.WebHost.UseWebRoot(webRootPath);
-    builder.WebHost.UseContentRoot(exeDir);
 }
 
 // Ensure data directory exists for SQLite databases
