@@ -18,6 +18,7 @@ using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
 using Innovatek.Parallel.MiniCluster.Api.Dtos;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Innovatek.Parallel.MiniCluster.Test
 {
@@ -40,7 +41,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.AddProfile<MappingProfile>(); // Add your mapping profile(s) here
-            });
+            }, NullLoggerFactory.Instance);
             _mapperMock = new Mapper(mapperConfig);
             _variableResolverMock = new DefaultVariableResolverFactory();
             _loggerMock = Mock.Of<ILogger<ImportController>>();
@@ -308,11 +309,11 @@ namespace Innovatek.Parallel.MiniCluster.Test
                 .Options;
             _dbContext = new AppDbContext(options);
 
-            var mapperConfig = new MapperConfiguration(cfg =>
+            var mapperConfig2 = new MapperConfiguration(cfg =>
             {
                 cfg.AddProfile<MappingProfile>();
-            });
-            _mapper = new Mapper(mapperConfig);
+            }, NullLoggerFactory.Instance);
+            _mapper = new Mapper(mapperConfig2);
             _variableResolverFactory = new DefaultVariableResolverFactory();
             _loggerMock = Mock.Of<ILogger<ImportController>>();
         }

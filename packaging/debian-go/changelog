@@ -1,0 +1,9 @@
+minicluster (1.0.12-1) stable; urgency=medium
+
+  * Go API server replaces .NET backend — single static binary, no runtime required
+  * Container lifecycle management (Docker/Podman)
+  * Multi-component package registry (v2 manifest schema)
+  * Container metrics integration
+  * CLI inspection, package init/build/validate/push commands
+
+ -- Innovatek <support@innovatek.com>  Fri, 02 May 2026 00:00:00 +0000

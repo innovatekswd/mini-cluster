@@ -17,6 +17,8 @@
     "paths": {
       "~/*": ["./app/*"]
     },
+    "forceConsistentCasingInFileNames": true,
+    "ignoreDeprecations": "6.0",
     "esModuleInterop": true,
     "verbatimModuleSyntax": true,
     "noEmit": true,

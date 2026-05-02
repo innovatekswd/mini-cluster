@@ -1,6 +1,6 @@
 # MiniCluster Feature Specifications
 
-> **Last Updated:** February 7, 2026  
+> **Last Updated:** May 2, 2026  
 > **Single source of truth for all feature specs**
 
 ---
@@ -34,6 +34,7 @@
 | 021 | [Simple App Tabs](#021-simple-app-tabs) | ✅ Implemented | — |
 | 022 | [mc-telemetry (OTLP Companion)](#022-otlp-telemetry) | 📋 Spec Ready | 4-5 weeks |
 | 023 | [Alerting & Threshold Rules](#023-alerting) | 📋 Spec Ready | 2-3 weeks |
+| 027 | [Operations Cockpit UX, Realtime & Route Alignment](#027-operations-cockpit-ux-realtime-route-alignment) | 📋 Spec Ready | 4-6 weeks |
 
 ### Legend
 - ✅ **Implemented** — Feature is complete and in production
@@ -429,6 +430,24 @@ Everything above the runtime layer stays identical: Registry stores the package,
 Group services into app tabs for visual organization. Adds App entity with tabs, drag-and-drop service assignment, cascade start/stop, and per-tab overview. Foundation for hierarchical apps.
 
 **Estimated Effort:** 1-2 weeks
+
+---
+
+### 027 Operations Cockpit UX, Realtime & Route Alignment
+**Status:** 📋 Spec Ready  
+**Spec:** [027-operations-cockpit-ux-realtime/spec.md](027-operations-cockpit-ux-realtime/spec.md)
+
+**Summary:**  
+Unifies MiniCluster into a clearer operations cockpit, aligns SignalR event contracts across .NET, Go, and React, reduces unnecessary REST polling, and standardizes frontend/backend route naming with compatibility redirects.
+
+**Key Features:**
+- [ ] Navigation rail and mobile drawer with clear page ownership
+- [ ] Canonical frontend routes for apps, services, machines, monitor, explorer, automation, proxy, and settings
+- [ ] SignalR contract parity for logs, status, metrics, lifecycle, and terminal events
+- [ ] Reduced polling with HTTP snapshot/reconnect fallback
+- [ ] Page-by-page UX requirements and shared style primitives
+
+**Estimated Effort:** 4-6 weeks
 
 ---
 

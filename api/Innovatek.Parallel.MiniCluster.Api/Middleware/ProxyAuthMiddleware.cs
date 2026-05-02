@@ -19,7 +19,7 @@ public class ProxyAuthMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<ProxyAuthMiddleware> _logger;
-    private readonly TokenValidationParameters _tokenValidationParams;
+    private readonly TokenValidationParameters? _tokenValidationParams;
 
     public ProxyAuthMiddleware(
         RequestDelegate next,
@@ -30,17 +30,20 @@ public class ProxyAuthMiddleware
         _logger = logger;
 
         var opts = authOptions.Value;
-        _tokenValidationParams = new TokenValidationParameters
+        if (!string.IsNullOrEmpty(opts.JwtSecret))
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = opts.JwtIssuer,
-            ValidAudience = opts.JwtAudience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(opts.JwtSecret)),
-            ClockSkew = TimeSpan.Zero
-        };
+            _tokenValidationParams = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = opts.JwtIssuer,
+                ValidAudience = opts.JwtAudience,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(opts.JwtSecret)),
+                ClockSkew = TimeSpan.Zero
+            };
+        }
     }
 
     public async Task InvokeAsync(HttpContext context, AppDbContext dbContext)
@@ -192,6 +195,9 @@ public class ProxyAuthMiddleware
 
     private ClaimsPrincipal? ValidateJwtToken(string token)
     {
+        if (_tokenValidationParams is null)
+            return null;
+
         try
         {
             var handler = new JwtSecurityTokenHandler();

@@ -7,6 +7,7 @@ using Innovatek.Parallel.MiniCluster.Core.Entities;
 using Innovatek.Parallel.TemplateEngine;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -28,7 +29,7 @@ namespace Innovatek.Parallel.MiniCluster.Test
 
         private IMapper CreateMapper()
         {
-            var config = new MapperConfiguration(cfg => { });
+            var config = new MapperConfiguration(cfg => { }, NullLoggerFactory.Instance);
             return config.CreateMapper();
         }
 

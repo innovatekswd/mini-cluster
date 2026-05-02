@@ -47,18 +47,20 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations.AppDb
                 defaultValue: "");
 
             // Generate slugs for existing Apps (lowercase name with spaces replaced by hyphens)
+            // suppressTransaction: true is required because this Sql() follows an AlterColumn that
+            // triggers a SQLite table rebuild (PRAGMA foreign_keys), which cannot run in a transaction.
             migrationBuilder.Sql(@"
                 UPDATE Apps 
                 SET Slug = LOWER(REPLACE(REPLACE(REPLACE(TRIM(Name), ' ', '-'), '\t', '-'), '_', '-'))
                 WHERE Slug = '' OR Slug IS NULL;
-            ");
+            ", suppressTransaction: true);
 
             // Generate slugs for existing Services (lowercase name with spaces replaced by hyphens)
             migrationBuilder.Sql(@"
                 UPDATE ControlledApps 
                 SET Slug = LOWER(REPLACE(REPLACE(REPLACE(TRIM(Name), ' ', '-'), '\t', '-'), '_', '-'))
                 WHERE Slug = '' OR Slug IS NULL;
-            ");
+            ", suppressTransaction: true);
 
             migrationBuilder.CreateTable(
                 name: "Environments",

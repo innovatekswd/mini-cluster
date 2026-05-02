@@ -7,7 +7,7 @@ import (
 	"runtime"
 
 	"github.com/innovatek/minicluster/internal/models"
-	"gorm.io/driver/sqlite"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -85,6 +85,9 @@ func migrateApp(db *gorm.DB) error {
 		&models.AppSettings{},
 		&models.ServiceVersion{},
 		&models.ServiceFile{},
+		&models.ContainerConfig{},
+		&models.Package{},
+		&models.PackageInstall{},
 	)
 }
 

@@ -1,0 +1,22 @@
+{
+  "name": "minicluster-stress",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Stress and load tests for MiniCluster API (Go + .NET)",
+  "scripts": {
+    "stress:auth":         "k6 run scripts/auth.js",
+    "stress:api-read":     "k6 run scripts/api-read.js",
+    "stress:services":     "k6 run scripts/services.js",
+    "stress:metrics":      "k6 run scripts/metrics.js",
+    "stress:concurrent":   "k6 run scripts/concurrent-ops.js",
+    "stress:soak":         "k6 run --duration 10m scripts/api-read.js",
+    "stress:spike":        "k6 run scripts/spike.js",
+    "stress:all":          "npm run stress:auth && npm run stress:api-read && npm run stress:services && npm run stress:metrics",
+    "stress:go":           "BASE_URL=http://localhost:5000 npm run stress:all",
+    "stress:dotnet":       "BASE_URL=http://localhost:5147 npm run stress:all",
+    "report": "k6 run --out json=results.json scripts/api-read.js && k6 inspect --summary-trend-stats 'p(90),p(95),p(99)'"
+  },
+  "devDependencies": {
+    "k6": "^0.57.0"
+  }
+}

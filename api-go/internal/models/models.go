@@ -87,11 +87,94 @@ const (
 	CaptureModeBoth   CaptureMode = "Both"
 )
 
+// ─── Container Support ─────────────────────────────────────────────────────
+
+type ServiceType string
+
+const (
+	ServiceTypeProcess ServiceType = "Process"
+	ServiceTypeDocker  ServiceType = "Docker"
+	ServiceTypePodman  ServiceType = "Podman"
+)
+
+type PullPolicy string
+
+const (
+	PullAlways       PullPolicy = "Always"
+	PullIfNotPresent PullPolicy = "IfNotPresent"
+	PullNever        PullPolicy = "Never"
+)
+
+// ContainerConfig holds Docker/Podman configuration for a Service.
+// It is a 1-to-1 optional extension of Service (uniqueIndex on ServiceID).
+type ContainerConfig struct {
+	ID        string `gorm:"type:text;primaryKey" json:"id"`
+	ServiceID string `gorm:"type:text;not null;uniqueIndex" json:"serviceId"`
+
+	// Image
+	Image      string     `gorm:"type:text;not null" json:"image"`
+	Tag        string     `gorm:"type:text;not null;default:'latest'" json:"tag"`
+	Registry   string     `gorm:"type:text" json:"registry"`
+	PullPolicy PullPolicy `gorm:"type:text;not null;default:'IfNotPresent'" json:"pullPolicy"`
+
+	// Runtime state (written at execution time)
+	ContainerID   string `gorm:"type:text" json:"containerId"`
+	ContainerName string `gorm:"type:text" json:"containerName"`
+	ImageID       string `gorm:"type:text" json:"imageId"`
+
+	// Networking — JSON-encoded []PortMapping
+	Ports       string `gorm:"type:text" json:"ports"`
+	NetworkMode string `gorm:"type:text" json:"networkMode"`
+
+	// Storage — JSON-encoded []VolumeMount
+	Volumes string `gorm:"type:text" json:"volumes"`
+
+	// Resource limits
+	MemoryLimitBytes *int64   `json:"memoryLimitBytes"`
+	CpuLimit         *float64 `json:"cpuLimit"`
+
+	// Execution overrides
+	Entrypoint   string `gorm:"type:text" json:"entrypoint"`
+	Command      string `gorm:"type:text" json:"command"`
+	User         string `gorm:"type:text" json:"user"`
+	WorkingDir   string `gorm:"type:text" json:"workingDir"`
+	Privileged   bool   `gorm:"not null;default:false" json:"privileged"`
+	ReadOnly     bool   `gorm:"not null;default:false" json:"readOnly"`
+	RemoveOnStop bool   `gorm:"not null;default:false" json:"removeOnStop"`
+
+	// Labels — JSON-encoded map[string]string
+	Labels string `gorm:"type:text" json:"labels"`
+
+	CreatedAt  time.Time `json:"createdAt"`
+	ModifiedAt time.Time `json:"modifiedAt"`
+
+	Service *Service `gorm:"foreignKey:ServiceID" json:"-"`
+}
+
+// PortMapping represents a host→container port binding.
+type PortMapping struct {
+	HostPort      int    `json:"hostPort"`
+	ContainerPort int    `json:"containerPort"`
+	Protocol      string `json:"protocol"` // tcp | udp
+	HostIP        string `json:"hostIp"`   // default 0.0.0.0
+}
+
+// VolumeMount represents a volume or bind-mount.
+type VolumeMount struct {
+	Type     string `json:"type"` // bind | volume | tmpfs
+	Source   string `json:"source"`
+	Target   string `json:"target"`
+	ReadOnly bool   `json:"readOnly"`
+}
+
+// ─── Service ───────────────────────────────────────────────────────────────
+
 type Service struct {
 	ID                   string          `gorm:"type:text;primaryKey" json:"id"`
 	Name                 string          `gorm:"type:text;not null" json:"name"`
 	Slug                 string          `gorm:"type:text;not null" json:"slug"`
-	ExecutablePath       string          `gorm:"type:text;not null" json:"executablePath"`
+	ServiceType          ServiceType     `gorm:"type:text;not null;default:'Process'" json:"serviceType"`
+	ExecutablePath       string          `gorm:"type:text" json:"executablePath"`
 	Arguments            string          `gorm:"type:text" json:"arguments"`
 	EnvironmentVariables string          `gorm:"type:text" json:"environmentVariables"` // JSON map
 	WorkingDirectory     string          `gorm:"type:text" json:"workingDirectory"`
@@ -111,6 +194,8 @@ type Service struct {
 	OrderIndex           int             `gorm:"not null;default:0" json:"orderIndex"`
 	CreatedAt            time.Time       `json:"createdAt"`
 	ModifiedAt           time.Time       `json:"modifiedAt"`
+
+	ContainerConfig *ContainerConfig `gorm:"foreignKey:ServiceID" json:"containerConfig,omitempty"`
 }
 
 // ─── Environments ──────────────────────────────────────────────────────────
@@ -342,3 +427,43 @@ type ServiceFile struct {
 }
 
 func (ServiceFile) TableName() string { return "app_files" }
+
+// ─── Registry / Packages ───────────────────────────────────────────────────
+
+// Package represents a published .mcpkg package in the registry
+type Package struct {
+	ID          string           `gorm:"type:text;primaryKey" json:"id"`
+	Name        string           `gorm:"type:text;not null;uniqueIndex:idx_pkg_name_version" json:"name"`
+	Version     string           `gorm:"type:text;not null;uniqueIndex:idx_pkg_name_version" json:"version"`
+	Description string           `gorm:"type:text" json:"description"`
+	Author      string           `gorm:"type:text" json:"author"`
+	Tags        string           `gorm:"type:text" json:"tags"`     // JSON array of strings
+	Manifest    string           `gorm:"type:text" json:"manifest"` // full manifest JSON
+	FilePath    string           `gorm:"type:text" json:"filePath"` // server-side path to .mcpkg
+	FileSize    int64            `json:"fileSize"`
+	Checksum    string           `gorm:"type:text" json:"checksum"` // sha256 hex
+	IsPublic    bool             `gorm:"default:true" json:"isPublic"`
+	Downloads   int              `gorm:"default:0" json:"downloads"`
+	CreatedAt   time.Time        `json:"createdAt"`
+	UpdatedAt   time.Time        `json:"updatedAt"`
+	Installs    []PackageInstall `gorm:"foreignKey:PackageID" json:"installs,omitempty"`
+}
+
+// PackageInstall tracks installation of a package on this node.
+// For v1 (single runtime) packages, ServiceID holds the created service ID.
+// For v2 (multi-component) packages, Components holds a JSON map[componentName]serviceID
+// and ServiceID is left empty.
+type PackageInstall struct {
+	ID          string     `gorm:"type:text;primaryKey" json:"id"`
+	PackageID   string     `gorm:"type:text;not null;index" json:"packageId"`
+	PackageName string     `gorm:"type:text;not null" json:"packageName"`
+	Version     string     `gorm:"type:text;not null" json:"version"`
+	AppID       string     `gorm:"type:text;index" json:"appId"`
+	ServiceID   string     `gorm:"type:text;index" json:"serviceId"`                   // v1: single service
+	Components  string     `gorm:"type:text" json:"components"`                        // v2: JSON map[name]serviceID
+	Status      string     `gorm:"type:text;not null;default:'pending'" json:"status"` // pending|installing|installed|failed|removed
+	Error       string     `gorm:"type:text" json:"error"`
+	InstalledAt *time.Time `json:"installedAt"`
+	RemovedAt   *time.Time `json:"removedAt"`
+	CreatedAt   time.Time  `json:"createdAt"`
+}

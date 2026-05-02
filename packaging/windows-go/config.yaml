@@ -1,0 +1,56 @@
+# MiniCluster API — Windows Configuration
+# Full reference: https://github.com/innovatek/minicluster
+
+port: 5000
+# data_dir defaults to %ProgramData%\MiniCluster when not set
+data_dir: ""
+
+authentication:
+  enabled: true
+  # IMPORTANT: change this before production use
+  jwt_secret: ""
+  jwt_issuer: MiniCluster
+  jwt_audience: MiniCluster
+  access_token_expiry_minutes: 30
+  refresh_token_expiry_days: 7
+  allow_anonymous_in_development: false
+
+cors:
+  allowed_origins:
+    - http://localhost:3000
+    - http://localhost:5173
+
+log_cleanup:
+  interval_minutes: 10
+  retention_hours: 168
+  auto_vacuum: true
+
+explorer:
+  allowed_paths:
+    - C:\
+  blocked_paths: []
+  max_upload_size_mb: 100
+  max_edit_file_size_mb: 10
+  enable_terminal: true
+  show_hidden_files: false
+
+container_runtime:
+  enabled: true
+  socket_path: ""   # empty = auto-detect Docker Desktop named pipe
+  stop_timeout: 10
+
+registry:
+  storage_dir: ""   # defaults to data_dir/registry
+
+agent:
+  enabled: false
+  controller_url: ""
+  api_key: ""
+  name: ""
+  heartbeat_interval_seconds: 30
+  advertise_endpoint: ""
+
+signalr:
+  max_message_size_kb: 256
+  keepalive_interval_seconds: 15
+  client_timeout_seconds: 120

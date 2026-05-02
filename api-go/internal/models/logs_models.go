@@ -110,8 +110,8 @@ type SystemMetrics struct {
 	DiskUsagePercent     float64   `json:"diskUsagePercent"`
 	NetworkBytesSent     int64     `json:"networkBytesSent"`
 	NetworkBytesReceived int64     `json:"networkBytesReceived"`
-	SendRate             float64   `json:"sendRate"`
-	ReceiveRate          float64   `json:"receiveRate"`
+	SendRate             float64   `json:"networkSendRate"`
+	ReceiveRate          float64   `json:"networkReceiveRate"`
 	TotalProcesses       int       `json:"totalProcesses"`
 	TotalThreads         int       `json:"totalThreads"`
 }

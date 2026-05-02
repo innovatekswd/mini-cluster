@@ -1,0 +1,1 @@
+{"components":[{"image":"redis:7-alpine","name":"db","ports":[{"container":6379,"host":6399}],"type":"container"},{"arguments":"hello","command":"echo","dependsOn":[{"component":"db","condition":"running"}],"name":"api","type":"process"}],"description":"test v2 package","name":"test-install-v2","schemaVersion":"2.0","version":"1.0.0"}

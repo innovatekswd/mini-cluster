@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -19,7 +20,8 @@ type ServiceResponseDto struct {
 	Slug                 string                 `json:"slug"`
 	ExecutablePath       string                 `json:"executablePath"`
 	Arguments            string                 `json:"arguments"`
-	EnvironmentVariables string                 `json:"environmentVariables"`
+	// EnvironmentVariables is returned as a JSON object so the UI can read it directly.
+	EnvironmentVariables json.RawMessage        `json:"environmentVariables"`
 	WorkingDirectory     string                 `json:"workingDirectory"`
 	AutoStart            bool                   `json:"autoStart"`
 	AccessLink           string                 `json:"accessLink"`
@@ -44,7 +46,8 @@ type CreateServiceDto struct {
 	Name                 string                 `json:"name"`
 	ExecutablePath       string                 `json:"executablePath"`
 	Arguments            string                 `json:"arguments"`
-	EnvironmentVariables string                 `json:"environmentVariables"`
+	// EnvironmentVariables accepts either a JSON object {"K":"V"} or a JSON string.
+	EnvironmentVariables json.RawMessage        `json:"environmentVariables"`
 	WorkingDirectory     string                 `json:"workingDirectory"`
 	AutoStart            bool                   `json:"autoStart"`
 	AccessLink           string                 `json:"accessLink"`
@@ -75,35 +78,62 @@ type ProcessManager interface {
 // ─── Handler ───────────────────────────────────────────────────────────────
 
 type ServicesHandler struct {
-	db      *gorm.DB
-	process ProcessManager
+	db        *gorm.DB
+	process   ProcessManager
+	// subRoutes are registered inside the /{identifier} sub-router.
+	// Use AddSubRoutes to inject additional route groups (versions, logs, etc.)
+	// without creating competing /{identifier} param routes at the outer level.
+	subRoutes []func(chi.Router)
 }
 
 func NewServicesHandler(db *gorm.DB, pm ProcessManager) *ServicesHandler {
 	return &ServicesHandler{db: db, process: pm}
 }
 
+// AddSubRoutes registers a function that mounts additional routes under
+// /api/services/{identifier}. Call before the router is built (i.e. before
+// the first request is served). Returns the handler for chaining.
+func (h *ServicesHandler) AddSubRoutes(fn func(chi.Router)) *ServicesHandler {
+	h.subRoutes = append(h.subRoutes, fn)
+	return h
+}
+
 func (h *ServicesHandler) Routes() chi.Router {
 	r := chi.NewRouter()
+
+	// ── top-level (no identifier) ──────────────────────────────────────────
+	// These MUST be registered as flat static routes so chi's radix tree
+	// picks them (static > param) over any /{identifier} pattern.
 	r.Get("/", h.list)
 	r.Get("/statuses", h.statuses)
 	r.Post("/", h.create)
-	r.Get("/{identifier}", h.get)
-	r.Put("/{identifier}", h.update)
-	r.Delete("/{identifier}", h.delete)
 
-	// execution sub-routes
-	r.Post("/{identifier}/exec/start", h.start)
-	r.Post("/{identifier}/exec/stop", h.stop)
-	r.Get("/{identifier}/exec/status", h.status)
+	// ── per-service sub-routes ─────────────────────────────────────────────
+	// Group all /{identifier}/... routes inside a single r.Route block.
+	// This keeps the routing tree unambiguous: the static routes above always
+	// win over the parameter group below.
+	r.Route("/{identifier}", func(r chi.Router) {
+		r.Get("/", h.get)
+		r.Put("/", h.update)
+		r.Delete("/", h.delete)
+		r.Post("/clone", h.clone)
 
-	// environment sub-route
-	r.Get("/{identifier}/env", h.getEnv)
-	r.Put("/{identifier}/env", h.putEnv)
+		// execution
+		r.Post("/exec/start", h.start)
+		r.Post("/exec/stop", h.stop)
+		r.Get("/exec/status", h.status)
 
-	// arguments sub-route
-	r.Get("/{identifier}/args", h.getArgs)
-	r.Put("/{identifier}/args", h.putArgs)
+		// environment & arguments
+		r.Get("/env", h.getEnv)
+		r.Put("/env", h.putEnv)
+		r.Get("/args", h.getArgs)
+		r.Put("/args", h.putArgs)
+
+		// injected sub-routers (versions, logs, …)
+		for _, fn := range h.subRoutes {
+			fn(r)
+		}
+	})
 
 	return r
 }
@@ -188,7 +218,7 @@ func (h *ServicesHandler) create(w http.ResponseWriter, r *http.Request) {
 		Slug:                 uniqueSlug(h.db, "services", slugify(req.Name), ""),
 		ExecutablePath:       req.ExecutablePath,
 		Arguments:            req.Arguments,
-		EnvironmentVariables: req.EnvironmentVariables,
+		EnvironmentVariables: normalizeEnvVars(req.EnvironmentVariables),
 		WorkingDirectory:     req.WorkingDirectory,
 		AutoStart:            req.AutoStart,
 		AccessLink:           req.AccessLink,
@@ -250,8 +280,8 @@ func (h *ServicesHandler) update(w http.ResponseWriter, r *http.Request) {
 	if req.Arguments != "" {
 		updates["arguments"] = req.Arguments
 	}
-	if req.EnvironmentVariables != "" {
-		updates["environment_variables"] = req.EnvironmentVariables
+	if req.EnvironmentVariables != nil {
+		updates["environment_variables"] = normalizeEnvVars(req.EnvironmentVariables)
 	}
 	if req.WorkingDirectory != "" {
 		updates["working_directory"] = req.WorkingDirectory
@@ -351,6 +381,35 @@ func (h *ServicesHandler) status(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": h.process.GetStatus(svc.ID)})
 }
 
+func (h *ServicesHandler) clone(w http.ResponseWriter, r *http.Request) {
+	orig, err := h.resolve(chi.URLParam(r, "identifier"))
+	if err != nil {
+		if isNotFound(err) {
+			notFound(w)
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	var maxOrder int
+	h.db.Model(&models.Service{}).Select("COALESCE(MAX(order_index),0)").Scan(&maxOrder)
+
+	cloned := *orig
+	cloned.ID = uuid.NewString()
+	cloned.Name = fmt.Sprintf("%s (copy)", orig.Name)
+	cloned.Slug = uniqueSlug(h.db, "services", slugify(cloned.Name), "")
+	cloned.OrderIndex = maxOrder + 1
+	cloned.CreatedAt = time.Now().UTC()
+	cloned.ModifiedAt = time.Now().UTC()
+
+	if err := h.db.Create(&cloned).Error; err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, toServiceDto(&cloned))
+}
+
 func (h *ServicesHandler) getEnv(w http.ResponseWriter, r *http.Request) {
 	svc, err := h.resolve(chi.URLParam(r, "identifier"))
 	if err != nil {
@@ -447,7 +506,7 @@ func toServiceDto(s *models.Service) ServiceResponseDto {
 		Slug:                 s.Slug,
 		ExecutablePath:       s.ExecutablePath,
 		Arguments:            s.Arguments,
-		EnvironmentVariables: s.EnvironmentVariables,
+		EnvironmentVariables: envVarsToRaw(s.EnvironmentVariables),
 		WorkingDirectory:     s.WorkingDirectory,
 		AutoStart:            s.AutoStart,
 		AccessLink:           s.AccessLink,
@@ -472,4 +531,36 @@ func toServiceDto(s *models.Service) ServiceResponseDto {
 func encodeJSON(v any) (string, error) {
 	b, err := json.Marshal(v)
 	return string(b), err
+}
+
+// normalizeEnvVars converts a json.RawMessage (which may be a JSON object OR a
+// JSON-encoded string like "\"{}\"") into the plain JSON-object string stored in
+// the DB column.  If the incoming value is already a string literal (starts with
+// '"'), it is JSON-unquoted to get the inner JSON.  If it is null or empty,
+// "{}" is returned so the column is never stored as an empty string.
+func normalizeEnvVars(raw json.RawMessage) string {
+	if len(raw) == 0 || string(raw) == "null" {
+		return "{}"
+	}
+	// If the value is a JSON string (e.g. "{\"KEY\":\"val\"}"), unwrap it.
+	if raw[0] == '"' {
+		var inner string
+		if err := json.Unmarshal(raw, &inner); err == nil {
+			if inner == "" {
+				return "{}"
+			}
+			return inner
+		}
+	}
+	// Otherwise it is already a JSON object/array – return as-is.
+	return string(raw)
+}
+
+// envVarsToRaw converts the DB string (JSON object) to json.RawMessage so it is
+// serialised as an object in the HTTP response (not as a JSON string).
+func envVarsToRaw(s string) json.RawMessage {
+	if s == "" || !json.Valid([]byte(s)) {
+		return json.RawMessage("{}")
+	}
+	return json.RawMessage(s)
 }

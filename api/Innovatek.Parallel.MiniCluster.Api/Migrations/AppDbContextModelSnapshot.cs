@@ -17,6 +17,152 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.0");
 
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.AlertRule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("AppId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CooldownMinutes")
+                        .HasDefaultValue(5)
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DurationSeconds")
+                        .HasDefaultValue(0)
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasDefaultValue(true)
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastTriggeredAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Metric")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NotifyChannels")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasDefaultValue("all")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Operator")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("ServiceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Severity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("Threshold")
+                        .HasColumnType("REAL");
+
+                    b.Property<int>("TriggerCount")
+                        .HasDefaultValue(0)
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsEnabled");
+
+                    b.ToTable("AlertRules");
+                });
+
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.AlertEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AlertRuleId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Message")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NotificationResults")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("Threshold")
+                        .HasColumnType("REAL");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("Value")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AlertRuleId");
+
+                    b.HasIndex("Timestamp");
+
+                    b.ToTable("AlertEvents");
+                });
+
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.NotificationChannel", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EmailSubjectTemplate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EmailTo")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasDefaultValue(true)
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("WebhookHeaders")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WebhookTemplate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WebhookUrl")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsEnabled");
+
+                    b.ToTable("NotificationChannels");
+                });
+
             modelBuilder.Entity("Innovatek.Parallel.Identity.Entities.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1286,6 +1432,17 @@ namespace Innovatek.Parallel.MiniCluster.Api.Migrations
                     b.Navigation("ChildApps");
 
                     b.Navigation("Services");
+                });
+
+            modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.AlertEvent", b =>
+                {
+                    b.HasOne("Innovatek.Parallel.MiniCluster.Core.Entities.AlertRule", "AlertRule")
+                        .WithMany()
+                        .HasForeignKey("AlertRuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AlertRule");
                 });
 
             modelBuilder.Entity("Innovatek.Parallel.MiniCluster.Core.Entities.AppSnapshot", b =>

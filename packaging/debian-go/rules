@@ -1,0 +1,14 @@
+#!/usr/bin/dh-make-golang
+%:
+	dh $@
+
+override_dh_auto_build:
+	# Binary is pre-built by build-go-api-linux.sh; nothing to compile here.
+
+override_dh_auto_install:
+	install -D -m 0755 minicluster-api debian/minicluster/usr/bin/minicluster-api
+	install -D -m 0644 minicluster.service debian/minicluster/lib/systemd/system/minicluster.service
+	install -D -m 0755 postinst debian/minicluster/DEBIAN/postinst
+	install -D -m 0755 prerm  debian/minicluster/DEBIAN/prerm
+	install -D -m 0755 postrm debian/minicluster/DEBIAN/postrm
+	install -D -m 0640 config.yaml debian/minicluster/etc/minicluster/config.yaml

@@ -454,3 +454,24 @@ func (c *APIClient) Delete(ctx context.Context, path string) error {
 
 	return nil
 }
+// DeleteWithQuery sends a DELETE request with URL query parameters.
+// path should not include query string; pass query params separately.
+// e.g. DeleteWithQuery(ctx, "/api/logs/truncate", "confirm=true")
+func (c *APIClient) DeleteWithQuery(ctx context.Context, path, query string) (*http.Response, error) {
+        url := c.BaseURL + path
+        if query != "" {
+                url += "?" + query
+        }
+        req, err := http.NewRequestWithContext(ctx, "DELETE", url, nil)
+        if err != nil {
+                return nil, err
+        }
+        if c.AuthToken != "" {
+                req.Header.Set("Authorization", "Bearer "+c.AuthToken)
+        }
+        resp, err := c.HTTPClient.Do(req)
+        if err != nil {
+                return nil, err
+        }
+        return resp, nil
+}

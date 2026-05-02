@@ -26,7 +26,7 @@ public class SettingsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<AppSettings>> GetSettings()
     {
-        var settings = await _appDb.AppSettings.FirstOrDefaultAsync();
+        var settings = await _appDb.AppSettings.OrderBy(s => s.Id).FirstOrDefaultAsync();
         
         if (settings == null)
         {
@@ -53,7 +53,7 @@ public class SettingsController : ControllerBase
     [HttpPut]
     public async Task<ActionResult<AppSettings>> UpdateSettings([FromBody] AppSettingsUpdateDto dto)
     {
-        var settings = await _appDb.AppSettings.FirstOrDefaultAsync();
+        var settings = await _appDb.AppSettings.OrderBy(s => s.Id).FirstOrDefaultAsync();
         
         if (settings == null)
         {

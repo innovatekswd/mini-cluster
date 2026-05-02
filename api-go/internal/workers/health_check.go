@@ -2,6 +2,7 @@ package workers
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/innovatek/minicluster/internal/models"
@@ -9,15 +10,22 @@ import (
 	"gorm.io/gorm"
 )
 
+// healthCheckExecutor is the subset of ServiceExecutor needed by HealthCheckWorker.
+type healthCheckExecutor interface {
+	GetStatus(serviceID string) string
+	ExecContainer(ctx context.Context, serviceID string, cmd []string) (int, error)
+}
+
 // HealthCheckWorker probes services with health checks and triggers restarts.
 type HealthCheckWorker struct {
 	appDB          *gorm.DB
+	executor       healthCheckExecutor
 	log            *zap.Logger
 	OnTriggerStart func(serviceID string)
 }
 
-func NewHealthCheckWorker(appDB *gorm.DB, log *zap.Logger) *HealthCheckWorker {
-	return &HealthCheckWorker{appDB: appDB, log: log}
+func NewHealthCheckWorker(appDB *gorm.DB, executor healthCheckExecutor, log *zap.Logger) *HealthCheckWorker {
+	return &HealthCheckWorker{appDB: appDB, executor: executor, log: log}
 }
 
 func (w *HealthCheckWorker) Run(ctx context.Context) {
@@ -41,12 +49,16 @@ func (w *HealthCheckWorker) checkAll(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		default:
-			w.probe(svc)
+			// Only probe services that are actually running
+			if w.executor != nil && w.executor.GetStatus(svc.ID) != "Running" {
+				continue
+			}
+			w.probe(ctx, svc)
 		}
 	}
 }
 
-func (w *HealthCheckWorker) probe(svc models.Service) {
+func (w *HealthCheckWorker) probe(ctx context.Context, svc models.Service) {
 	timeout := time.Duration(svc.HealthCheckTimeout) * time.Second
 	if timeout <= 0 {
 		timeout = 5 * time.Second
@@ -58,6 +70,17 @@ func (w *HealthCheckWorker) probe(svc models.Service) {
 		healthy = probeHTTP(svc.HealthCheckUrl, timeout)
 	case models.HealthCheckTcp:
 		healthy = probeTCP(svc.HealthCheckUrl, timeout)
+	case models.HealthCheckExec:
+		if svc.HealthCheckCommand == "" {
+			return
+		}
+		cmd := strings.Fields(svc.HealthCheckCommand)
+		if w.executor != nil {
+			probeCtx, cancel := context.WithTimeout(ctx, timeout)
+			defer cancel()
+			exitCode, err := w.executor.ExecContainer(probeCtx, svc.ID, cmd)
+			healthy = err == nil && exitCode == 0
+		}
 	default:
 		return
 	}

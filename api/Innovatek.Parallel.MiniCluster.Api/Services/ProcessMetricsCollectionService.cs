@@ -207,7 +207,7 @@ public class ProcessMetricsCollectionService : BackgroundService, IProcessMetric
         {
             using var scope = _scopeFactory.CreateScope();
             var appDb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var settings = await appDb.AppSettings.FirstOrDefaultAsync();
+            var settings = await appDb.AppSettings.OrderBy(s => s.Id).FirstOrDefaultAsync();
             
             if (settings != null)
             {
@@ -656,7 +656,7 @@ public class ProcessMetricsCollectionService : BackgroundService, IProcessMetric
         var appDb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var logsDb = scope.ServiceProvider.GetRequiredService<LogsDbContext>();
 
-        var settings = await appDb.AppSettings.FirstOrDefaultAsync(stoppingToken);
+        var settings = await appDb.AppSettings.OrderBy(s => s.Id).FirstOrDefaultAsync(stoppingToken);
         var aggregationInterval = settings?.MetricsAggregationIntervalSeconds ?? 60;
 
         // Get the current aggregation window boundary
@@ -735,7 +735,7 @@ public class ProcessMetricsCollectionService : BackgroundService, IProcessMetric
         var appDb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var logsDb = scope.ServiceProvider.GetRequiredService<LogsDbContext>();
 
-        var settings = await appDb.AppSettings.FirstOrDefaultAsync(stoppingToken);
+        var settings = await appDb.AppSettings.OrderBy(s => s.Id).FirstOrDefaultAsync(stoppingToken);
         var retentionHours = settings?.MetricsRetentionHours ?? 24;
         var cutoff = DateTime.UtcNow.AddHours(-retentionHours);
 
@@ -940,6 +940,7 @@ public class ProcessMetricsCollectionService : BackgroundService, IProcessMetric
             var cutoff = DateTime.UtcNow.AddHours(-24);
             var oldMetrics = await logsDb.SystemMetrics
                 .Where(m => m.Timestamp < cutoff)
+                .OrderBy(m => m.Timestamp)
                 .Take(1000)
                 .ToListAsync();
             

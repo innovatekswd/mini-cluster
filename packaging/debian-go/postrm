@@ -1,0 +1,26 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+    purge)
+        # Remove system user and group
+        if getent passwd minicluster > /dev/null; then
+            deluser --system minicluster || true
+        fi
+        if getent group minicluster > /dev/null; then
+            delgroup --system minicluster || true
+        fi
+
+        # Remove data and config (purge only — not on plain remove)
+        rm -rf /var/lib/minicluster
+        rm -rf /var/log/minicluster
+        rm -rf /etc/minicluster
+        rm -rf /opt/minicluster
+
+        systemctl daemon-reload || true
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

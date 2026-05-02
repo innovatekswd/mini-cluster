@@ -27,16 +27,38 @@ type ProcessMetricsSnapshot struct {
 	Timestamp       time.Time `json:"timestamp"`
 }
 
+// DiskInfo mirrors the .NET DiskInfo DTO so the UI receives the same shape.
+type DiskInfo struct {
+	Name         string  `json:"name"`
+	TotalSize    int64   `json:"totalSize"`    // bytes
+	UsedSpace    int64   `json:"usedSpace"`    // bytes
+	AvailSpace   int64   `json:"availableSpace"` // bytes
+	UsagePercent float64 `json:"usagePercent"`
+}
+
+// NetworkInterfaceInfo mirrors the .NET NetworkInterfaceInfo DTO.
+type NetworkInterfaceInfo struct {
+	Name        string  `json:"name"`
+	SendRate    float64 `json:"sendRate"`    // bytes/s
+	ReceiveRate float64 `json:"receiveRate"` // bytes/s
+	Status      string  `json:"status"`
+}
+
+// SystemMetricsSnapshot uses the same JSON field names as the .NET API so the
+// React UI works against both backends without any adaptation layer.
 type SystemMetricsSnapshot struct {
-	CpuPercent    float64   `json:"cpuPercent"`
-	MemoryPercent float64   `json:"memoryPercent"`
-	DiskPercent   float64   `json:"diskPercent"`
-	TotalMemoryMB int64     `json:"totalMemoryMb"`
-	UsedMemoryMB  int64     `json:"usedMemoryMb"`
-	TotalDiskGB   int64     `json:"totalDiskGb"`
-	UsedDiskGB    int64     `json:"usedDiskGb"`
-	Uptime        float64   `json:"uptime"`
-	Timestamp     time.Time `json:"timestamp"`
+	// Primary fields (same names as .NET)
+	CpuUsagePercent    float64                `json:"cpuUsagePercent"`
+	MemoryUsagePercent float64                `json:"memoryUsagePercent"`
+	TotalPhysicalMemory int64                 `json:"totalPhysicalMemory"` // bytes
+	UsedPhysicalMemory  int64                 `json:"usedPhysicalMemory"`  // bytes
+	TotalProcesses      int                   `json:"totalProcesses"`
+	Disks               []DiskInfo            `json:"disks"`
+	NetworkInterfaces   []NetworkInterfaceInfo `json:"networkInterfaces"`
+	TotalNetworkSendRate    float64            `json:"totalNetworkSendRate"`    // bytes/s
+	TotalNetworkReceiveRate float64            `json:"totalNetworkReceiveRate"` // bytes/s
+	SystemUptime        string                `json:"systemUptime"`
+	Timestamp           time.Time             `json:"timestamp"`
 }
 
 type SystemProcessInfo struct {
