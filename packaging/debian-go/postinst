@@ -1,0 +1,55 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+    configure)
+        # Create system user/group if they don't exist
+        if ! getent passwd minicluster > /dev/null; then
+            adduser --system --group --no-create-home --home /opt/minicluster minicluster
+        fi
+
+        # Create runtime directories
+        mkdir -p /var/lib/minicluster
+        mkdir -p /var/log/minicluster
+        mkdir -p /etc/minicluster
+        mkdir -p /opt/minicluster
+
+        # Install default config if not already present
+        if [ ! -f /etc/minicluster/config.yaml ]; then
+            cp /etc/minicluster/config.yaml.default /etc/minicluster/config.yaml 2>/dev/null || true
+        fi
+
+        # Set ownership
+        chown -R minicluster:minicluster /opt/minicluster
+        chown -R minicluster:minicluster /var/lib/minicluster
+        chown -R minicluster:minicluster /var/log/minicluster
+        chown    minicluster:minicluster /etc/minicluster
+        [ -f /etc/minicluster/config.yaml ] && chmod 640 /etc/minicluster/config.yaml
+
+        # Enable and start service
+        systemctl daemon-reload
+        systemctl enable minicluster.service
+
+        echo ""
+        echo "=========================================="
+        echo " MiniCluster Installed Successfully!"
+        echo "=========================================="
+        echo ""
+        echo "To start the service:"
+        echo "  sudo systemctl start minicluster"
+        echo ""
+        echo "To check status:"
+        echo "  sudo systemctl status minicluster"
+        echo ""
+        echo "Configuration: /etc/minicluster/config.yaml"
+        echo "Data:          /var/lib/minicluster"
+        echo "Logs:          journalctl -u minicluster"
+        echo ""
+        echo "Default URL:   http://localhost:5000"
+        echo ""
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

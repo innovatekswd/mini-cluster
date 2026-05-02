@@ -1,0 +1,20 @@
+Package: minicluster
+Version: 1.0.12-1
+Architecture: amd64
+Maintainer: Innovatek <support@innovatek.com>
+Homepage: https://github.com/innovatek/minicluster
+Description: MiniCluster - Lightweight Process Management Platform
+ MiniCluster is a modern process management and monitoring platform
+ that provides a web-based control center for managing applications,
+ services, and deployments across multiple machines.
+ .
+ This package ships the Go API server — a single static binary with no
+ runtime dependency.
+ .
+ Features:
+  - Web-based dashboard for process management
+  - Real-time monitoring and logging
+  - Application deployment and configuration
+  - Container (Docker/Podman) lifecycle management
+  - Multi-machine support via agent mode
+  - REST API for automation
