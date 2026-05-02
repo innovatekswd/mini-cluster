@@ -8,15 +8,16 @@ import {
   FaHistory, FaClock, FaMemory, FaSync, FaUsers
 } from "react-icons/fa";
 import { UserManagement } from "./settings/UserManagement";
+import { SystemPanel } from "./settings/SystemPanel";
 
-type TabType = "general" | "users";
+type TabType = "general" | "users" | "system";
 
 export default function SettingsPage() {
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     const tab = searchParams.get("tab");
-    return tab === "users" ? "users" : "general";
+    return tab === "users" ? "users" : tab === "system" ? "system" : "general";
   });
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [intervalOptions, setIntervalOptions] = useState<IntervalOptions | null>(null);
@@ -41,6 +42,8 @@ export default function SettingsPage() {
     const tab = searchParams.get("tab");
     if (tab === "users") {
       setActiveTab("users");
+    } else if (tab === "system") {
+      setActiveTab("system");
     } else if (!tab || tab === "general") {
       setActiveTab("general");
     }
@@ -140,7 +143,6 @@ export default function SettingsPage() {
             </div>
             
             {activeTab === "general" && (
-              <div className="flex items-center gap-3">
                 {hasChanges && (
                   <button
                     onClick={handleReset}
@@ -194,6 +196,19 @@ export default function SettingsPage() {
             >
               <FaUsers className="text-xs" aria-hidden="true" />
               Users
+            </button>
+            <button
+              role="tab"
+              aria-selected={activeTab === "system"}
+              onClick={() => handleTabChange("system")}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
+                activeTab === "system"
+                  ? "bg-cyan-600 text-white"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-700/50"
+              }`}
+            >
+              <FaDatabase className="text-xs" aria-hidden="true" />
+              System
             </button>
           </div>
 
@@ -394,6 +409,7 @@ export default function SettingsPage() {
           )}
 
           {activeTab === "users" && <UserManagement />}
+          {activeTab === "system" && <SystemPanel />}
         </div>
       </div>
     </Layout>

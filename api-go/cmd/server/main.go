@@ -173,6 +173,7 @@ func main() {
 	healthHandler := handlers.NewHealthHandler(databases.App, databases.Logs)
 	containerHandler := handlers.NewContainerHandler(containerSvc, databases.App, databases.Logs, log)
 	registryHandler := handlers.NewRegistryHandler(databases.App, cfg.Registry.StorageDir, log)
+	systemHandler := handlers.NewSystemHandler(IsWindowsServiceActive, InstallWindowsService, UninstallWindowsService)
 
 	// ─── SignalR servers ─────────────────────────────────────────────────────
 	logHubServer, err := signalr.NewServer(ctx,
@@ -312,6 +313,9 @@ func main() {
 			r.Post("/install", registryHandler.InstallPackage)
 			r.Delete("/installs/{id}", registryHandler.RemoveInstall)
 		})
+
+		// system info + service management
+		r.Mount("/system", systemHandler.Routes())
 	})
 
 	// SignalR hubs — chi.Router satisfies MappableRouter with this adapter
@@ -341,9 +345,10 @@ func main() {
 		}
 	}()
 
-	// graceful shutdown
+	// graceful shutdown — also handles Windows Service stop signals
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	runAsWindowsService(quit, log) // no-op on non-Windows; sends SIGTERM on SCM stop
 	<-quit
 	log.Info("shutting down...")
 	cancel()

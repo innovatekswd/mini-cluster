@@ -9,6 +9,11 @@ using System.IO.Compression;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Run as a Windows Service or systemd service when invoked that way.
+// Has no effect when running interactively.
+builder.Host.UseWindowsService(options => options.ServiceName = "MiniCluster");
+builder.Host.UseSystemd();
+
 // Ensure data directory exists for SQLite databases
 var dataDirectory = OperatingSystem.IsWindows() 
     ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "MiniCluster")
