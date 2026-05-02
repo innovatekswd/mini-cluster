@@ -24,7 +24,7 @@ public static class DatabaseServiceExtensions
 
         // Logs Database (high-volume transient data)
         var logsConnectionString = configuration.GetConnectionString("LogsConnection") 
-            ?? "Data Source=logs.db;Mode=ReadWriteCreate;Cache=Shared;Pooling=True;BusyTimeout=5000;Journal Mode=WAL";
+            ?? "Data Source=logs.db;Mode=ReadWriteCreate;Cache=Shared;Pooling=True";
         services.AddDbContext<LogsDbContext>(options =>
         {
             options.UseSqlite(logsConnectionString, sqliteOptions =>

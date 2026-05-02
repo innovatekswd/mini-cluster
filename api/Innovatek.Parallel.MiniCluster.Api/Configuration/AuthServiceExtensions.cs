@@ -32,10 +32,12 @@ public static class AuthServiceExtensions
                 ValidateIssuer = true,
                 ValidateAudience = true,
                 ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
+                ValidateIssuerSigningKey = !string.IsNullOrEmpty(authConfig.JwtSecret),
                 ValidIssuer = authConfig.JwtIssuer,
                 ValidAudience = authConfig.JwtAudience,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authConfig.JwtSecret)),
+                IssuerSigningKey = string.IsNullOrEmpty(authConfig.JwtSecret)
+                    ? null
+                    : new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authConfig.JwtSecret)),
                 ClockSkew = TimeSpan.Zero
             };
 

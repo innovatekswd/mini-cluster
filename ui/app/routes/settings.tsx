@@ -143,6 +143,7 @@ export default function SettingsPage() {
             </div>
             
             {activeTab === "general" && (
+              <>
                 {hasChanges && (
                   <button
                     onClick={handleReset}
@@ -165,7 +166,7 @@ export default function SettingsPage() {
                   )}
                   Save Changes
                 </button>
-              </div>
+              </>
             )}
           </div>
 
