@@ -83,6 +83,17 @@ New-Item -ItemType Directory -Force -Path (Join-Path $DataDir 'data') | Out-Null
 Copy-Item -Path $binarySrc -Destination (Join-Path $InstallDir $BinaryName) -Force
 Write-Host "  Binary installed: $InstallDir\$BinaryName" -ForegroundColor Green
 
+# Copy wwwroot (React UI — required alongside the exe)
+$wwwrootSrc = Join-Path $scriptDir 'wwwroot'
+if (Test-Path $wwwrootSrc) {
+    $wwwrootDest = Join-Path $InstallDir 'wwwroot'
+    if (Test-Path $wwwrootDest) { Remove-Item -Path $wwwrootDest -Recurse -Force }
+    Copy-Item -Path $wwwrootSrc -Destination $wwwrootDest -Recurse -Force
+    Write-Host "  UI installed:    $wwwrootDest" -ForegroundColor Green
+} else {
+    Write-Host "  WARNING: wwwroot not found next to installer — UI will not be served" -ForegroundColor Yellow
+}
+
 # Write appsettings.json if not already present
 $configDest = Join-Path $InstallDir 'appsettings.json'
 if (-not (Test-Path $configDest)) {

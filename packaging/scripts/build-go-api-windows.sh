@@ -41,6 +41,17 @@ echo ""
 
 mkdir -p "$BUILD_DIR"
 
+# ── Build the React UI and embed it ───────────────────────────────────
+STATIC_DIR="$API_DIR/cmd/server/static"
+echo "▸ Building UI ..."
+cd "$ROOT_DIR/ui"
+[ ! -d node_modules ] && npm ci --silent
+npm run build --silent
+rm -rf "$STATIC_DIR"
+mkdir -p "$STATIC_DIR"
+cp -r "$ROOT_DIR/ui/build/client/"* "$STATIC_DIR/"
+echo "  ✓ UI embedded into $STATIC_DIR"
+
 # ── Compile Windows binary ────────────────────────────────────────────────────
 BINARY="$BUILD_DIR/minicluster-api.exe"
 echo "▸ Compiling  GOOS=windows GOARCH=amd64 ..."

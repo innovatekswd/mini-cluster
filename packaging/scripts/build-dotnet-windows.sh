@@ -95,6 +95,14 @@ mkdir -p "$PKG_DIR"
 # Binary — rename to minicluster.exe
 cp "$EXE" "$PKG_DIR/minicluster.exe"
 
+# wwwroot — NOT bundled inside the single-file exe; must ship alongside it
+if [ -d "$DOTNET_STAGE/wwwroot" ]; then
+    cp -r "$DOTNET_STAGE/wwwroot" "$PKG_DIR/wwwroot"
+    echo "  ✓ wwwroot copied ($(du -sh "$PKG_DIR/wwwroot" | cut -f1))"
+else
+    echo "  ⚠  No wwwroot in publish output — UI will not be served"
+fi
+
 # PowerShell installer + default config
 cp "$ASSETS_DIR/install.ps1"   "$PKG_DIR/install.ps1"
 cp "$ASSETS_DIR/config.json"   "$PKG_DIR/config.json"

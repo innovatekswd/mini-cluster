@@ -14,6 +14,18 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseWindowsService(options => options.ServiceName = "MiniCluster");
 builder.Host.UseSystemd();
 
+// For single-file deployments the runtime extracts to a temp dir, so
+// AppContext.BaseDirectory won't contain wwwroot. Point WebRoot at the
+// directory that actually contains the exe instead.
+var exeDir = Path.GetDirectoryName(Environment.ProcessPath ?? AppContext.BaseDirectory)
+    ?? Directory.GetCurrentDirectory();
+var webRootPath = Path.Combine(exeDir, "wwwroot");
+if (Directory.Exists(webRootPath))
+{
+    builder.WebHost.UseWebRoot(webRootPath);
+    builder.WebHost.UseContentRoot(exeDir);
+}
+
 // Ensure data directory exists for SQLite databases
 var dataDirectory = OperatingSystem.IsWindows() 
     ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "MiniCluster")
@@ -125,8 +137,18 @@ app.MapReverseProxy(proxyPipeline =>
 // SPA fallback
 app.MapFallback(async context =>
 {
-    context.Response.ContentType = "text/html";
-    await context.Response.SendFileAsync(Path.Combine(app.Environment.WebRootPath, "index.html"));
+    var webRoot = app.Environment.WebRootPath;
+    var indexPath = webRoot is not null ? Path.Combine(webRoot, "index.html") : null;
+    if (indexPath is not null && File.Exists(indexPath))
+    {
+        context.Response.ContentType = "text/html";
+        await context.Response.SendFileAsync(indexPath);
+    }
+    else
+    {
+        context.Response.StatusCode = 404;
+        await context.Response.WriteAsync("UI not found. Ensure the wwwroot folder is alongside the executable.");
+    }
 });
 
 app.Run();
