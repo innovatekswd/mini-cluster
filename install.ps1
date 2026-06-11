@@ -2,12 +2,12 @@
 # Run as Administrator
 #
 # Usage:
-#   irm https://raw.githubusercontent.com/innovatek/minicluster-releases/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/install.ps1 | iex
 #
 # Or with options:
 #   $env:MINICLUSTER_VERSION = "1.2.0"
 #   $env:MINICLUSTER_PORT    = "2016"
-#   irm https://raw.githubusercontent.com/innovatek/minicluster-releases/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/install.ps1 | iex
 
 param(
     [string]$Version    = $env:MINICLUSTER_VERSION,
@@ -18,7 +18,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$GithubRepo = "innovatek/minicluster-releases"
+$GithubRepo = "innovatekswd/mini-cluster"
 $ServiceName = "MiniCluster"
 
 function Test-Administrator {

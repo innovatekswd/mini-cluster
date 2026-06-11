@@ -1,6 +1,6 @@
 # MiniCluster Releases
 
-Official release packages for [MiniCluster](https://github.com/innovatek/minicluster) — a lightweight process management and monitoring platform with a built-in web dashboard.
+Official release packages for [MiniCluster](https://github.com/innovatekswd/mini-cluster) — a lightweight process management and monitoring platform with a built-in web dashboard.
 
 ---
 
@@ -9,20 +9,20 @@ Official release packages for [MiniCluster](https://github.com/innovatek/miniclu
 ### Linux (one-liner)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/innovatek/minicluster-releases/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/install.sh | bash
 ```
 
 Custom port or version:
 
 ```bash
 MINICLUSTER_PORT=9000 MINICLUSTER_VERSION=1.2.0 \
-  curl -fsSL https://raw.githubusercontent.com/innovatek/minicluster-releases/main/install.sh | bash
+  curl -fsSL https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/install.sh | bash
 ```
 
 ### Windows (PowerShell — run as Administrator)
 
 ```powershell
-irm https://raw.githubusercontent.com/innovatek/minicluster-releases/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/install.ps1 | iex
 ```
 
 Custom port or version:
@@ -30,14 +30,14 @@ Custom port or version:
 ```powershell
 $env:MINICLUSTER_VERSION = "1.2.0"
 $env:MINICLUSTER_PORT    = "9000"
-irm https://raw.githubusercontent.com/innovatek/minicluster-releases/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/install.ps1 | iex
 ```
 
 ---
 
 ## Manual Download
 
-Go to the [Releases](https://github.com/innovatek/minicluster-releases/releases) page and download the package for your platform.
+Go to the [Releases](https://github.com/innovatekswd/mini-cluster/releases) page and download the package for your platform.
 
 | Platform | Package | Contents |
 |----------|---------|----------|
@@ -50,16 +50,16 @@ Go to the [Releases](https://github.com/innovatek/minicluster-releases/releases)
 
 ```
 # Linux .deb
-https://github.com/innovatek/minicluster-releases/releases/download/v<version>/minicluster_<version>_amd64.deb
+https://github.com/innovatekswd/mini-cluster/releases/download/v<version>/minicluster_<version>_amd64.deb
 
 # Linux tarball (amd64)
-https://github.com/innovatek/minicluster-releases/releases/download/v<version>/minicluster-api-<version>-linux-amd64.tar.gz
+https://github.com/innovatekswd/mini-cluster/releases/download/v<version>/minicluster-api-<version>-linux-amd64.tar.gz
 
 # Linux tarball (arm64)
-https://github.com/innovatek/minicluster-releases/releases/download/v<version>/minicluster-api-<version>-linux-arm64.tar.gz
+https://github.com/innovatekswd/mini-cluster/releases/download/v<version>/minicluster-api-<version>-linux-arm64.tar.gz
 
 # Windows ZIP
-https://github.com/innovatek/minicluster-releases/releases/download/v<version>/minicluster-<version>-windows-amd64.zip
+https://github.com/innovatekswd/mini-cluster/releases/download/v<version>/minicluster-<version>-windows-amd64.zip
 ```
 
 ---
@@ -68,7 +68,7 @@ https://github.com/innovatek/minicluster-releases/releases/download/v<version>/m
 
 ```bash
 # Download
-wget https://github.com/innovatek/minicluster-releases/releases/download/v1.0.0/minicluster_1.0.0_amd64.deb
+wget https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.0/minicluster_1.0.0_amd64.deb
 
 # Install
 sudo dpkg -i minicluster_1.0.0_amd64.deb
@@ -257,5 +257,5 @@ sudo dpkg -r minicluster
 
 ## Support
 
-- Issues: [github.com/innovatek/minicluster/issues](https://github.com/innovatek/minicluster/issues)
-- Source: [github.com/innovatek/minicluster](https://github.com/innovatek/minicluster)
+- Issues: [github.com/innovatekswd/mini-cluster/issues](https://github.com/innovatekswd/mini-cluster/issues)
+- Source: [github.com/innovatekswd/mini-cluster](https://github.com/innovatekswd/mini-cluster)

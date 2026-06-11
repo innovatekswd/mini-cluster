@@ -4,7 +4,7 @@ set -euo pipefail
 # MiniCluster One-Line Installer — Linux
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/innovatek/minicluster-releases/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/install.sh | bash
 #
 # Environment overrides:
 #   MINICLUSTER_VERSION=1.2.0   install a specific version (default: latest)
@@ -12,7 +12,7 @@ set -euo pipefail
 #   MINICLUSTER_NO_SERVICE=1    skip systemd service setup
 #
 
-GITHUB_REPO="innovatek/minicluster-releases"
+GITHUB_REPO="innovatekswd/mini-cluster"
 VERSION="${MINICLUSTER_VERSION:-latest}"
 PORT="${MINICLUSTER_PORT:-2016}"
 NO_SERVICE="${MINICLUSTER_NO_SERVICE:-}"
