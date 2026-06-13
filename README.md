@@ -35,9 +35,30 @@ irm https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/install.ps1
 
 ---
 
-## Manual Download
+## Available Packages
 
-Go to the [Releases](https://github.com/innovatekswd/mini-cluster/releases) page and download the package for your platform.
+Click any package below to download directly.
+
+### v1.0.0
+
+| Package | Platform | Size |
+|---------|----------|------|
+| [minicluster_1.0.0_amd64.deb](https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v1.0.0/minicluster_1.0.0_amd64.deb) | Linux amd64 | ~9.6 MB |
+| [minicluster-api-1.0.0-linux-amd64.tar.gz](https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v1.0.0/minicluster-api-1.0.0-linux-amd64.tar.gz) | Linux amd64 | ~11.7 MB |
+| [minicluster-1.0.0-windows-amd64.zip](https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v1.0.0/minicluster-1.0.0-windows-amd64.zip) | Windows x64 | ~12.0 MB |
+
+### v1.0.12
+
+| Package | Platform | Size |
+|---------|----------|------|
+| [minicluster_1.0.12_amd64.deb](https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v1.0.12/minicluster_1.0.12_amd64.deb) | Linux amd64 | ~9.6 MB |
+| [minicluster-api-1.0.12-linux-amd64.tar.gz](https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v1.0.12/minicluster-api-1.0.12-linux-amd64.tar.gz) | Linux amd64 | ~11.7 MB |
+
+---
+
+## Manual Download (generic URLs)
+
+Replace `<version>` with any release number:
 
 | Platform | Package | Contents |
 |----------|---------|----------|
@@ -46,7 +67,7 @@ Go to the [Releases](https://github.com/innovatekswd/mini-cluster/releases) page
 | Linux arm64 | `minicluster-api-<version>-linux-arm64.tar.gz` | API server + CLI + config + systemd unit |
 | Windows x64 | `minicluster-<version>-windows-amd64.zip` | API server + CLI + PowerShell installer |
 
-### Direct download URLs (replace `<version>`)
+### Raw download URLs (replace `<version>`)
 
 ```
 # Linux .deb
