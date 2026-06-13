@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaTimes, FaTerminal, FaExpand, FaCompress } from 'react-icons/fa';
-import { Terminal } from '~/components/Terminal';
 
 interface TerminalPanelProps {
   workingDirectory: string;
@@ -9,12 +8,42 @@ interface TerminalPanelProps {
   onToggleMaximize?: () => void;
 }
 
+type TerminalComponentType = typeof import("~/components/Terminal").Terminal;
+
 export const TerminalPanel: React.FC<TerminalPanelProps> = ({
   workingDirectory,
   onClose,
   isMaximized = false,
   onToggleMaximize,
 }) => {
+  const [TerminalComponent, setTerminalComponent] = useState<TerminalComponentType | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadTerminal = async () => {
+      try {
+        setLoadError(null);
+        const mod = await import("~/components/Terminal");
+        if (!cancelled) {
+          setTerminalComponent(() => mod.Terminal);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load terminal module:", error);
+          setLoadError("Terminal failed to load.");
+        }
+      }
+    };
+
+    loadTerminal();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className={`flex flex-col bg-slate-900 border-t border-slate-700 ${
       isMaximized ? 'fixed inset-0 z-50' : 'h-80'
@@ -54,10 +83,20 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
       
       {/* Terminal */}
       <div className="flex-1 min-h-0">
-        <Terminal 
-          workingDirectory={workingDirectory}
-          className="h-full"
-        />
+        {loadError ? (
+          <div className="flex h-full items-center justify-center text-sm text-slate-400">
+            {loadError}
+          </div>
+        ) : TerminalComponent ? (
+          <TerminalComponent
+            workingDirectory={workingDirectory}
+            className="h-full"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-sm text-slate-400">
+            Loading terminal...
+          </div>
+        )}
       </div>
     </div>
   );

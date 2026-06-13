@@ -1,7 +1,7 @@
 # MiniCluster API Configuration
 # Full reference: https://github.com/innovatek/minicluster
 
-port: 5000
+port: 2016
 data_dir: /var/lib/minicluster
 
 authentication:

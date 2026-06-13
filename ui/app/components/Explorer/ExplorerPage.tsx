@@ -99,7 +99,10 @@ export const ExplorerPage: React.FC = () => {
       setLoading(true);
       setError(null);
       const data = await explorerService.listDirectory(path, sortField, sortOrder);
-      setListing(data);
+      setListing({
+        ...data,
+        items: Array.isArray(data.items) ? data.items : [],
+      });
       setCurrentPath(path);
       setSelectedItems(new Set());
     } catch (err: any) {
@@ -616,7 +619,7 @@ export const ExplorerPage: React.FC = () => {
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full" />
               </div>
-            ) : listing?.items.length === 0 ? (
+            ) : (listing?.items?.length ?? 0) === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-slate-500">
                 <FaFolder className="text-4xl mb-3 opacity-50" />
                 <p>Empty folder</p>

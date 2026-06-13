@@ -19,13 +19,21 @@ func NewLogsHandler(logsDB, appDB *gorm.DB) *LogsHandler {
 	return &LogsHandler{logsDB: logsDB, appDB: appDB}
 }
 
-// Routes mounts under /api/services/{identifier}
+// Routes returns a router with service log routes (for standalone mount).
 func (h *LogsHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/logs", h.getLogs)
 	r.Get("/logs/search", h.searchLogs)
 	r.Get("/history", h.getHistory)
 	return r
+}
+
+// InjectRoutes registers log routes directly onto r (no Mount).
+// Use this inside ServicesHandler.AddSubRoutes to avoid chi Mount("/") conflicts.
+func (h *LogsHandler) InjectRoutes(r chi.Router) {
+	r.Get("/logs", h.getLogs)
+	r.Get("/logs/search", h.searchLogs)
+	r.Get("/history", h.getHistory)
 }
 
 // ManagementRoutes mounts under /api/logs

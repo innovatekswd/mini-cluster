@@ -10,7 +10,7 @@
 param(
     [string]$InstallDir  = "$env:ProgramFiles\MiniCluster",
     [string]$DataDir     = "$env:ProgramData\MiniCluster",
-    [int]   $Port        = 5000,
+    [int]   $Port        = 2016,
     [switch]$Uninstall
 )
 
@@ -79,9 +79,15 @@ New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 New-Item -ItemType Directory -Force -Path $DataDir    | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $DataDir 'registry') | Out-Null
 
-# Copy binary
+# Copy binaries
 Copy-Item -Path $binarySrc -Destination (Join-Path $InstallDir $binaryName) -Force
 Write-Host "  Binary installed: $InstallDir\$binaryName" -ForegroundColor Green
+
+$cliSrc = Join-Path $scriptDir 'mc.exe'
+if (Test-Path $cliSrc) {
+    Copy-Item -Path $cliSrc -Destination (Join-Path $InstallDir 'mc.exe') -Force
+    Write-Host "  CLI installed:    $InstallDir\mc.exe" -ForegroundColor Green
+}
 
 # Write config if not already present
 $configDest = Join-Path $InstallDir 'config.yaml'

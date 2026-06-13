@@ -35,18 +35,27 @@ func NewTerminalHub(log *zap.Logger) *TerminalHub {
 }
 
 // CreateTerminal spawns a new PTY shell and starts streaming output to the caller.
-func (h *TerminalHub) CreateTerminal(shell string) string {
-	if shell == "" {
-		shell = defaultShell()
-	}
+func (h *TerminalHub) CreateTerminal(workingDirectory string, cols, rows uint16) string {
 	id := uuid.NewString()
-	cmd := exec.Command(shell)
+	cmd := exec.Command(defaultShell())
+	if workingDirectory != "" {
+		if stat, err := os.Stat(workingDirectory); err == nil && stat.IsDir() {
+			cmd.Dir = workingDirectory
+		}
+	}
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
 
-	ptmx, err := pty.Start(cmd)
+	if cols == 0 {
+		cols = 80
+	}
+	if rows == 0 {
+		rows = 24
+	}
+
+	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: rows, Cols: cols})
 	if err != nil {
 		h.log.Error("pty start failed", zap.Error(err))
-		h.Clients().Caller().Send("TerminalError", map[string]string{"error": err.Error()})
+		h.Clients().Caller().Send("TerminalError", id, err.Error())
 		return ""
 	}
 
@@ -114,10 +123,7 @@ func (h *TerminalHub) streamOutput(terminalID, connID string, r io.Reader, cmd *
 	for {
 		n, err := r.Read(buf)
 		if n > 0 {
-			h.Clients().Client(connID).Send("TerminalData", map[string]string{
-				"terminalId": terminalID,
-				"data":       string(buf[:n]),
-			})
+			h.Clients().Client(connID).Send("TerminalData", terminalID, string(buf[:n]))
 		}
 		if err != nil {
 			break
@@ -130,10 +136,7 @@ func (h *TerminalHub) streamOutput(terminalID, connID string, r io.Reader, cmd *
 	h.mu.Lock()
 	delete(h.terminals, terminalID)
 	h.mu.Unlock()
-	h.Clients().Client(connID).Send("TerminalExit", map[string]any{
-		"terminalId": terminalID,
-		"exitCode":   exitCode,
-	})
+	h.Clients().Client(connID).Send("TerminalExit", terminalID, exitCode)
 }
 
 func defaultShell() string {

@@ -176,10 +176,16 @@ func main() {
 	systemHandler := handlers.NewSystemHandler(IsWindowsServiceActive, InstallWindowsService, UninstallWindowsService)
 
 	// ─── SignalR servers ─────────────────────────────────────────────────────
+	signalROrigins := []string{
+		"localhost:*",
+		"127.0.0.1:*",
+		"[::1]:*",
+	}
 	logHubServer, err := signalr.NewServer(ctx,
 		signalr.UseHub(logHub),
 		signalr.KeepAliveInterval(15*time.Second),
 		signalr.TimeoutInterval(120*time.Second),
+		signalr.AllowOriginPatterns(signalROrigins),
 	)
 	if err != nil {
 		log.Fatal("signalr log hub failed", zap.Error(err))
@@ -188,6 +194,7 @@ func main() {
 		signalr.UseHub(terminalHub),
 		signalr.KeepAliveInterval(15*time.Second),
 		signalr.TimeoutInterval(120*time.Second),
+		signalr.AllowOriginPatterns(signalROrigins),
 	)
 	if err != nil {
 		log.Fatal("signalr terminal hub failed", zap.Error(err))
@@ -198,12 +205,12 @@ func main() {
 
 	// global middleware
 	r.Use(chimiddleware.Recoverer)
-	r.Use(chimiddleware.Compress(gzip.DefaultCompression))
-	r.Use(chimiddleware.Timeout(30 * time.Second))
+	r.Use(skipSignalRMiddleware(chimiddleware.Compress(gzip.DefaultCompression)))
+	r.Use(skipSignalRMiddleware(chimiddleware.Timeout(30 * time.Second)))
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   cfg.Cors.AllowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Agent-Api-Key"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Agent-Api-Key", "X-Requested-With", "X-SignalR-User-Agent"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
@@ -225,9 +232,9 @@ func main() {
 		r.Use(middleware.AuthBypass(!cfg.Authentication.Enabled))
 		r.Use(middleware.RoleBasedAccess)
 
-// apps — also mount /Apps for .NET-compatible casing used by the UI
-			r.Mount("/apps", appsHandler.Routes())
-			r.Mount("/Apps", appsHandler.Routes())
+		// apps — also mount /Apps for .NET-compatible casing used by the UI
+		r.Mount("/apps", appsHandler.Routes())
+		r.Mount("/Apps", appsHandler.Routes())
 
 		// services — mount svcHandler directly so its static routes (e.g.
 		// /statuses) always win over any parametric /{identifier} pattern.
@@ -235,8 +242,8 @@ func main() {
 		// live inside the /{identifier} group in svcHandler.Routes(), not as
 		// competing siblings at this level.
 		svcHandler.
-			AddSubRoutes(func(r chi.Router) { r.Mount("/", versionsHandler.ServiceRoutes()) }).
-			AddSubRoutes(func(r chi.Router) { r.Mount("/", logsHandler.Routes()) })
+			AddSubRoutes(versionsHandler.InjectServiceRoutes).
+			AddSubRoutes(logsHandler.InjectRoutes)
 		r.Mount("/services", svcHandler.Routes())
 		r.Post("/services/import", importHandler.Import)
 		r.Mount("/service-versions", versionsHandler.StandaloneRoutes())
@@ -366,6 +373,24 @@ func buildLogger() *zap.Logger {
 	cfg.EncoderConfig = encoderCfg
 	log, _ := cfg.Build()
 	return log
+}
+
+func skipSignalRMiddleware(mw func(http.Handler) http.Handler) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		wrapped := mw(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if isSignalRRequest(r) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			wrapped.ServeHTTP(w, r)
+		})
+	}
+}
+
+func isSignalRRequest(r *http.Request) bool {
+	return strings.HasPrefix(r.URL.Path, "/loghub") ||
+		strings.HasPrefix(r.URL.Path, "/terminalhub")
 }
 
 // spaHandler serves the embedded React build and falls back to index.html.

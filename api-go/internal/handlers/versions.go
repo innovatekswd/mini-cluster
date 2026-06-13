@@ -30,12 +30,19 @@ func NewVersionsHandler(db *gorm.DB) *VersionsHandler {
 	return &VersionsHandler{db: db}
 }
 
-// Routes mounts under /api/services/{identifier}
+// ServiceRoutes returns a router with /versions routes (for standalone mount).
 func (h *VersionsHandler) ServiceRoutes() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/versions", h.list)
 	r.Post("/versions", h.create)
 	return r
+}
+
+// InjectServiceRoutes registers /versions routes directly onto r (no Mount).
+// Use this inside ServicesHandler.AddSubRoutes to avoid chi Mount("/") conflicts.
+func (h *VersionsHandler) InjectServiceRoutes(r chi.Router) {
+	r.Get("/versions", h.list)
+	r.Post("/versions", h.create)
 }
 
 // StandaloneRoutes mounts under /api/service-versions

@@ -319,7 +319,7 @@ export default function SettingsPage() {
                   onChange={(e) => handleChange("metricsCollectionIntervalSeconds", parseInt(e.target.value))}
                   className="input-field"
                 >
-                  {intervalOptions?.collectionIntervals.map((opt) => (
+                  {(intervalOptions?.collectionIntervals ?? intervalOptions?.intervals ?? []).map((opt) => (
                     <option key={opt.seconds} value={opt.seconds}>
                       {opt.label}
                     </option>
@@ -343,7 +343,7 @@ export default function SettingsPage() {
                   onChange={(e) => handleChange("metricsAggregationIntervalSeconds", parseInt(e.target.value))}
                   className="input-field"
                 >
-                  {intervalOptions?.aggregationIntervals.map((opt) => (
+                  {(intervalOptions?.aggregationIntervals ?? intervalOptions?.intervals ?? []).map((opt) => (
                     <option key={opt.seconds} value={opt.seconds}>
                       {opt.label}
                     </option>

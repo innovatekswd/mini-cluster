@@ -59,14 +59,17 @@ func (h *SettingsHandler) update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *SettingsHandler) intervals(w http.ResponseWriter, r *http.Request) {
+	options := []map[string]any{
+		{"seconds": 1, "label": "1 second"},
+		{"seconds": 2, "label": "2 seconds"},
+		{"seconds": 5, "label": "5 seconds"},
+		{"seconds": 10, "label": "10 seconds"},
+		{"seconds": 30, "label": "30 seconds"},
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"intervals": []map[string]any{
-			{"value": 1, "label": "1 second"},
-			{"value": 2, "label": "2 seconds"},
-			{"value": 5, "label": "5 seconds"},
-			{"value": 10, "label": "10 seconds"},
-			{"value": 30, "label": "30 seconds"},
-		},
+		"collectionIntervals": options,
+		"aggregationIntervals": options,
+		"intervals":            options,
 	})
 }
 

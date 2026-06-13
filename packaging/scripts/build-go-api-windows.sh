@@ -23,6 +23,9 @@ WIN_ASSETS="$ROOT_DIR/packaging/windows-go"
 
 VERSION="${1:-$(git -C "$ROOT_DIR" describe --tags --always --dirty 2>/dev/null || echo "0.0.0")}"
 VERSION="${VERSION#v}"
+if [[ ! "$VERSION" =~ ^[0-9] ]]; then
+    VERSION="0.0.0+${VERSION}"
+fi
 
 GIT_COMMIT="$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 BUILD_TIME="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
@@ -52,33 +55,54 @@ mkdir -p "$STATIC_DIR"
 cp -r "$ROOT_DIR/ui/build/client/"* "$STATIC_DIR/"
 echo "  ✓ UI embedded into $STATIC_DIR"
 
-# ── Compile Windows binary ────────────────────────────────────────────────────
+# ── Compile Windows binaries ──────────────────────────────────────────────────
 BINARY="$BUILD_DIR/minicluster-api.exe"
-echo "▸ Compiling  GOOS=windows GOARCH=amd64 ..."
+CLI_BINARY="$BUILD_DIR/mc.exe"
+
+echo "▸ Compiling API  GOOS=windows GOARCH=amd64 ..."
 cd "$API_DIR"
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
     go build -ldflags "$LDFLAGS" -o "$BINARY" ./cmd/server
 echo "  ✓ $(du -sh "$BINARY" | cut -f1)  →  $BINARY"
 
+CLI_LDFLAGS="-s -w \
+  -X github.com/innovatek/minicluster-cli/internal/version.Version=${VERSION} \
+  -X github.com/innovatek/minicluster-cli/internal/version.GitCommit=${GIT_COMMIT} \
+  -X github.com/innovatek/minicluster-cli/internal/version.BuildTime=${BUILD_TIME}"
+
+echo "▸ Compiling CLI  GOOS=windows GOARCH=amd64 ..."
+cd "$ROOT_DIR/cli"
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
+    go build -ldflags "$CLI_LDFLAGS" -o "$CLI_BINARY" ./cmd/mc
+echo "  ✓ $(du -sh "$CLI_BINARY" | cut -f1)  →  $CLI_BINARY"
+
 # ── Stage directory ───────────────────────────────────────────────────────────
-STAGE_NAME="minicluster-api-${VERSION}-windows-amd64"
+STAGE_NAME="minicluster-${VERSION}-windows-amd64"
 STAGE="$BUILD_DIR/$STAGE_NAME"
 rm -rf "$STAGE"
 mkdir -p "$STAGE"
 
 cp "$BINARY"                   "$STAGE/minicluster-api.exe"
+cp "$CLI_BINARY"               "$STAGE/mc.exe"
 cp "$WIN_ASSETS/install.ps1"   "$STAGE/install.ps1"
 cp "$WIN_ASSETS/config.yaml"   "$STAGE/config.yaml"
 
 cat > "$STAGE/README.txt" << EOF
-MiniCluster API ${VERSION} — Windows x64
+MiniCluster ${VERSION} — Windows x64
 ==========================================
+
+Binaries:
+  minicluster-api.exe   — API server (web UI embedded)
+  mc.exe                — CLI client
 
 Quick start (no install):
   .\minicluster-api.exe
 
   The server reads config.yaml from the same directory.
-  Open http://localhost:5000 in your browser.
+  Open http://localhost:2016 in your browser.
+
+  Use the CLI:
+  .\mc.exe --help
 
 Install as a Windows Service (requires Administrator):
   Right-click PowerShell → "Run as Administrator"
@@ -86,10 +110,10 @@ Install as a Windows Service (requires Administrator):
   .\install.ps1
 
   This will:
-  - Copy minicluster-api.exe to %ProgramFiles%\MiniCluster
-  - Register it as a Windows Service (auto-start)
+  - Copy minicluster-api.exe and mc.exe to %ProgramFiles%\MiniCluster
+  - Register the API as a Windows Service (auto-start)
   - Create data directory at %ProgramData%\MiniCluster
-  - Add the install directory to the system PATH
+  - Add the install directory to the system PATH (mc available everywhere)
 
   To uninstall:
   .\install.ps1 -Uninstall
@@ -98,7 +122,7 @@ Environment variable overrides (prefix MINICLUSTER_):
   \$env:MINICLUSTER_PORT = "8080"; .\minicluster-api.exe
   \$env:MINICLUSTER_DATA_DIR = "C:\mc-data"; .\minicluster-api.exe
 
-Default URL: http://localhost:5000
+Default URL: http://localhost:2016
 EOF
 
 # ── Create ZIP ────────────────────────────────────────────────────────────────
@@ -109,7 +133,7 @@ zip -r "$ZIP" "$STAGE_NAME" >/dev/null
 rm -rf "$STAGE"
 
 echo "  ✓ ZIP: $ZIP  ($(du -sh "$ZIP" | cut -f1))"
-rm -f "$BINARY"
+rm -f "$BINARY" "$CLI_BINARY"
 
 echo ""
 echo "═══════════════════════════════════════════════════"

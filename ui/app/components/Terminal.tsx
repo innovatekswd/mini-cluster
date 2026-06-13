@@ -17,7 +17,6 @@ export function Terminal({ workingDirectory, onExit, className = "" }: TerminalP
   const fitAddonRef = useRef<FitAddon | null>(null);
   const terminalIdRef = useRef<string | null>(null);
   const onExitRef = useRef(onExit);
-  const cleanupRef = useRef<(() => void) | null>(null);
   const initedRef = useRef(false);
   
   const [isConnecting, setIsConnecting] = useState(true);
@@ -85,19 +84,41 @@ export function Terminal({ workingDirectory, onExit, className = "" }: TerminalP
     xtermRef.current = xterm;
     fitAddonRef.current = fitAddon;
 
-    // Create terminal session
-    const initTerminal = async () => {
+    let disposed = false;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let cleanupSession: ((closeRemote?: boolean) => void) | null = null;
+
+    const clearReconnectTimer = () => {
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+    };
+
+    const startTerminal = async (isReconnect = false) => {
       try {
         setIsConnecting(true);
         setError(null);
+        cleanupSession?.(false);
+        cleanupSession = null;
+        terminalIdRef.current = null;
+
+        if (isReconnect) {
+          xterm.writeln("\r\n\x1b[33m[Connection lost. Reconnecting...]\x1b[0m");
+        }
 
         // Wait a bit for xterm to initialize
         await new Promise(resolve => setTimeout(resolve, 100));
+        if (disposed) return;
         
         const cols = xterm.cols || 80;
         const rows = xterm.rows || 24;
         
         const id = await terminalService.createTerminal(workingDirectory, cols, rows);
+        if (disposed) {
+          terminalService.closeTerminal(id).catch(() => {});
+          return;
+        }
         terminalIdRef.current = id;
 
         // Handle terminal data (output)
@@ -119,7 +140,10 @@ export function Terminal({ workingDirectory, onExit, className = "" }: TerminalP
         // Handle user input
         const disposeData = xterm.onData(async (data) => {
           try {
-            await terminalService.writeToTerminal(id, data);
+            const currentTerminalId = terminalIdRef.current;
+            if (currentTerminalId) {
+              await terminalService.writeToTerminal(currentTerminalId, data);
+            }
           } catch (err) {
             console.error("Failed to write to terminal:", err);
           }
@@ -127,26 +151,43 @@ export function Terminal({ workingDirectory, onExit, className = "" }: TerminalP
 
         setIsConnecting(false);
 
-        // Store cleanup function
-        cleanupRef.current = () => {
+        cleanupSession = (closeRemote = true) => {
           unsubData();
           unsubExit();
           unsubError();
           disposeData.dispose();
-          terminalService.closeTerminal(id).catch(() => {});
+          if (terminalIdRef.current === id) {
+            terminalIdRef.current = null;
+          }
+          if (closeRemote) {
+            terminalService.closeTerminal(id).catch(() => {});
+          }
         };
 
       } catch (err) {
+        if (disposed) return;
         console.error("Failed to initialize terminal:", err);
         setError(err instanceof Error ? err.message : "Failed to connect to terminal");
         setIsConnecting(false);
       }
     };
 
-    initTerminal();
+    const unsubscribeConnectionClosed = terminalService.onConnectionClosed(() => {
+      if (disposed) return;
+      clearReconnectTimer();
+      setIsConnecting(true);
+      reconnectTimer = setTimeout(() => {
+        startTerminal(true);
+      }, 1000);
+    });
+
+    startTerminal();
 
     return () => {
-      cleanupRef.current?.();
+      disposed = true;
+      clearReconnectTimer();
+      unsubscribeConnectionClosed();
+      cleanupSession?.(true);
       xterm.dispose();
       initedRef.current = false;
     };

@@ -65,10 +65,10 @@ func (h *EnvironmentsHandler) getActive(w http.ResponseWriter, r *http.Request) 
 	err := h.db.Where("is_active = true").First(&env).Error
 	if err != nil {
 		if isNotFound(err) {
-			// auto-activate first environment
+			// auto-activate first environment if one exists; otherwise return null
 			var first models.Environment
 			if ferr := h.db.First(&first).Error; ferr != nil {
-				notFound(w)
+				writeJSON(w, http.StatusOK, nil)
 				return
 			}
 			h.db.Model(&first).Update("is_active", true)

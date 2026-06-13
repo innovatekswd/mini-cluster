@@ -87,7 +87,7 @@ func Load() (*Config, error) {
 	v := viper.New()
 
 	// defaults
-	v.SetDefault("port", 5000)
+	v.SetDefault("port", 2016)
 	v.SetDefault("data_dir", "")
 	v.SetDefault("authentication.enabled", true)
 	v.SetDefault("authentication.jwt_issuer", "MiniCluster")
@@ -95,7 +95,12 @@ func Load() (*Config, error) {
 	v.SetDefault("authentication.access_token_expiry_minutes", 30)
 	v.SetDefault("authentication.refresh_token_expiry_days", 7)
 	v.SetDefault("authentication.allow_anonymous_in_development", false)
-	v.SetDefault("cors.allowed_origins", []string{"http://localhost:3000", "http://localhost:5173"})
+	v.SetDefault("cors.allowed_origins", []string{
+		"http://localhost:3000",
+		"http://localhost:5173",
+		"http://127.0.0.1:3000",
+		"http://127.0.0.1:5173",
+	})
 	v.SetDefault("log_cleanup.interval_minutes", 10)
 	v.SetDefault("log_cleanup.retention_hours", 24)
 	v.SetDefault("log_cleanup.auto_vacuum", true)
@@ -151,6 +156,18 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
+// resolveConfigFile returns the path to write the config file to.
+// Prefers /etc/minicluster/config.yaml if that directory is writable,
+// otherwise falls back to config.yaml in the current working directory.
+func resolveConfigFile() string {
+	const etcConfig = "/etc/minicluster/config.yaml"
+	if f, err := os.OpenFile(etcConfig, os.O_WRONLY|os.O_CREATE, 0o600); err == nil {
+		f.Close()
+		return etcConfig
+	}
+	return "config.yaml"
+}
+
 // generateSecret returns a URL-safe base64-encoded random key of byteLen bytes.
 func generateSecret(byteLen int) (string, error) {
 	b := make([]byte, byteLen)
@@ -163,7 +180,7 @@ func generateSecret(byteLen int) (string, error) {
 // persistSecret reads config.yaml (if it exists), sets authentication.jwt_secret,
 // and writes the file back.  It creates the file if it does not exist yet.
 func persistSecret(secret string) error {
-	const configFile = "config.yaml"
+	configFile := resolveConfigFile()
 
 	// Read existing content so we don't overwrite other settings.
 	raw := map[string]interface{}{}

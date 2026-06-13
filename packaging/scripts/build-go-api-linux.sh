@@ -24,6 +24,10 @@ DEBIAN_ASSETS="$ROOT_DIR/packaging/debian-go"
 VERSION="${1:-$(git -C "$ROOT_DIR" describe --tags --always --dirty 2>/dev/null || echo "0.0.0")}"
 # Strip leading 'v'
 VERSION="${VERSION#v}"
+# If version doesn't start with a digit (e.g. bare commit hash), prefix with 0.0.0+
+if [[ ! "$VERSION" =~ ^[0-9] ]]; then
+    VERSION="0.0.0+${VERSION}"
+fi
 
 BUILD_DEB=true
 BUILD_ARM=false
@@ -51,6 +55,30 @@ echo "╚═══════════════════════�
 echo ""
 
 mkdir -p "$BUILD_DIR"
+
+CLI_DIR="$ROOT_DIR/cli"
+CLI_LDFLAGS="-s -w \
+  -X github.com/innovatek/minicluster-cli/internal/version.Version=${VERSION} \
+  -X github.com/innovatek/minicluster-cli/internal/version.GitCommit=${GIT_COMMIT} \
+  -X github.com/innovatek/minicluster-cli/internal/version.BuildTime=${BUILD_TIME}"
+
+# ── Build CLI binaries ────────────────────────────────────────────────────────
+build_cli() {
+    local GOOS="$1" GOARCH="$2" OUT="$3"
+    echo "▸ Compiling CLI  GOOS=$GOOS GOARCH=$GOARCH ..."
+    cd "$CLI_DIR"
+    CGO_ENABLED=0 GOOS="$GOOS" GOARCH="$GOARCH" \
+        go build -ldflags "$CLI_LDFLAGS" -o "$OUT" ./cmd/mc
+    echo "  ✓ $(du -sh "$OUT" | cut -f1)  →  $OUT"
+}
+
+CLI_AMD64="$BUILD_DIR/mc-linux-amd64"
+build_cli linux amd64 "$CLI_AMD64"
+
+if $BUILD_ARM; then
+    CLI_ARM64="$BUILD_DIR/mc-linux-arm64"
+    build_cli linux arm64 "$CLI_ARM64"
+fi
 
 # ── Build the React UI and embed it ───────────────────────────────────
 STATIC_DIR="$API_DIR/cmd/server/static"
@@ -80,17 +108,24 @@ make_tarball() {
     rm -rf "$STAGE"
     mkdir -p "$STAGE"
 
-    cp "$BINARY"                          "$STAGE/minicluster-api"
-    cp "$DEBIAN_ASSETS/config.yaml"      "$STAGE/config.yaml.example"
-    cp "$DEBIAN_ASSETS/minicluster.service" "$STAGE/minicluster.service"
+    local CLI_BIN="$BUILD_DIR/mc-linux-${ARCH}"
+    cp "$BINARY"                             "$STAGE/minicluster-api"
+    [ -f "$CLI_BIN" ] && cp "$CLI_BIN"      "$STAGE/mc"
+    cp "$DEBIAN_ASSETS/config.yaml"          "$STAGE/config.yaml.example"
+    cp "$DEBIAN_ASSETS/minicluster.service"  "$STAGE/minicluster.service"
 
     cat > "$STAGE/README.txt" << EOF
-MiniCluster API ${VERSION} — Linux ${ARCH}
+MiniCluster ${VERSION} — Linux ${ARCH}
 ==========================================
 
+Binaries:
+  minicluster-api   — API server (web UI embedded)
+  mc                — CLI client
+
 Quick start:
-  chmod +x ./minicluster-api
-  ./minicluster-api                    # listens on :5000
+  chmod +x ./minicluster-api ./mc
+  ./minicluster-api                    # listens on :2016
+  ./mc --help
 
 With custom config:
   cp config.yaml.example config.yaml  # edit as needed
@@ -102,6 +137,7 @@ Environment overrides (prefix MINICLUSTER_):
 
 Systemd installation (manual):
   sudo cp minicluster-api /usr/bin/minicluster-api
+  sudo cp mc /usr/bin/mc
   sudo cp minicluster.service /lib/systemd/system/
   sudo useradd --system --no-create-home minicluster
   sudo mkdir -p /var/lib/minicluster /etc/minicluster
@@ -110,7 +146,7 @@ Systemd installation (manual):
   sudo systemctl daemon-reload
   sudo systemctl enable --now minicluster
 
-Default URL: http://localhost:5000
+Default URL: http://localhost:2016
 EOF
 
     local TARBALL="$BUILD_DIR/minicluster-api-${VERSION}-linux-${ARCH}.tar.gz"
@@ -146,9 +182,13 @@ if $BUILD_DEB; then
         mkdir -p "$STAGE/$PKG_NAME/lib/systemd/system"
         mkdir -p "$STAGE/$PKG_NAME/etc/minicluster"
 
-        # Binary
+        # Binaries
         cp "$AMD64_BIN" "$STAGE/$PKG_NAME/usr/bin/minicluster-api"
         chmod 0755 "$STAGE/$PKG_NAME/usr/bin/minicluster-api"
+        if [ -f "$CLI_AMD64" ]; then
+            cp "$CLI_AMD64" "$STAGE/$PKG_NAME/usr/bin/mc"
+            chmod 0755 "$STAGE/$PKG_NAME/usr/bin/mc"
+        fi
 
         # Systemd unit
         cp "$DEBIAN_ASSETS/minicluster.service" "$STAGE/$PKG_NAME/lib/systemd/system/minicluster.service"

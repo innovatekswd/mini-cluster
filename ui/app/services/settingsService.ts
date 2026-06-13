@@ -18,6 +18,7 @@ export interface IntervalOption {
 export interface IntervalOptions {
   collectionIntervals: IntervalOption[];
   aggregationIntervals: IntervalOption[];
+  intervals?: IntervalOption[];
 }
 
 export interface AppSettingsUpdate {

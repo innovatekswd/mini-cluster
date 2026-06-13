@@ -2,7 +2,7 @@ import * as signalR from "@microsoft/signalr";
 
 // Get base URL for SignalR hub (same as API but different path)
 const getBaseUrl = (): string => {
-  // In development, use the API proxy
+  // In development, use Vite's same-origin proxy for /terminalhub.
   if (import.meta.env.DEV) {
     return "";
   }
@@ -18,14 +18,18 @@ export interface TerminalConnection {
 export type TerminalDataCallback = (terminalId: string, data: string) => void;
 export type TerminalExitCallback = (terminalId: string, exitCode: number) => void;
 export type TerminalErrorCallback = (terminalId: string, error: string) => void;
+export type TerminalConnectionClosedCallback = () => void;
 
 class TerminalService {
   private connection: signalR.HubConnection | null = null;
   private onDataCallbacks: Map<string, TerminalDataCallback[]> = new Map();
   private onExitCallbacks: Map<string, TerminalExitCallback[]> = new Map();
   private onErrorCallbacks: Map<string, TerminalErrorCallback[]> = new Map();
+  private onConnectionClosedCallbacks: Set<TerminalConnectionClosedCallback> = new Set();
+  private activeTerminalIds: Set<string> = new Set();
   private connectionPromise: Promise<signalR.HubConnection> | null = null;
   private isConnecting = false;
+  private isIntentionalDisconnect = false;
 
   async connect(): Promise<signalR.HubConnection> {
     // If already connected, return the connection
@@ -58,20 +62,11 @@ class TerminalService {
     this.connection = new signalR.HubConnectionBuilder()
       .withUrl(`${baseUrl}/terminalhub`, {
         skipNegotiation: false,
-        transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling,
-      })
-      .withAutomaticReconnect({
-        nextRetryDelayInMilliseconds: (retryContext) => {
-          // Retry every 1-5 seconds, up to 30 retries
-          if (retryContext.previousRetryCount >= 30) {
-            return null; // Stop retrying
-          }
-          return Math.min(1000 * (retryContext.previousRetryCount + 1), 5000);
-        }
+        transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.ServerSentEvents,
       })
       .withServerTimeout(60000)     // Match server's 60s ClientTimeoutInterval
       .withKeepAliveInterval(30000) // Match server's 30s KeepAliveInterval
-      .configureLogging(signalR.LogLevel.Warning)
+      .configureLogging(signalR.LogLevel.None)
       .build();
 
     // Set up event handlers
@@ -110,9 +105,24 @@ class TerminalService {
 
     // Handle connection close
     this.connection.onclose((error) => {
-      console.warn("SignalR connection closed:", error?.message || "No error");
+      const wasIntentional = this.isIntentionalDisconnect;
+      if (!wasIntentional) {
+        console.warn("SignalR connection closed:", error?.message || "No error");
+      }
       this.isConnecting = false;
       this.connectionPromise = null;
+      this.connection = null;
+
+      if (!wasIntentional) {
+        this.activeTerminalIds.clear();
+        this.onConnectionClosedCallbacks.forEach(cb => {
+          try {
+            cb();
+          } catch (e) {
+            console.error("Error in terminal connection closed callback:", e);
+          }
+        });
+      }
     });
 
     this.connection.onreconnecting(() => {
@@ -137,9 +147,17 @@ class TerminalService {
 
   async disconnect(): Promise<void> {
     if (this.connection) {
-      await this.connection.stop();
-      this.connection = null;
+      this.isIntentionalDisconnect = true;
+      try {
+        await this.connection.stop();
+      } finally {
+        setTimeout(() => {
+          this.isIntentionalDisconnect = false;
+        }, 0);
+        this.connection = null;
+      }
     }
+    this.activeTerminalIds.clear();
     this.onDataCallbacks.clear();
     this.onExitCallbacks.clear();
     this.onErrorCallbacks.clear();
@@ -157,6 +175,7 @@ class TerminalService {
       cols,
       rows
     );
+    this.activeTerminalIds.add(terminalId);
     return terminalId;
   }
 
@@ -175,9 +194,25 @@ class TerminalService {
     this.onDataCallbacks.delete(terminalId);
     this.onExitCallbacks.delete(terminalId);
     this.onErrorCallbacks.delete(terminalId);
+    this.activeTerminalIds.delete(terminalId);
 
-    const conn = await this.connect();
-    await conn.invoke("CloseTerminal", terminalId);
+    const conn = this.connection;
+    if (conn?.state === signalR.HubConnectionState.Connected) {
+      await conn.invoke("CloseTerminal", terminalId);
+    }
+
+    if (this.activeTerminalIds.size === 0 && this.connection) {
+      this.isIntentionalDisconnect = true;
+      try {
+        await this.connection.stop();
+      } finally {
+        setTimeout(() => {
+          this.isIntentionalDisconnect = false;
+        }, 0);
+        this.connection = null;
+        this.connectionPromise = null;
+      }
+    }
   }
 
   async getActiveTerminals(): Promise<string[]> {
@@ -233,6 +268,13 @@ class TerminalService {
           callbacks.splice(index, 1);
         }
       }
+    };
+  }
+
+  onConnectionClosed(callback: TerminalConnectionClosedCallback): () => void {
+    this.onConnectionClosedCallbacks.add(callback);
+    return () => {
+      this.onConnectionClosedCallbacks.delete(callback);
     };
   }
 
