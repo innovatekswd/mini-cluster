@@ -65,7 +65,7 @@ main() {
     # ── Prefer .deb on Debian/Ubuntu ─────────────────────────────────────────
     if command -v dpkg &>/dev/null && [ "$arch" = "amd64" ]; then
         local deb="minicluster_${VERSION}_amd64.deb"
-        local url="https://github.com/$GITHUB_REPO/releases/download/v${VERSION}/${deb}"
+        local url="https://raw.githubusercontent.com/${GITHUB_REPO}/main/releases/v${VERSION}/${deb}"
         local tmp
         tmp=$(mktemp)
 
@@ -87,7 +87,7 @@ main() {
     # ── Fallback: tarball ─────────────────────────────────────────────────────
     else
         local tar="minicluster-api-${VERSION}-linux-${arch}.tar.gz"
-        local url="https://github.com/$GITHUB_REPO/releases/download/v${VERSION}/${tar}"
+        local url="https://raw.githubusercontent.com/${GITHUB_REPO}/main/releases/v${VERSION}/${tar}"
         local tmpdir
         tmpdir=$(mktemp -d)
 
