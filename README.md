@@ -50,16 +50,16 @@ Go to the [Releases](https://github.com/innovatekswd/mini-cluster/releases) page
 
 ```
 # Linux .deb
-https://github.com/innovatekswd/mini-cluster/releases/download/v<version>/minicluster_<version>_amd64.deb
+https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v<version>/minicluster_<version>_amd64.deb
 
 # Linux tarball (amd64)
-https://github.com/innovatekswd/mini-cluster/releases/download/v<version>/minicluster-api-<version>-linux-amd64.tar.gz
+https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v<version>/minicluster-api-<version>-linux-amd64.tar.gz
 
 # Linux tarball (arm64)
-https://github.com/innovatekswd/mini-cluster/releases/download/v<version>/minicluster-api-<version>-linux-arm64.tar.gz
+https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v<version>/minicluster-api-<version>-linux-arm64.tar.gz
 
 # Windows ZIP
-https://github.com/innovatekswd/mini-cluster/releases/download/v<version>/minicluster-<version>-windows-amd64.zip
+https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v<version>/minicluster-<version>-windows-amd64.zip
 ```
 
 ---
@@ -68,7 +68,7 @@ https://github.com/innovatekswd/mini-cluster/releases/download/v<version>/minicl
 
 ```bash
 # Download
-wget https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.0/minicluster_1.0.0_amd64.deb
+wget https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v1.0.0/minicluster_1.0.0_amd64.deb
 
 # Install
 sudo dpkg -i minicluster_1.0.0_amd64.deb

@@ -67,7 +67,7 @@ Write-Host ""
 
 # ── Download ──────────────────────────────────────────────────────────────────
 $zipName = "minicluster-${Version}-windows-amd64.zip"
-$url = "https://github.com/$GithubRepo/releases/download/v${Version}/${zipName}"
+$url = "https://raw.githubusercontent.com/$GithubRepo/main/releases/v${Version}/${zipName}"
 $tmpDir = Join-Path $env:TEMP "minicluster-install-$([System.Guid]::NewGuid().ToString('N'))"
 New-Item -ItemType Directory -Path $tmpDir | Out-Null
 
