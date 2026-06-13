@@ -54,6 +54,15 @@ Click any package below to download directly.
 | [minicluster_1.0.12_amd64.deb](https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v1.0.12/minicluster_1.0.12_amd64.deb) | Linux amd64 | ~9.6 MB |
 | [minicluster-api-1.0.12-linux-amd64.tar.gz](https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v1.0.12/minicluster-api-1.0.12-linux-amd64.tar.gz) | Linux amd64 | ~11.7 MB |
 
+### v0.0.0+f185d786 (latest commit)
+
+| Package | Platform | Size |
+|---------|----------|------|
+| [minicluster_0.0.0+f185d786-dirty_amd64.deb](https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v0.0.0+f185d786-dirty/minicluster_0.0.0%2Bf185d786-dirty_amd64.deb) | Linux amd64 | ~9.6 MB |
+| [minicluster-api-0.0.0+f185d786-dirty-linux-amd64.tar.gz](https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v0.0.0+f185d786-dirty/minicluster-api-0.0.0%2Bf185d786-dirty-linux-amd64.tar.gz) | Linux amd64 | ~11.7 MB |
+
+> 💡 **Browse all available versions** in the [`releases/`](releases/) directory of this repository.
+
 ---
 
 ## Manual Download (generic URLs)
