@@ -5,8 +5,6 @@ After=network.target
 
 [Service]
 Type=simple
-User=minicluster
-Group=minicluster
 WorkingDirectory=/opt/minicluster
 
 ExecStart=/usr/bin/minicluster-api
@@ -22,13 +20,6 @@ Environment=MINICLUSTER_CONFIG_FILE=/etc/minicluster/config.yaml
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=minicluster
-
-# Security hardening
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=/var/lib/minicluster /var/log/minicluster /etc/minicluster
 
 # Resource limits
 LimitNOFILE=65536
