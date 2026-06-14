@@ -165,6 +165,59 @@ export interface SystemMetricsHistory {
   totalThreads: number;
 }
 
+export interface MetricCatalogEntry {
+  name: string;
+  unit: string;
+  scopes: string[];
+  hasSubEntities: boolean;
+  subEntityLabel?: string;
+  description: string;
+}
+
+export interface CatalogResponse {
+  metrics: MetricCatalogEntry[];
+}
+
+export interface AggregatedDataPointNew {
+  timestamp: string;
+  count: number;
+  min: number;
+  max: number;
+  avg: number;
+  p95?: number | null;
+  sum?: number | null;
+  last?: number | null;
+}
+
+export interface MetricSummary {
+  min: number;
+  max: number;
+  avg: number;
+  p95?: number | null;
+  sum?: number | null;
+}
+
+export interface AggregatedMetricsResponseNew {
+  scope: string;
+  entityId: string;
+  from: string;
+  to: string;
+  bucket: string;
+  series: Record<string, AggregatedDataPointNew[]>;
+  summary: Record<string, MetricSummary>;
+}
+
+export interface AggregatedMetricsParams {
+  scope: string;
+  entityId?: string;
+  entityIds?: string[];
+  from: string;
+  to: string;
+  bucket: string;
+  metrics: string[];
+  subEntity?: string;
+}
+
 export const metricsService = {
   async getLiveMetrics(): Promise<Record<string, ProcessMetricsSnapshot>> {
     const res = await apiClient.get("/api/metrics/live");
@@ -250,6 +303,28 @@ export const metricsService = {
     if (sortBy) params.append("sortBy", sortBy);
     if (limit) params.append("limit", limit.toString());
     const res = await apiClient.get(`/api/metrics/processes?${params.toString()}`);
+    return res.data;
+  },
+
+  async getMetricsCatalog(): Promise<CatalogResponse> {
+    const res = await apiClient.get("/api/metrics/catalog");
+    return res.data;
+  },
+
+  async getAggregatedMetricsNew(params: AggregatedMetricsParams): Promise<AggregatedMetricsResponseNew> {
+    const searchParams = new URLSearchParams();
+    searchParams.append("scope", params.scope);
+    if (params.entityId) searchParams.append("entityId", params.entityId);
+    if (params.entityIds && params.entityIds.length > 0) {
+      searchParams.append("entityIds", params.entityIds.join(","));
+    }
+    searchParams.append("from", params.from);
+    searchParams.append("to", params.to);
+    searchParams.append("bucket", params.bucket);
+    searchParams.append("metrics", params.metrics.join(","));
+    if (params.subEntity) searchParams.append("subEntity", params.subEntity);
+
+    const res = await apiClient.get(`/api/metrics/aggregated?${searchParams.toString()}`);
     return res.data;
   },
 };

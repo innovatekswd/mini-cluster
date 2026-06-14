@@ -35,6 +35,7 @@
 | 022 | [mc-telemetry (OTLP Companion)](#022-otlp-telemetry) | 📋 Spec Ready | 4-5 weeks |
 | 023 | [Alerting & Threshold Rules](#023-alerting) | 📋 Spec Ready | 2-3 weeks |
 | 027 | [Operations Cockpit UX, Realtime & Route Alignment](#027-operations-cockpit-ux-realtime-route-alignment) | 📋 Spec Ready | 4-6 weeks |
+| 028 | [Time-Series Performance Monitoring](#028-time-series-performance-monitoring) | 📋 Spec Ready | 5-6 weeks |
 
 ### Legend
 - ✅ **Implemented** — Feature is complete and in production
@@ -448,6 +449,28 @@ Unifies MiniCluster into a clearer operations cockpit, aligns SignalR event cont
 - [ ] Page-by-page UX requirements and shared style primitives
 
 **Estimated Effort:** 4-6 weeks
+
+---
+
+### 028 Time-Series Performance Monitoring & Aggregation
+**Status:** ✅ Implemented
+**Spec:** [028-performance-monitoring/spec.md](028-performance-monitoring/spec.md)
+
+**Summary:**
+Comprehensive time-series performance monitoring with server-side aggregation (min, max, avg, p95, sum) over configurable periods (hours, days, weeks, months). Covers all metrics from gopsutil: CPU per-core, load, memory breakdown, network rates+totals+packets+errors, disk IOPS+latency+queue+inodes, process I/O, and directory-level filesystem monitoring. Aggregated data stored in a separate SQLite database to avoid write contention with raw metrics collection.
+
+**Key Features:**
+- [x] **Network fix** — both cumulative totals AND delta-based rates, with packets/errors/drops
+- [x] **Expanded metrics** — ~80+ metrics across CPU, memory, network, disk, process, and system families
+- [x] **Directory monitoring** — watch any path recursively, track size/file count/growth rate, children drill-down
+- [x] **Separate aggregation DB** — `metrics-aggregated.db` eliminates write contention
+- [x] **Server-side bucketing** — 1min/5min/15min/1h/1d/1w buckets with cascading rollup
+- [x] **Tiered retention** — raw 7d, 5m buckets 30d, 1h buckets 1y, 1d buckets forever
+- [x] **Scope selection** — machine, service, app, multi-app, directory
+- [x] **Timeline charts** — avg line + min/max band + p95 with proper time X-axis
+- [x] **Comparison mode** — overlay two time ranges (e.g., today vs last week)
+
+**Estimated Effort:** 5-6 weeks
 
 ---
 

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router";
-import { Layout } from "~/components/Layout";
 import { useToast } from "~/components/Toast";
 import { settingsService, type AppSettings, type IntervalOptions } from "~/services/settingsService";
 import { 
@@ -113,20 +112,17 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <Layout>
         <div className="flex items-center justify-center h-full">
-          <div 
+          <div
             className="w-12 h-12 border-4 border-slate-700 border-t-cyan-500 rounded-full animate-spin"
             role="status"
             aria-label="Loading"
           />
         </div>
-      </Layout>
     );
   }
 
   return (
-    <Layout>
       <div className="h-full overflow-auto p-6">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
@@ -413,6 +409,5 @@ export default function SettingsPage() {
           {activeTab === "system" && <SystemPanel />}
         </div>
       </div>
-    </Layout>
   );
 }

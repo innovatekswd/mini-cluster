@@ -144,23 +144,14 @@ Canonical routes:
 /settings/system                       System maintenance
 ```
 
-Compatibility redirects:
-
-```text
-/dashboard                             -> /apps or /services depending current behavior
-/dashboard/:appName                    -> /apps/:appSlug
-/dashboard/:appName/:serviceName       -> /apps/:appSlug/services/:serviceSlug
-/infrastructure                        -> /machines
-/files                                 -> /explorer?tab=transfers
-/envs                                  -> /settings/environments
-/scheduling                            -> /automation
-```
+> **REJECTED per architecture decision:** No backward compatibility redirects. Clean rename only.
+>
+> Old routes (`/dashboard`, `/infrastructure`, `/scheduling`) will be removed entirely. Users must update bookmarks.
 
 Acceptance criteria:
 
 - [ ] Primary navigation shows the current route as active.
 - [ ] Mobile users can navigate through a drawer without horizontal overflow.
-- [ ] Old URLs keep working through redirects.
 - [ ] Optional path segment routing is removed from new navigation flows.
 - [ ] Route names are resource-oriented and predictable.
 
@@ -205,6 +196,10 @@ Acceptance criteria:
 
 Purpose: operational summary and triage.
 
+> **ADAPTIVE BEHAVIOR (per architecture decision):** The Overview page adapts its layout based on cluster topology:
+> - **Single-node mode:** Shows machine-focused view (system metrics, local services)
+> - **Multi-node mode:** Shows cluster-focused view (aggregate stats across all nodes, per-node health)
+
 Required UX:
 
 - Show high-signal cards only:
@@ -222,6 +217,7 @@ Acceptance criteria:
 - [ ] Overview first viewport answers: what is broken, what is busy, what changed.
 - [ ] Failed/degraded services are actionable links.
 - [ ] Charts do not dominate the first viewport.
+- [ ] Layout adapts based on single-node vs multi-node topology.
 
 ### Apps Page `/apps`
 

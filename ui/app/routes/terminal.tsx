@@ -1,6 +1,5 @@
 import { useState, useCallback } from "react";
 import { Terminal } from "../components/Terminal";
-import { Layout } from "../components/Layout";
 
 interface TerminalTab {
   id: string;
@@ -54,7 +53,6 @@ export default function TerminalPage() {
   }, []);
 
   return (
-    <Layout>
       <div className="flex flex-col h-full bg-slate-900">
       {/* Tab bar */}
       <div className="flex items-center bg-slate-800 border-b border-slate-700 px-2">
@@ -132,6 +130,5 @@ export default function TerminalPage() {
         </div>
       </div>
       </div>
-    </Layout>
   );
 }

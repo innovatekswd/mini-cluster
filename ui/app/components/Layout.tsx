@@ -187,11 +187,11 @@ export const Layout = ({ children, appStats, onMenuToggle, isSidebarOpen, isSide
               <FaGlobe className="text-lg" aria-hidden="true" />
             </Link>
 
-            {/* Scheduling link */}
+            {/* Automation link */}
             <Link
-              to="/scheduling"
+              to="/automation"
               className="icon-btn"
-              aria-label="Scheduling"
+              aria-label="Automation"
             >
               <FaClock className="text-lg" aria-hidden="true" />
             </Link>

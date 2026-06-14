@@ -37,8 +37,15 @@ import { ArchiveContentsModal } from './ArchiveContentsModal';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useConfirm } from '~/components/ConfirmDialog';
 
+interface ExplorerPageProps {
+  initialPath?: string;
+  machineId?: string;
+  onNavigate?: (path: string) => void;
+  onMachineChange?: (machineId: string) => void;
+}
+
 // Main Explorer component
-export const ExplorerPage: React.FC = () => {
+export const ExplorerPage: React.FC<ExplorerPageProps> = ({ initialPath = '', machineId = 'local', onNavigate, onMachineChange }) => {
   const { confirm } = useConfirm();
   const [roots, setRoots] = useState<FileItem[]>([]);
   const [currentPath, setCurrentPath] = useState<string>('');
@@ -77,16 +84,27 @@ export const ExplorerPage: React.FC = () => {
   const [extractArchivePath, setExtractArchivePath] = useState<string | null>(null);
   const [archiveContentsPath, setArchiveContentsPath] = useState<string | null>(null);
 
-  // Load roots on mount
+  // Load roots on mount, restore from URL path
   useEffect(() => {
     loadRoots();
   }, []);
+
+  // Sync currentPath to URL via onNavigate callback
+  useEffect(() => {
+    if (currentPath && onNavigate) {
+      onNavigate(currentPath);
+    }
+  }, [currentPath]);
 
   const loadRoots = async () => {
     try {
       setLoading(true);
       const rootPaths = await explorerService.getRoots();
       setRoots(rootPaths);
+      // Restore directory from URL path
+      if (initialPath) {
+        loadDirectory(initialPath);
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load root paths');
     } finally {

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Layout } from "~/components/Layout";
 import { SidePanel } from "~/components/SidePanel";
 import { serviceService } from "~/services/appService";
 import { apiClient } from "~/lib/apiClient";
@@ -11,6 +10,7 @@ import { useToast } from "~/components/Toast";
 import { FaPlus, FaServer, FaExclamationTriangle, FaRocket, FaKeyboard, FaTimes } from "react-icons/fa";
 import { AppFilter } from "~/components/AppFilter";
 import { useDashboardData } from "~/hooks/useDashboardData";
+import { SystemDashboardCharts } from "~/components/SystemDashboardCharts";
 
 export default function DashboardPage() {
   const toast = useToast();
@@ -141,12 +141,6 @@ export default function DashboardPage() {
   }, [editingService, toast, setMode, refreshServices]);
 
   return (
-    <Layout 
-      appStats={appStats} 
-      onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-      isSidebarOpen={sidebarOpen}
-      isSidebarPinned={sidebarPinned}
-    >
       <EnvironmentProvider>
         <div className="flex h-full overflow-hidden flex-col">
           {/* App Filter Bar */}
@@ -297,36 +291,7 @@ export default function DashboardPage() {
                     />
                   </div>
                 ) : mode === "view" ? (
-                  <div className="flex flex-col items-center justify-center h-full fade-in">
-                    <div className="text-center max-w-md">
-                      <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 
-                        flex items-center justify-center border border-slate-600/50">
-                        <FaRocket className="w-8 h-8 text-slate-500" />
-                      </div>
-                      <h3 className="text-xl font-semibold text-slate-300 mb-2">No Service Selected</h3>
-                      <p className="text-slate-500 mb-6">
-                        Select a service from the sidebar to view its details, logs, and configuration.
-                      </p>
-                      <button
-                        onClick={() => {
-                          setMode("add");
-                          if (appNameFromRoute) {
-                            navigateToApp(appNameFromRoute);
-                          } else {
-                            navigateToDashboard();
-                          }
-                          setError(null);
-                        }}
-                        className="btn-primary inline-flex items-center gap-2"
-                      >
-                        <FaPlus size={14} />
-                        Add New Service
-                      </button>
-                      <p className="text-xs text-slate-600 mt-4">
-                        Press <kbd className="kbd">?</kbd> for keyboard shortcuts
-                      </p>
-                    </div>
-                  </div>
+                  <SystemDashboardCharts />
                 ) : null}
               </div>
             )}
@@ -402,6 +367,5 @@ export default function DashboardPage() {
           </div>
         )}
       </EnvironmentProvider>
-    </Layout>
   );
 }

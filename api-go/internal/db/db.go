@@ -12,10 +12,11 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-// DB holds both database connections.
+// DB holds all database connections.
 type DB struct {
-	App  *gorm.DB
-	Logs *gorm.DB
+	App        *gorm.DB
+	Logs       *gorm.DB
+	Aggregated *gorm.DB // metrics-aggregated.db for time-bucketed aggregations
 }
 
 // DataDir returns the platform-appropriate data directory.
@@ -33,7 +34,7 @@ func DataDir() string {
 	return "/var/lib/minicluster"
 }
 
-// Open opens both SQLite databases and runs auto-migrations.
+// Open opens all SQLite databases and runs auto-migrations.
 func Open(dataDir string) (*DB, error) {
 	if err := os.MkdirAll(dataDir, 0o750); err != nil {
 		return nil, fmt.Errorf("create data dir: %w", err)
@@ -57,14 +58,24 @@ func Open(dataDir string) (*DB, error) {
 		return nil, fmt.Errorf("open logs db: %w", err)
 	}
 
+	aggDB, err := gorm.Open(sqlite.Open(
+		filepath.Join(dataDir, "metrics-aggregated.db")+"?_journal_mode=WAL&_busy_timeout=5000&cache=shared",
+	), gormCfg)
+	if err != nil {
+		return nil, fmt.Errorf("open aggregated db: %w", err)
+	}
+
 	if err := migrateApp(appDB); err != nil {
 		return nil, fmt.Errorf("migrate app db: %w", err)
 	}
 	if err := migrateLogs(logsDB); err != nil {
 		return nil, fmt.Errorf("migrate logs db: %w", err)
 	}
+	if err := migrateAggregated(aggDB); err != nil {
+		return nil, fmt.Errorf("migrate aggregated db: %w", err)
+	}
 
-	return &DB{App: appDB, Logs: logsDB}, nil
+	return &DB{App: appDB, Logs: logsDB, Aggregated: aggDB}, nil
 }
 
 func migrateApp(db *gorm.DB) error {
@@ -98,5 +109,15 @@ func migrateLogs(db *gorm.DB) error {
 		&models.LifecycleEvent{},
 		&models.ProcessMetrics{},
 		&models.SystemMetrics{},
+	)
+}
+
+// migrateAggregated creates tables in the metrics-aggregated database.
+// This database stores time-bucketed aggregations to avoid write contention with logs.db.
+func migrateAggregated(db *gorm.DB) error {
+	return db.AutoMigrate(
+		&models.MetricBucket{},
+		&models.WatchedDirectory{},
+		&models.DirectorySnapshot{},
 	)
 }

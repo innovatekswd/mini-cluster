@@ -114,7 +114,6 @@ export default function HierarchyPage() {
   const navigate = useNavigate();
 
   return (
-    <Layout>
       <div className="h-full overflow-auto p-6">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-white mb-1">App Hierarchy</h1>
@@ -123,10 +122,9 @@ export default function HierarchyPage() {
           </p>
         </div>
 
-        <AppTreeView onNavigate={(slug) => navigate(`/dashboard/${encodeURIComponent(slug)}`)} />
+        <AppTreeView onNavigate={(slug) => navigate(`/apps/${encodeURIComponent(slug)}`)} />
 
         <SnapshotPanel />
       </div>
-    </Layout>
   );
 }

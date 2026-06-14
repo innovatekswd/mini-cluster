@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { 
-  metricsService, 
-  formatBytes, 
+import {
+  metricsService,
+  formatBytes,
   formatBytesPerSecond,
-  formatPercent, 
+  formatPercent,
   formatDuration,
   type ProcessMetricsSnapshot,
   type MetricsDataPoint,
   type PeakMetricsResponse
 } from "~/services/metricsService";
+import { RichChart } from "./RichChart";
 import { sessionsService, type SessionInfo, formatSessionDuration } from "~/services/sessionsService";
 import { useSignalRConnection, useSignalRServiceGroup } from "~/context/SignalRConnectionContext";
 import { useAppStatusContext } from "~/context/AppStatusContext";
@@ -359,10 +360,16 @@ export function ProcessMetrics({ serviceId, serviceName }: ProcessMetricsProps) 
                 Max: {stats ? formatBytes(stats.memory.max) : '-'}
               </span>
             </div>
-            <SimpleChart 
-              data={historicalData.map(d => d.workingSetMemory)} 
-              color="blue" 
-              height={60}
+            <RichChart
+              data={historicalData.map(d => d.workingSetMemory)}
+              timestamps={historicalData.map(d => d.timestamp)}
+              color="blue"
+              height={80}
+              showTimeAxis={true}
+              showValueAxis={true}
+              showGrid={true}
+              label="Memory"
+              unit="B"
             />
           </div>
           
@@ -376,11 +383,17 @@ export function ProcessMetrics({ serviceId, serviceName }: ProcessMetricsProps) 
                 Max: {stats ? formatPercent(stats.cpu.max) : '-'}
               </span>
             </div>
-            <SimpleChart 
-              data={historicalData.map(d => d.cpuUsagePercent)} 
-              color="green" 
-              height={60}
+            <RichChart
+              data={historicalData.map(d => d.cpuUsagePercent)}
+              timestamps={historicalData.map(d => d.timestamp)}
+              color="green"
+              height={80}
               maxValue={100}
+              showTimeAxis={true}
+              showValueAxis={true}
+              showGrid={true}
+              label="CPU"
+              unit="%"
             />
           </div>
         </div>
@@ -468,66 +481,6 @@ function MetricCard({ icon, label, value, subValue, trend, highlight }: MetricCa
         <div className="text-xs text-slate-500 mt-1">{subValue}</div>
       )}
     </div>
-  );
-}
-
-// Simple SVG-based chart component
-interface SimpleChartProps {
-  data: number[];
-  color: 'blue' | 'green' | 'violet';
-  height: number;
-  maxValue?: number;
-}
-
-function SimpleChart({ data, color, height, maxValue }: SimpleChartProps) {
-  if (data.length === 0) return null;
-  
-  const max = maxValue || Math.max(...data) * 1.1 || 1;
-  const width = 100;
-  const points = data.map((value, index) => {
-    const x = (index / Math.max(data.length - 1, 1)) * width;
-    const y = height - (value / max) * height;
-    return `${x},${y}`;
-  }).join(' ');
-
-  const colorMap = {
-    blue: { stroke: '#60a5fa', fill: 'rgba(96, 165, 250, 0.1)' },
-    green: { stroke: '#34d399', fill: 'rgba(52, 211, 153, 0.1)' },
-    violet: { stroke: '#a78bfa', fill: 'rgba(167, 139, 250, 0.1)' },
-  };
-
-  const colors = colorMap[color];
-
-  return (
-    <svg 
-      viewBox={`0 0 ${width} ${height}`} 
-      className="w-full" 
-      style={{ height }}
-      preserveAspectRatio="none"
-    >
-      <defs>
-        <linearGradient id={`gradient-${color}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={colors.stroke} stopOpacity="0.3" />
-          <stop offset="100%" stopColor={colors.stroke} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      
-      {/* Fill area */}
-      <polygon
-        points={`0,${height} ${points} ${width},${height}`}
-        fill={`url(#gradient-${color})`}
-      />
-      
-      {/* Line */}
-      <polyline
-        points={points}
-        fill="none"
-        stroke={colors.stroke}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
 

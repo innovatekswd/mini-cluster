@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
-import { Layout } from "~/components/Layout";
 import { useSystemMetricsHistory } from "~/hooks/useSystemMetricsHistory";
 import { useAppsWithStatsQuery } from "~/hooks/useAppsQueries";
 import { useTabVisible } from "~/hooks/useTabVisible";
@@ -168,20 +167,17 @@ export default function HomePage() {
 
   if (isLoading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center h-full">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-4 border-slate-700 border-t-cyan-500 rounded-full animate-spin" />
-            <span className="text-slate-400">Loading dashboard...</span>
-          </div>
+      <div className="flex items-center justify-center h-full">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-slate-700 border-t-cyan-500 rounded-full animate-spin" />
+          <span className="text-slate-400">Loading dashboard...</span>
         </div>
-      </Layout>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="h-full overflow-auto">
+    <div className="h-full overflow-auto">
         <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -214,6 +210,7 @@ export default function HomePage() {
               subValue={`${systemMetrics?.processorCount || 0} cores`}
               color="cyan"
               trend={cpuHistory.length > 1 ? (cpuHistory[cpuHistory.length - 1] > cpuHistory[cpuHistory.length - 2] ? "up" : "down") : null}
+              onClick={() => navigate("/monitor/performance")}
             />
             <QuickStatCard
               icon={<FaMemory />}
@@ -222,6 +219,7 @@ export default function HomePage() {
               subValue={systemMetrics ? formatBytes(systemMetrics.usedPhysicalMemory) : "--"}
               color="violet"
               trend={memoryHistory.length > 1 ? (memoryHistory[memoryHistory.length - 1] > memoryHistory[memoryHistory.length - 2] ? "up" : "down") : null}
+              onClick={() => navigate("/monitor/performance")}
             />
             <QuickStatCard
               icon={<FaHdd />}
@@ -229,6 +227,7 @@ export default function HomePage() {
               value={systemMetrics?.disks[0] ? `${systemMetrics.disks[0].usagePercent.toFixed(1)}%` : "--"}
               subValue={systemMetrics?.disks[0] ? formatBytes(systemMetrics.disks[0].availableSpace) + " free" : "--"}
               color="emerald"
+              onClick={() => navigate("/monitor/disks")}
             />
             <QuickStatCard
               icon={<FaNetworkWired />}
@@ -236,6 +235,7 @@ export default function HomePage() {
               value={systemMetrics ? formatBytesPerSecond(systemMetrics.totalNetworkSendRate + systemMetrics.totalNetworkReceiveRate) : "--"}
               subValue={`↑${systemMetrics ? formatBytesPerSecond(systemMetrics.totalNetworkSendRate) : "--"}`}
               color="amber"
+              onClick={() => navigate("/monitor/performance")}
             />
             <QuickStatCard
               icon={<FaCubes />}
@@ -255,120 +255,40 @@ export default function HomePage() {
             />
           </div>
 
-          {/* Main Charts Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* CPU & Memory Chart */}
-            <ChartCard title="CPU & Memory Usage" icon={<FaChartLine className="text-cyan-400" />}>
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={chartHistory} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="cpuGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={COLORS.cpu.primary} stopOpacity={0.4} />
-                      <stop offset="95%" stopColor={COLORS.cpu.primary} stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="memoryGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={COLORS.memory.primary} stopOpacity={0.4} />
-                      <stop offset="95%" stopColor={COLORS.memory.primary} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="index" stroke="#64748b" tickLine={{ stroke: '#475569' }} tick={false} axisLine={{ stroke: '#475569' }} />
-                  <YAxis stroke="#64748b" fontSize={10} tickLine={false} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
-                    labelStyle={{ color: "#94a3b8" }}
-                    formatter={(value: number | undefined, name?: string) => [`${(value ?? 0).toFixed(1)}%`, name === "cpu" ? "CPU" : "Memory"]}
-                  />
-                  <Area type="monotone" dataKey="cpu" stroke={COLORS.cpu.primary} fill="url(#cpuGradient)" strokeWidth={2} isAnimationActive={false} />
-                  <Area type="monotone" dataKey="memory" stroke={COLORS.memory.primary} fill="url(#memoryGradient)" strokeWidth={2} isAnimationActive={false} />
-                  <Legend
-                    formatter={(value) => <span className="text-slate-400 text-xs">{value === "cpu" ? "CPU" : "Memory"}</span>}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </ChartCard>
-
-            {/* Network I/O Chart */}
-            <ChartCard title="Network Throughput" icon={<FaNetworkWired className="text-amber-400" />}>
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={chartHistory} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="netInGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="netOutGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="index" stroke="#64748b" tickLine={{ stroke: '#475569' }} tick={false} axisLine={{ stroke: '#475569' }} />
-                  <YAxis stroke="#64748b" fontSize={10} tickLine={false} tickFormatter={(v) => `${v.toFixed(1)} MB/s`} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
-                    labelStyle={{ color: "#94a3b8" }}
-                    formatter={(value: number | undefined, name?: string) => [`${(value ?? 0).toFixed(2)} MB/s`, name === "networkIn" ? "Download" : "Upload"]}
-                  />
-                  <Area type="monotone" dataKey="networkIn" stroke="#22c55e" fill="url(#netInGradient)" strokeWidth={2} name="networkIn" isAnimationActive={false} />
-                  <Area type="monotone" dataKey="networkOut" stroke="#f59e0b" fill="url(#netOutGradient)" strokeWidth={2} name="networkOut" isAnimationActive={false} />
-                  <Legend
-                    formatter={(value) => <span className="text-slate-400 text-xs">{value === "networkIn" ? "↓ Download" : "↑ Upload"}</span>}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </ChartCard>
-          </div>
-
-          {/* Session Timeline */}
-          <ChartCard title="Session Timeline" icon={<FaStream className="text-cyan-400" />}>
-            <SessionTimeline correlationData={sessionCorrelation} />
-          </ChartCard>
-
           {/* Secondary Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Service Status Distribution */}
-            <ChartCard title="Service Status" icon={<FaLayerGroup className="text-emerald-400" />}>
+            {/* Service Status Distribution - Simplified */}
+            <ChartCard
+              title="Service Status"
+              icon={<FaLayerGroup className="text-emerald-400" />}
+              action={
+                <button
+                  onClick={() => navigate("/monitor/performance")}
+                  className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  View in Monitor →
+                </button>
+              }
+            >
               {statusPieData.length > 0 ? (
-                <div className="flex items-center justify-center gap-6">
-                  <ResponsiveContainer width={140} height={140}>
-                    <PieChart>
-                      <Pie
-                        data={statusPieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={40}
-                        outerRadius={60}
-                        paddingAngle={3}
-                        dataKey="value"
-                        isAnimationActive={false}
-                      >
-                        {statusPieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="space-y-2">
-                    {statusPieData.map((item) => (
-                      <div key={item.name} className="flex items-center gap-2">
-                        <div 
-                          className={`w-3 h-3 rounded-full ${
+                <div className="space-y-2">
+                  {statusPieData.map((item) => (
+                    <div key={item.name} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-2 h-2 rounded-full ${
                             item.name === 'Running' ? 'bg-green-500' :
                             item.name === 'Stopped' ? 'bg-slate-500' : 'bg-red-500'
                           }`}
                         />
                         <span className="text-sm text-slate-400">{item.name}</span>
-                        <span className="text-sm font-semibold text-slate-200">{item.value}</span>
                       </div>
-                    ))}
-                  </div>
+                      <span className="text-sm font-semibold text-slate-200">{item.value}</span>
+                    </div>
+                  ))}
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-32 text-slate-500">
+                <div className="flex items-center justify-center h-20 text-slate-500">
                   No services found
                 </div>
               )}
@@ -518,9 +438,8 @@ export default function HomePage() {
           </div>
         </div>
       </div>
-    </Layout>
-  );
-}
+    );
+  }
 
 // =============================================================================
 // Sub-components

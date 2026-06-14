@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { Layout } from "~/components/Layout";
 import { ServiceConfigForm } from "~/components/ServiceConfigForm";
 import { ServiceCard } from "~/components/ServiceCard";
 import { ServiceCardGridSkeleton } from "~/components/Skeletons";
@@ -58,8 +57,8 @@ export default function InfrastructurePage() {
   };
 
   return (
-    <Layout>
-      <div className="h-full flex flex-col p-6">
+    <>
+    <div className="h-full flex flex-col p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -119,9 +118,9 @@ export default function InfrastructurePage() {
             ))}
           </div>
         )}
-      </div>
+    </div>
 
-      {/* Add Service Modal */}
+    {/* Add Service Modal */}
       {showAddService && (
         <div 
           className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -160,7 +159,7 @@ export default function InfrastructurePage() {
         </div>
       )}
 
-      {/* Edit Service Modal */}
+    {/* Edit Service Modal */}
       {editingService && (
         <div 
           className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -205,6 +204,6 @@ export default function InfrastructurePage() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }

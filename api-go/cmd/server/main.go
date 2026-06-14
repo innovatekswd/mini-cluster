@@ -125,6 +125,8 @@ func main() {
 	if containerMgr != nil {
 		metricsCollector.SetContainerManager(containerMgr, databases.App)
 	}
+	metricsAggregator := workers.NewMetricsAggregator(databases.Logs, databases.Aggregated, log)
+	directoryCollector := workers.NewDirectoryMetricsCollector(databases.Aggregated, log)
 	hbMonitor := workers.NewHeartbeatMonitor(databases.App, log)
 	logCleanup := workers.NewLogCleanupWorker(databases.Logs,
 		cfg.LogCleanup.IntervalMinutes, cfg.LogCleanup.RetentionHours, cfg.LogCleanup.AutoVacuum, log)
@@ -137,6 +139,8 @@ func main() {
 
 	for _, worker := range []func(context.Context){
 		metricsCollector.Run,
+		metricsAggregator.Run,
+		directoryCollector.Run,
 		hbMonitor.Run,
 		logCleanup.Run,
 		healthChecker.Run,
@@ -159,7 +163,8 @@ func main() {
 	machinesHandler := handlers.NewMachinesHandler(databases.App)
 	clusterHandler := handlers.NewClusterHandler(databases.App)
 	cronHandler := handlers.NewCronHandler(databases.App)
-	metricsHandler := handlers.NewMetricsHandler(databases.Logs, metricsCollector)
+	metricsHandler := handlers.NewMetricsHandler(databases.Logs, databases.Aggregated, metricsCollector)
+	directoriesHandler := handlers.NewDirectoriesHandler(databases.Aggregated)
 	settingsHandler := handlers.NewSettingsHandler(databases.App)
 	versionsHandler := handlers.NewVersionsHandler(databases.App)
 	proxyHandler := handlers.NewProxyHandler(databases.App)
@@ -269,6 +274,9 @@ func main() {
 
 		// metrics
 		r.Mount("/metrics", metricsHandler.Routes())
+
+		// directories
+		r.Mount("/directories", directoriesHandler.Routes())
 
 		// settings
 		r.Mount("/settings", settingsHandler.Routes())

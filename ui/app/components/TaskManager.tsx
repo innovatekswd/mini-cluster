@@ -1,4 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 import { useSignalRConnection, useSignalRConnected } from "../context/SignalRConnectionContext";
 import { useTabVisible } from "~/hooks/useTabVisible";
 import type {
@@ -13,6 +23,7 @@ import {
   formatDuration,
   formatPercent,
 } from "../services/metricsService";
+import { HistoryTab } from "./HistoryTab";
 
 type SortField =
   | "serviceName"
@@ -27,11 +38,15 @@ type SystemSortField = "processName" | "workingSetMemory" | "threadCount" | "pro
 
 type ProcessView = "my-processes" | "all-processes";
 
+type MonitorTab = "processes" | "performance" | "disks" | "network" | "history";
+
 interface TaskManagerProps {
   onSelectService?: (serviceId: string) => void;
+  activeTab?: MonitorTab;
+  onTabChange?: (tab: MonitorTab) => void;
 }
 
-export function TaskManager({ onSelectService }: TaskManagerProps) {
+export function TaskManager({ onSelectService, activeTab = "processes", onTabChange }: TaskManagerProps) {
   const [processMetrics, setProcessMetrics] = useState<ProcessMetricsSnapshot[]>([]);
   const [systemProcesses, setSystemProcesses] = useState<SystemProcessInfo[]>([]);
   const [systemMetrics, setSystemMetrics] = useState<SystemMetricsSnapshot | null>(null);
@@ -40,8 +55,14 @@ export function TaskManager({ onSelectService }: TaskManagerProps) {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [systemSortField, setSystemSortField] = useState<SystemSortField>("workingSetMemory");
   const [systemSortDirection, setSystemSortDirection] = useState<"asc" | "desc">("desc");
-  const [activeTab, setActiveTab] = useState<"processes" | "performance" | "disks" | "network">("processes");
   const [processView, setProcessView] = useState<ProcessView>("my-processes");
+
+  // Live chart history for Performance tab
+  const [cpuHistory, setCpuHistory] = useState<number[]>([]);
+  const [memoryHistory, setMemoryHistory] = useState<number[]>([]);
+  const [networkInHistory, setNetworkInHistory] = useState<number[]>([]);
+  const [networkOutHistory, setNetworkOutHistory] = useState<number[]>([]);
+  const MAX_HISTORY_POINTS = 30;
 
   // Use a shared connection for metrics
   const connection = useSignalRConnection();
@@ -72,21 +93,17 @@ export function TaskManager({ onSelectService }: TaskManagerProps) {
     }
   }, []);
 
-  // Unified polling interval — pauses when tab is hidden
+  // SignalR-only: no polling, rely on real-time updates
+  // Initial fetch on mount
   useEffect(() => {
-    if (!isTabVisible) return;
     fetchData();
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
-  }, [fetchData, isTabVisible]);
+  }, [fetchData]);
 
-  // Fetch system processes when viewing "all-processes" (same visibility gate)
+  // Fetch system processes when viewing "all-processes"
   useEffect(() => {
-    if (processView !== "all-processes" || !isTabVisible) return;
+    if (processView !== "all-processes") return;
     fetchSystemProcesses();
-    const interval = setInterval(fetchSystemProcesses, 5000);
-    return () => clearInterval(interval);
-  }, [processView, fetchSystemProcesses, isTabVisible]);
+  }, [processView, fetchSystemProcesses]);
 
   useEffect(() => {
     if (!connection || !isConnected) return;
@@ -100,6 +117,26 @@ export function TaskManager({ onSelectService }: TaskManagerProps) {
 
     const handleSystemMetrics = (metrics: SystemMetricsSnapshot) => {
       setSystemMetrics(metrics);
+      
+      // Update live chart history
+      setCpuHistory(prev => {
+        const next = [...prev, metrics.cpuUsagePercent];
+        return next.length > MAX_HISTORY_POINTS ? next.slice(-MAX_HISTORY_POINTS) : next;
+      });
+      setMemoryHistory(prev => {
+        const next = [...prev, metrics.memoryUsagePercent];
+        return next.length > MAX_HISTORY_POINTS ? next.slice(-MAX_HISTORY_POINTS) : next;
+      });
+      const netInMB = (metrics.totalNetworkReceiveRate || 0) / (1024 * 1024);
+      const netOutMB = (metrics.totalNetworkSendRate || 0) / (1024 * 1024);
+      setNetworkInHistory(prev => {
+        const next = [...prev, netInMB];
+        return next.length > MAX_HISTORY_POINTS ? next.slice(-MAX_HISTORY_POINTS) : next;
+      });
+      setNetworkOutHistory(prev => {
+        const next = [...prev, netOutMB];
+        return next.length > MAX_HISTORY_POINTS ? next.slice(-MAX_HISTORY_POINTS) : next;
+      });
     };
 
     connection.on("AllProcessMetrics", handleAllMetrics);
@@ -114,6 +151,25 @@ export function TaskManager({ onSelectService }: TaskManagerProps) {
       }
     };
   }, [connection, isConnected]);
+
+  // Compute chart data for live charts
+  const chartHistory = useMemo(() => {
+    const maxLen = Math.max(cpuHistory.length, memoryHistory.length);
+    return Array.from({ length: maxLen }, (_, i) => ({
+      index: i,
+      cpu: cpuHistory[i] ?? 0,
+      memory: memoryHistory[i] ?? 0,
+    }));
+  }, [cpuHistory, memoryHistory]);
+
+  const networkChartHistory = useMemo(() => {
+    const maxLen = Math.max(networkInHistory.length, networkOutHistory.length);
+    return Array.from({ length: maxLen }, (_, i) => ({
+      index: i,
+      networkIn: networkInHistory[i] ?? 0,
+      networkOut: networkOutHistory[i] ?? 0,
+    }));
+  }, [networkInHistory, networkOutHistory]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -314,10 +370,10 @@ export function TaskManager({ onSelectService }: TaskManagerProps) {
       {/* Tabs */}
       <div className="border-b border-slate-700/50">
         <nav className="flex gap-4 px-4">
-          {(["processes", "performance", "disks", "network"] as const).map((tab) => (
+          {(["processes", "performance", "disks", "network", "history"] as const).map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => onTabChange?.(tab)}
               className={`py-3 px-1 border-b-2 transition-colors capitalize ${
                 activeTab === tab
                   ? "border-cyan-500 text-cyan-400"
@@ -490,49 +546,119 @@ export function TaskManager({ onSelectService }: TaskManagerProps) {
         )}
 
         {activeTab === "performance" && systemMetrics && (
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* CPU Details */}
-            <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
-              <h3 className="text-lg font-semibold text-slate-100 mb-4">CPU</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Usage</span>
-                  <span className="font-medium text-cyan-400">{formatPercent(systemMetrics.cpuUsagePercent)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Logical Processors</span>
-                  <span className="font-medium text-slate-200">{systemMetrics.processorCount}</span>
-                </div>
-                {systemMetrics.processorName && (
-                  <div className="mt-4 pt-4 border-t border-slate-700/50">
-                    <span className="text-xs text-slate-500">{systemMetrics.processorName}</span>
-                  </div>
-                )}
+          <div className="p-4 space-y-6">
+            {/* Live Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* CPU & Memory Chart */}
+              <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
+                <h3 className="text-lg font-semibold text-slate-100 mb-4">CPU & Memory Usage</h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart data={chartHistory} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="cpuGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="memoryGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="index" stroke="#64748b" tickLine={false} tick={false} axisLine={{ stroke: '#475569' }} />
+                    <YAxis stroke="#64748b" fontSize={10} tickLine={false} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
+                      labelStyle={{ color: "#94a3b8" }}
+                      formatter={(value: number | undefined, name?: string) => [`${(value ?? 0).toFixed(1)}%`, name === "cpu" ? "CPU" : "Memory"]}
+                    />
+                    <Area type="monotone" dataKey="cpu" stroke="#06b6d4" fill="url(#cpuGradient)" strokeWidth={2} isAnimationActive={false} />
+                    <Area type="monotone" dataKey="memory" stroke="#8b5cf6" fill="url(#memoryGradient)" strokeWidth={2} isAnimationActive={false} />
+                    <Legend
+                      formatter={(value) => <span className="text-slate-400 text-xs">{value === "cpu" ? "CPU" : "Memory"}</span>}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Network I/O Chart */}
+              <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
+                <h3 className="text-lg font-semibold text-slate-100 mb-4">Network Throughput</h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart data={networkChartHistory} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="netInGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="netOutGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="index" stroke="#64748b" tickLine={false} tick={false} axisLine={{ stroke: '#475569' }} />
+                    <YAxis stroke="#64748b" fontSize={10} tickLine={false} tickFormatter={(v) => `${v.toFixed(1)} MB/s`} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
+                      labelStyle={{ color: "#94a3b8" }}
+                      formatter={(value: number | undefined, name?: string) => [`${(value ?? 0).toFixed(2)} MB/s`, name === "networkIn" ? "Download" : "Upload"]}
+                    />
+                    <Area type="monotone" dataKey="networkIn" stroke="#22c55e" fill="url(#netInGradient)" strokeWidth={2} name="networkIn" isAnimationActive={false} />
+                    <Area type="monotone" dataKey="networkOut" stroke="#f59e0b" fill="url(#netOutGradient)" strokeWidth={2} name="networkOut" isAnimationActive={false} />
+                    <Legend
+                      formatter={(value) => <span className="text-slate-400 text-xs">{value === "networkIn" ? "↓ Download" : "↑ Upload"}</span>}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </div>
 
-            {/* Memory Details */}
-            <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
-              <h3 className="text-lg font-semibold text-slate-100 mb-4">Memory</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">In Use</span>
-                  <span className="font-medium text-violet-400">{formatBytes(systemMetrics.usedPhysicalMemory)}</span>
+            {/* Details Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* CPU Details */}
+              <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
+                <h3 className="text-lg font-semibold text-slate-100 mb-4">CPU</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Usage</span>
+                    <span className="font-medium text-cyan-400">{formatPercent(systemMetrics.cpuUsagePercent)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Logical Processors</span>
+                    <span className="font-medium text-slate-200">{systemMetrics.processorCount}</span>
+                  </div>
+                  {systemMetrics.processorName && (
+                    <div className="mt-4 pt-4 border-t border-slate-700/50">
+                      <span className="text-xs text-slate-500">{systemMetrics.processorName}</span>
+                    </div>
+                  )}
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Available</span>
-                  <span className="font-medium text-slate-200">{formatBytes(systemMetrics.availablePhysicalMemory)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Total</span>
-                  <span className="font-medium text-slate-200">{formatBytes(systemMetrics.totalPhysicalMemory)}</span>
-                </div>
-                <div className="mt-3">
-                  <div className="h-3 bg-slate-700/50 rounded-full">
-                    <div
-                      className="h-full bg-violet-500 rounded-full transition-all"
-                      style={{ width: `${systemMetrics.memoryUsagePercent}%` }}
-                    ></div>
+              </div>
+
+              {/* Memory Details */}
+              <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
+                <h3 className="text-lg font-semibold text-slate-100 mb-4">Memory</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">In Use</span>
+                    <span className="font-medium text-violet-400">{formatBytes(systemMetrics.usedPhysicalMemory)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Available</span>
+                    <span className="font-medium text-slate-200">{formatBytes(systemMetrics.availablePhysicalMemory)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Total</span>
+                    <span className="font-medium text-slate-200">{formatBytes(systemMetrics.totalPhysicalMemory)}</span>
+                  </div>
+                  <div className="mt-3">
+                    <div className="h-3 bg-slate-700/50 rounded-full">
+                      <div
+                        className="h-full bg-violet-500 rounded-full transition-all"
+                        style={{ width: `${systemMetrics.memoryUsagePercent}%` }}
+                      ></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -647,6 +773,10 @@ export function TaskManager({ onSelectService }: TaskManagerProps) {
               ))}
             </div>
           </div>
+        )}
+
+        {activeTab === "history" && (
+          <HistoryTab onSelectService={onSelectService} />
         )}
       </div>
     </div>

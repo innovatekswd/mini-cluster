@@ -2,7 +2,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Layout } from "~/components/Layout";
 import { ServicesFilterBar } from "~/components/ServicesFilterBar";
 import { AppGroupedServicesView } from "~/components/AppGroupedServicesView";
 import { ServiceCard } from "~/components/ServiceCard";
@@ -112,7 +111,6 @@ export default function ServicesPage() {
   };
 
   return (
-    <Layout>
       <div className="flex flex-col h-full">
         {/* Filter bar */}
         <ServicesFilterBar
@@ -187,6 +185,5 @@ export default function ServicesPage() {
           )}
         </Modal>
       </div>
-    </Layout>
   );
 }

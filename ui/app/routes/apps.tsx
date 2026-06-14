@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Layout } from "~/components/Layout";
 import { FaPlus, FaPlay, FaStop, FaCopy, FaTrash, FaDatabase } from "react-icons/fa";
 import type { CreateAppDto } from "~/types/App";
 import { useToast } from "~/components/Toast";
@@ -69,8 +68,8 @@ export default function AppsPage() {
   };
 
   return (
-    <Layout>
-      <div className="h-full overflow-auto p-6">
+    <>
+    <div className="h-full overflow-auto p-6">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -122,7 +121,7 @@ export default function AppsPage() {
               <div
                 key={app.id}
                 className="card-elevated hover:scale-105 transition-transform cursor-pointer group relative"
-                onClick={() => navigate(`/dashboard/${encodeURIComponent(app.slug || app.name)}`)}
+                onClick={() => navigate(`/apps/${encodeURIComponent(app.slug || app.name)}`)}
               >
                 {/* Action buttons (show on hover) */}
                 <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
@@ -232,14 +231,14 @@ export default function AppsPage() {
             </div>
           </div>
         )}
-      </div>
+    </div>
 
-      {/* Create App Modal */}
-      <CreateAppModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSubmit={handleCreateAppSubmit}
-      />
-    </Layout>
+    {/* Create App Modal */}
+    <CreateAppModal
+      isOpen={showCreateModal}
+      onClose={() => setShowCreateModal(false)}
+      onSubmit={handleCreateAppSubmit}
+    />
+    </>
   );
 }

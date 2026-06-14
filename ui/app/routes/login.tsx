@@ -14,8 +14,8 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Get the return URL from state or default to dashboard
-  const from = (location.state as { from?: string })?.from || "/dashboard";
+  // Get the return URL from state or default to apps
+  const from = (location.state as { from?: string })?.from || "/apps";
 
   // Redirect if already authenticated
   useEffect(() => {

@@ -6,18 +6,38 @@ import (
 	"sync"
 	"time"
 
-	"github.com/innovatek/minicluster/internal/handlers"
 	"github.com/innovatek/minicluster/internal/models"
 	"github.com/innovatek/minicluster/internal/services"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"
+	"github.com/shirou/gopsutil/v3/load"
 	"github.com/shirou/gopsutil/v3/mem"
 	psnet "github.com/shirou/gopsutil/v3/net"
 	psproc "github.com/shirou/gopsutil/v3/process"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
+
+// networkState tracks previous sample values for delta-based rate computation.
+type networkState struct {
+	prevBytesSent   uint64
+	prevBytesRecv   uint64
+	prevPacketsSent uint64
+	prevPacketsRecv uint64
+	prevTime        time.Time
+}
+
+// diskState tracks previous sample values for disk rate computation.
+type diskState struct {
+	prevReadBytes  uint64
+	prevWriteBytes uint64
+	prevReadCount  uint64
+	prevWriteCount uint64
+	prevReadTime   uint64
+	prevWriteTime  uint64
+	prevTime       time.Time
+}
 
 // MetricsCollector collects system and process metrics at regular intervals.
 type MetricsCollector struct {
@@ -28,8 +48,13 @@ type MetricsCollector struct {
 	containerMgr    *services.ContainerManager // nil when no container runtime available
 
 	mu      sync.RWMutex
-	current map[string]handlers.ProcessMetricsSnapshot
-	system  handlers.SystemMetricsSnapshot
+	current map[string]models.ProcessMetricsSnapshot
+	system  models.SystemMetricsSnapshot
+
+	// Network state for delta computation (keyed by interface name)
+	networkState map[string]*networkState
+	// Disk state for delta computation (keyed by mount point)
+	diskState map[string]*diskState
 }
 
 func NewMetricsCollector(logsDB *gorm.DB, intervalSeconds int, log *zap.Logger) *MetricsCollector {
@@ -37,8 +62,22 @@ func NewMetricsCollector(logsDB *gorm.DB, intervalSeconds int, log *zap.Logger) 
 		logsDB:          logsDB,
 		intervalSeconds: intervalSeconds,
 		log:             log,
-		current:         make(map[string]handlers.ProcessMetricsSnapshot),
+		current:         make(map[string]models.ProcessMetricsSnapshot),
+		networkState:    make(map[string]*networkState),
+		diskState:       make(map[string]*diskState),
 	}
+}
+
+// computeDelta calculates the rate between two counter values, guarding against counter resets.
+// Returns 0 if previous is 0 (first sample) or if current < previous (counter reset).
+func computeDelta(current, previous uint64, elapsed float64) float64 {
+	if elapsed <= 0 || previous == 0 {
+		return 0 // first sample or no elapsed time
+	}
+	if current < previous {
+		return 0 // counter reset (reboot, interface flap)
+	}
+	return float64(current-previous) / elapsed
 }
 
 // SetContainerManager wires the optional container runtime into the collector.
@@ -68,14 +107,31 @@ func (c *MetricsCollector) collect(ctx context.Context) {
 	c.mu.Unlock()
 
 	c.logsDB.Create(&models.SystemMetrics{
-		Timestamp:           time.Now().UTC(),
-		CpuUsagePercent:     snap.CpuUsagePercent,
-		TotalPhysicalMemory: snap.TotalPhysicalMemory,
-		UsedPhysicalMemory:  snap.UsedPhysicalMemory,
-		MemoryUsagePercent:  snap.MemoryUsagePercent,
-		TotalProcesses:      snap.TotalProcesses,
-		SendRate:            snap.TotalNetworkSendRate,
-		ReceiveRate:         snap.TotalNetworkReceiveRate,
+		Timestamp:            time.Now().UTC(),
+		CpuUsagePercent:      snap.CpuUsagePercent,
+		CpuLoad1m:            snap.CpuLoad1m,
+		CpuLoad5m:            snap.CpuLoad5m,
+		CpuLoad15m:           snap.CpuLoad15m,
+		TotalPhysicalMemory:  snap.TotalPhysicalMemory,
+		UsedPhysicalMemory:   snap.UsedPhysicalMemory,
+		AvailableMemory:      snap.AvailableMemory,
+		CachedMemory:         snap.CachedMemory,
+		BuffersMemory:        snap.BuffersMemory,
+		MemoryUsagePercent:   snap.MemoryUsagePercent,
+		SwapTotal:            snap.SwapTotal,
+		SwapUsed:             snap.SwapUsed,
+		SwapPercent:          snap.SwapPercent,
+		TotalProcesses:       snap.TotalProcesses,
+		NetworkBytesSent:     snap.TotalBytesSent,
+		NetworkBytesReceived: snap.TotalBytesRecv,
+		SendRate:             snap.TotalNetworkSendRate,
+		ReceiveRate:          snap.TotalNetworkReceiveRate,
+		NetworkPacketsSent:   snap.TotalPacketsSent,
+		NetworkPacketsRecv:   snap.TotalPacketsRecv,
+		NetworkErrorsIn:      snap.TotalErrorsIn,
+		NetworkErrorsOut:     snap.TotalErrorsOut,
+		NetworkDropsIn:       snap.TotalDropsIn,
+		NetworkDropsOut:      snap.TotalDropsOut,
 	})
 
 	if c.containerMgr != nil {
@@ -112,7 +168,7 @@ func (c *MetricsCollector) collectContainerMetrics(ctx context.Context) {
 	}
 
 	now := time.Now().UTC()
-	snapshots := make(map[string]handlers.ProcessMetricsSnapshot, len(serviceIDs))
+	snapshots := make(map[string]models.ProcessMetricsSnapshot, len(serviceIDs))
 
 	for _, serviceID := range serviceIDs {
 		stats, err := c.containerMgr.GetStats(ctx, serviceID)
@@ -126,7 +182,7 @@ func (c *MetricsCollector) collectContainerMetrics(ctx context.Context) {
 
 		memMB := float64(stats.MemoryUsage) / (1024 * 1024)
 
-		snapshots[serviceID] = handlers.ProcessMetricsSnapshot{
+		snapshots[serviceID] = models.ProcessMetricsSnapshot{
 			ServiceID:  serviceID,
 			CpuPercent: stats.CPUPercent,
 			MemoryMB:   memMB,
@@ -155,10 +211,10 @@ func (c *MetricsCollector) collectContainerMetrics(ctx context.Context) {
 }
 
 // GetAllCurrentMetrics implements MetricsProvider.
-func (c *MetricsCollector) GetAllCurrentMetrics() map[string]handlers.ProcessMetricsSnapshot {
+func (c *MetricsCollector) GetAllCurrentMetrics() map[string]models.ProcessMetricsSnapshot {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make(map[string]handlers.ProcessMetricsSnapshot, len(c.current))
+	result := make(map[string]models.ProcessMetricsSnapshot, len(c.current))
 	for k, v := range c.current {
 		result[k] = v
 	}
@@ -166,22 +222,22 @@ func (c *MetricsCollector) GetAllCurrentMetrics() map[string]handlers.ProcessMet
 }
 
 // GetSystemMetrics implements MetricsProvider.
-func (c *MetricsCollector) GetSystemMetrics() handlers.SystemMetricsSnapshot {
+func (c *MetricsCollector) GetSystemMetrics() models.SystemMetricsSnapshot {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.system
 }
 
 // GetSystemProcesses implements MetricsProvider (returns empty list — OS-level enumeration is platform-specific).
-func (c *MetricsCollector) GetSystemProcesses() []handlers.SystemProcessInfo {
-	return []handlers.SystemProcessInfo{}
+func (c *MetricsCollector) GetSystemProcesses() []models.SystemProcessInfo {
+	return []models.SystemProcessInfo{}
 }
 
-func (c *MetricsCollector) collectSystem() handlers.SystemMetricsSnapshot {
-	snap := handlers.SystemMetricsSnapshot{
+func (c *MetricsCollector) collectSystem() models.SystemMetricsSnapshot {
+	snap := models.SystemMetricsSnapshot{
 		Timestamp:         time.Now().UTC(),
-		Disks:             []handlers.DiskInfo{},
-		NetworkInterfaces: []handlers.NetworkInterfaceInfo{},
+		Disks:             []models.DiskInfo{},
+		NetworkInterfaces: []models.NetworkInterfaceInfo{},
 	}
 
 	// ── CPU ──────────────────────────────────────────────────────────────────
@@ -189,43 +245,149 @@ func (c *MetricsCollector) collectSystem() handlers.SystemMetricsSnapshot {
 		snap.CpuUsagePercent = percents[0]
 	}
 
+	// ── Load averages ────────────────────────────────────────────────────────
+	if avg, err := load.Avg(); err == nil {
+		snap.CpuLoad1m = avg.Load1
+		snap.CpuLoad5m = avg.Load5
+		snap.CpuLoad15m = avg.Load15
+	}
+
 	// ── Memory ───────────────────────────────────────────────────────────────
 	if vm, err := mem.VirtualMemory(); err == nil {
 		snap.TotalPhysicalMemory = int64(vm.Total)
 		snap.UsedPhysicalMemory = int64(vm.Used)
+		snap.AvailableMemory = int64(vm.Available)
+		snap.CachedMemory = int64(vm.Cached)
+		snap.BuffersMemory = int64(vm.Buffers)
 		snap.MemoryUsagePercent = vm.UsedPercent
+	}
+	if sw, err := mem.SwapMemory(); err == nil {
+		snap.SwapTotal = int64(sw.Total)
+		snap.SwapUsed = int64(sw.Used)
+		snap.SwapPercent = sw.UsedPercent
 	}
 
 	// ── Disks ────────────────────────────────────────────────────────────────
+	now := time.Now()
 	if parts, err := disk.Partitions(false); err == nil {
+		// Get IO counters for rate computation
+		ioCounters, _ := disk.IOCounters()
+		
 		for _, p := range parts {
 			if usage, err := disk.Usage(p.Mountpoint); err == nil {
-				snap.Disks = append(snap.Disks, handlers.DiskInfo{
-					Name:         p.Mountpoint,
-					TotalSize:    int64(usage.Total),
-					UsedSpace:    int64(usage.Used),
-					AvailSpace:   int64(usage.Free),
-					UsagePercent: usage.UsedPercent,
-				})
+				diskInfo := models.DiskInfo{
+					Name:          p.Mountpoint,
+					TotalSize:     int64(usage.Total),
+					UsedSpace:     int64(usage.Used),
+					AvailSpace:    int64(usage.Free),
+					UsagePercent:  usage.UsedPercent,
+					InodesUsed:    int64(usage.InodesUsed),
+					InodesFree:    int64(usage.InodesFree),
+					InodesPercent: usage.InodesUsedPercent,
+				}
+				
+				// Compute IO rates if available
+				if io, ok := ioCounters[p.Device]; ok {
+					prev := c.diskState[p.Mountpoint]
+					if prev == nil {
+						prev = &diskState{prevTime: now}
+						c.diskState[p.Mountpoint] = prev
+					}
+					
+					elapsed := now.Sub(prev.prevTime).Seconds()
+					
+					diskInfo.ReadBytes = int64(io.ReadBytes)
+					diskInfo.WriteBytes = int64(io.WriteBytes)
+					diskInfo.ReadOps = int64(io.ReadCount)
+					diskInfo.WriteOps = int64(io.WriteCount)
+					diskInfo.ReadTimeMs = int64(io.ReadTime)
+					diskInfo.WriteTimeMs = int64(io.WriteTime)
+					
+					// Compute rates
+					diskInfo.ReadRate = computeDelta(io.ReadBytes, prev.prevReadBytes, elapsed)
+					diskInfo.WriteRate = computeDelta(io.WriteBytes, prev.prevWriteBytes, elapsed)
+					diskInfo.ReadOpsRate = computeDelta(io.ReadCount, prev.prevReadCount, elapsed)
+					diskInfo.WriteOpsRate = computeDelta(io.WriteCount, prev.prevWriteCount, elapsed)
+					
+					// Update state
+					prev.prevReadBytes = io.ReadBytes
+					prev.prevWriteBytes = io.WriteBytes
+					prev.prevReadCount = io.ReadCount
+					prev.prevWriteCount = io.WriteCount
+					prev.prevReadTime = io.ReadTime
+					prev.prevWriteTime = io.WriteTime
+					prev.prevTime = now
+				}
+				
+				snap.Disks = append(snap.Disks, diskInfo)
 			}
 		}
 	}
 
 	// ── Network ──────────────────────────────────────────────────────────────
 	if ifaces, err := psnet.IOCounters(true); err == nil {
-		var totalSend, totalRecv float64
+		var totalSendRate, totalRecvRate float64
+		var totalBytesSent, totalBytesRecv int64
+		var totalPacketsSent, totalPacketsRecv int64
+		var totalErrorsIn, totalErrorsOut int64
+		var totalDropsIn, totalDropsOut int64
+
 		for _, iface := range ifaces {
-			snap.NetworkInterfaces = append(snap.NetworkInterfaces, handlers.NetworkInterfaceInfo{
-				Name:        iface.Name,
-				SendRate:    float64(iface.BytesSent),
-				ReceiveRate: float64(iface.BytesRecv),
-				Status:      "up",
+			prev := c.networkState[iface.Name]
+			if prev == nil {
+				prev = &networkState{prevTime: now}
+				c.networkState[iface.Name] = prev
+			}
+
+			elapsed := now.Sub(prev.prevTime).Seconds()
+
+			// Compute rates from deltas
+			sendRate := computeDelta(iface.BytesSent, prev.prevBytesSent, elapsed)
+			recvRate := computeDelta(iface.BytesRecv, prev.prevBytesRecv, elapsed)
+
+			snap.NetworkInterfaces = append(snap.NetworkInterfaces, models.NetworkInterfaceInfo{
+				Name:           iface.Name,
+				BytesSentTotal: int64(iface.BytesSent),
+				BytesRecvTotal: int64(iface.BytesRecv),
+				PacketsSent:    int64(iface.PacketsSent),
+				PacketsRecv:    int64(iface.PacketsRecv),
+				ErrorsIn:       int64(iface.Errin),
+				ErrorsOut:      int64(iface.Errout),
+				DropsIn:        int64(iface.Dropin),
+				DropsOut:       int64(iface.Dropout),
+				SendRate:       sendRate,
+				ReceiveRate:    recvRate,
+				Status:         "up",
 			})
-			totalSend += float64(iface.BytesSent)
-			totalRecv += float64(iface.BytesRecv)
+
+			// Update state for next sample
+			prev.prevBytesSent = iface.BytesSent
+			prev.prevBytesRecv = iface.BytesRecv
+			prev.prevPacketsSent = iface.PacketsSent
+			prev.prevPacketsRecv = iface.PacketsRecv
+			prev.prevTime = now
+
+			totalSendRate += sendRate
+			totalRecvRate += recvRate
+			totalBytesSent += int64(iface.BytesSent)
+			totalBytesRecv += int64(iface.BytesRecv)
+			totalPacketsSent += int64(iface.PacketsSent)
+			totalPacketsRecv += int64(iface.PacketsRecv)
+			totalErrorsIn += int64(iface.Errin)
+			totalErrorsOut += int64(iface.Errout)
+			totalDropsIn += int64(iface.Dropin)
+			totalDropsOut += int64(iface.Dropout)
 		}
-		snap.TotalNetworkSendRate = totalSend
-		snap.TotalNetworkReceiveRate = totalRecv
+		snap.TotalNetworkSendRate = totalSendRate
+		snap.TotalNetworkReceiveRate = totalRecvRate
+		snap.TotalBytesSent = totalBytesSent
+		snap.TotalBytesRecv = totalBytesRecv
+		snap.TotalPacketsSent = totalPacketsSent
+		snap.TotalPacketsRecv = totalPacketsRecv
+		snap.TotalErrorsIn = totalErrorsIn
+		snap.TotalErrorsOut = totalErrorsOut
+		snap.TotalDropsIn = totalDropsIn
+		snap.TotalDropsOut = totalDropsOut
 	}
 
 	// ── Process count ────────────────────────────────────────────────────────

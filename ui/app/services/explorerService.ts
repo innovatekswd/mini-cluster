@@ -125,14 +125,56 @@ export function isArchive(item: FileItem): boolean {
   return ARCHIVE_EXTENSIONS.some(ext => lower.endsWith(ext));
 }
 
+// Helper to determine file category from extension
+function getFileCategory(name: string, isDir: boolean): FileItem['category'] {
+  if (isDir) return 'directory';
+  const ext = name.toLowerCase().split('.').pop() || '';
+  const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'];
+  const videoExts = ['mp4', 'avi', 'mov', 'mkv', 'webm', 'flv'];
+  const audioExts = ['mp3', 'wav', 'flac', 'ogg', 'aac', 'm4a'];
+  const textExts = ['txt', 'md', 'json', 'xml', 'yaml', 'yml', 'js', 'ts', 'tsx', 'jsx', 'html', 'css', 'go', 'py', 'rs', 'java', 'c', 'cpp', 'h', 'sh', 'bash', 'zsh', 'ps1', 'sql', 'log'];
+  
+  if (imageExts.includes(ext)) return 'image';
+  if (videoExts.includes(ext)) return 'video';
+  if (audioExts.includes(ext)) return 'audio';
+  if (textExts.includes(ext)) return 'text';
+  return 'binary';
+}
+
+function getExtension(name: string): string {
+  const parts = name.split('.');
+  return parts.length > 1 ? '.' + parts.pop() : '';
+}
+
+// Transform backend response to FileItem
+function transformToFileItem(entry: any): FileItem {
+  const isDir = entry.isDir ?? entry.is_dir ?? false;
+  return {
+    name: entry.name,
+    path: entry.path,
+    type: isDir ? 'directory' : 'file',
+    size: entry.size ?? 0,
+    modified: entry.modified ?? entry.modTime ?? new Date().toISOString(),
+    created: entry.created ?? entry.modTime ?? new Date().toISOString(),
+    extension: getExtension(entry.name),
+    mimeType: '',
+    permissions: '',
+    isHidden: entry.name.startsWith('.'),
+    isReadable: true,
+    isWritable: true,
+    category: getFileCategory(entry.name, isDir),
+  };
+}
+
 // API Functions
 export const explorerService = {
   /**
    * Get allowed root paths
    */
   async getRoots(): Promise<FileItem[]> {
-    const { data } = await apiClient.get<FileItem[]>(`${API_BASE}/roots`);
-    return data;
+    const { data } = await apiClient.get<any[]>(`${API_BASE}/roots`);
+    // Backend returns [{path, name}], transform to FileItem[]
+    return (data || []).map(root => transformToFileItem({ ...root, isDir: true }));
   },
 
   /**
@@ -145,30 +187,57 @@ export const explorerService = {
     skip: number = 0,
     take: number = 500
   ): Promise<DirectoryListing> {
-    const { data } = await apiClient.get<DirectoryListing>(`${API_BASE}/list`, {
+    const { data } = await apiClient.get<any[]>(`${API_BASE}/list`, {
       params: { path, sort, order, skip, take },
     });
-    return data;
+    // Backend returns flat array [{name, path, isDir, size}], transform to DirectoryListing
+    const items = Array.isArray(data) ? data.map(transformToFileItem) : [];
+    return {
+      path,
+      parent: path.split('/').slice(0, -1).join('/') || '/',
+      items,
+      totalItems: items.length,
+      hasMore: false,
+    };
   },
 
   /**
    * Get file/directory info
    */
   async getInfo(path: string): Promise<FileInfo> {
-    const { data } = await apiClient.get<FileInfo>(`${API_BASE}/info`, {
+    const { data } = await apiClient.get<any>(`${API_BASE}/info`, {
       params: { path },
     });
-    return data;
+    // Backend returns {name, path, isDir, size, modTime}, transform to FileInfo
+    return {
+      name: data.name,
+      path: data.path,
+      size: data.size ?? 0,
+      modified: data.modTime ?? new Date().toISOString(),
+      created: data.modTime ?? new Date().toISOString(),
+      permissions: '',
+      owner: '',
+      group: '',
+      mimeType: '',
+      encoding: '',
+      isReadable: true,
+      isWritable: true,
+      isExecutable: false,
+      isSymlink: false,
+      category: getFileCategory(data.name, data.isDir ?? false),
+    };
   },
 
   /**
    * Get file content (text)
    */
   async getFileContent(path: string): Promise<string> {
-    const { data } = await apiClient.get<{ content: string; path: string }>(`${API_BASE}/file`, {
+    const { data } = await apiClient.get<string>(`${API_BASE}/file`, {
       params: { path },
+      responseType: 'text',
     });
-    return data.content;
+    // Backend returns plain text directly
+    return data;
   },
 
   /**
