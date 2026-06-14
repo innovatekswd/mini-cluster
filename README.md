@@ -1,22 +1,56 @@
-# MiniCluster Releases
+<div align="center">
 
-Official release packages for [MiniCluster](https://github.com/innovatekswd/mini-cluster) — a lightweight process management and monitoring platform with a built-in web dashboard.
+# ⚡ MiniCluster
+
+**Lightweight process management & monitoring with a built-in web dashboard**
+
+[![Latest Release](https://img.shields.io/github/v/release/innovatekswd/mini-cluster?label=latest)](releases/)
+[![License](https://img.shields.io/github/license/innovatekswd/mini-cluster)](https://github.com/innovatekswd/mini-cluster)
+
+[Quick Start](#-quick-start) • [First Steps](#-first-steps) • [CLI Reference](#-cli--mc) • [Downloads](#-downloads) • [Troubleshooting](#-troubleshooting)
+
+</div>
 
 ---
 
-## Quick Install
+<details>
+<summary><strong>📖 Table of Contents</strong></summary>
 
-### Linux (one-liner)
+- [What is MiniCluster?](#-what-is-minicluster)
+- [Quick Start](#-quick-start)
+- [First Steps](#-first-steps)
+- [Architecture](#️-architecture)
+- [Downloads](#-downloads)
+- [Installation Details](#-installation-details)
+- [Configuration](#-configuration)
+- [CLI Reference — mc](#-cli--mc)
+- [Uninstall](#-uninstall)
+- [Troubleshooting](#-troubleshooting)
+- [Support](#-support)
+
+</details>
+
+---
+
+## 🤔 What is MiniCluster?
+
+MiniCluster is a self-hosted platform for managing and monitoring applications, services, and containers — all through a clean web dashboard or the `mc` CLI.
+
+- 🖥️ **Web Dashboard** — manage apps, services, and containers from your browser
+- ⚙️ **Process Manager** — auto-restart, log streaming, environment management
+- 📦 **Package System** — build and deploy `.mcpkg` packages with one command
+- 🔐 **Authentication** — JWT-based auth out of the box
+- 🐧🪟 **Cross-Platform** — first-class support for Linux and Windows
+- 🪶 **Lightweight** — single binary, minimal resource footprint
+
+---
+
+## 🚀 Quick Start
+
+### Linux
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/install.sh | bash
-```
-
-Custom port or version:
-
-```bash
-MINICLUSTER_PORT=9000 MINICLUSTER_VERSION=1.2.0 \
-  curl -fsSL https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/install.sh | bash
 ```
 
 ### Windows (PowerShell — run as Administrator)
@@ -25,58 +59,86 @@ MINICLUSTER_PORT=9000 MINICLUSTER_VERSION=1.2.0 \
 irm https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/install.ps1 | iex
 ```
 
-Custom port or version:
+> **That's it!** Open **http://localhost:2016** to access the dashboard.
 
-```powershell
-$env:MINICLUSTER_VERSION = "1.2.0"
-$env:MINICLUSTER_PORT    = "9000"
-irm https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/install.ps1 | iex
+### Custom Install Options
+
+| Option | Linux | Windows |
+|--------|-------|---------|
+| Custom port | `MINICLUSTER_PORT=9000 curl ... \| bash` | `$env:MINICLUSTER_PORT="9000"; irm ... \| iex` |
+| Custom version | `MINICLUSTER_VERSION=1.2.0 curl ... \| bash` | `$env:MINICLUSTER_VERSION="1.2.0"; irm ... \| iex` |
+| Skip service setup | `MINICLUSTER_NO_SERVICE=1 curl ... \| bash` | — |
+
+---
+
+## 🎯 First Steps
+
+Once installed, get up and running in under a minute:
+
+```bash
+# 1. Log in to your server
+mc login --server http://localhost:2016
+
+# 2. Verify the connection
+mc version
+
+# 3. Create your first app
+mc app create my-api --type web --dir /path/to/app
+
+# 4. Start it
+mc service start my-api
+
+# 5. Watch the logs
+mc service logs my-api -f
+
+# 6. Check all running services
+mc service list
+```
+
+> 💡 The CLI config is saved at `~/.minicluster/config.yaml`. Use **contexts** to manage multiple servers — see [CLI Contexts](#working-with-multiple-servers-contexts) below.
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│               MiniCluster Server                 │
+│  ┌──────────────┐     ┌──────────────────────┐  │
+│  │   Web UI     │     │   Process Manager    │  │
+│  │  (Dashboard) │     │  (apps / services /  │  │
+│  │              │     │   containers)        │  │
+│  └──────┬───────┘     └──────────┬───────────┘  │
+│         └────────────┬───────────┘              │
+│                REST API (:2016)                 │
+└──────────────────────┬──────────────────────────┘
+                       │
+          ┌────────────┴────────────┐
+          │                         │
+     ┌────┴────┐              ┌─────┴─────┐
+     │  Web    │              │  mc CLI   │
+     │ Browser │              │ (terminal) │
+     └─────────┘              └───────────┘
 ```
 
 ---
 
-## Available Packages
+## 📦 Downloads
 
-Click any package below to download directly.
-
-### v1.0.0
-
-| Package | Platform | Size |
-|---------|----------|------|
-| [minicluster_1.0.0_amd64.deb](https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v1.0.0/minicluster_1.0.0_amd64.deb) | Linux amd64 | ~9.6 MB |
-| [minicluster-api-1.0.0-linux-amd64.tar.gz](https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v1.0.0/minicluster-api-1.0.0-linux-amd64.tar.gz) | Linux amd64 | ~11.7 MB |
-| [minicluster-1.0.0-windows-amd64.zip](https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v1.0.0/minicluster-1.0.0-windows-amd64.zip) | Windows x64 | ~12.0 MB |
-
-### v1.0.12
-
-| Package | Platform | Size |
-|---------|----------|------|
-| [minicluster_1.0.12_amd64.deb](https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v1.0.12/minicluster_1.0.12_amd64.deb) | Linux amd64 | ~9.6 MB |
-| [minicluster-api-1.0.12-linux-amd64.tar.gz](https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v1.0.12/minicluster-api-1.0.12-linux-amd64.tar.gz) | Linux amd64 | ~11.7 MB |
-
-### v0.0.0+f185d786 (latest commit)
-
-| Package | Platform | Size |
-|---------|----------|------|
-| [minicluster_0.0.0+f185d786-dirty_amd64.deb](https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v0.0.0+f185d786-dirty/minicluster_0.0.0%2Bf185d786-dirty_amd64.deb) | Linux amd64 | ~9.6 MB |
-| [minicluster-api-0.0.0+f185d786-dirty-linux-amd64.tar.gz](https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v0.0.0+f185d786-dirty/minicluster-api-0.0.0%2Bf185d786-dirty-linux-amd64.tar.gz) | Linux amd64 | ~11.7 MB |
-
-> 💡 **Browse all available versions** in the [`releases/`](releases/) directory of this repository.
-
----
-
-## Manual Download (generic URLs)
-
-Replace `<version>` with any release number:
+All release packages are hosted in the [`releases/`](releases/) directory of this repository.
 
 | Platform | Package | Contents |
 |----------|---------|----------|
-| Linux amd64 | `minicluster_<version>_amd64.deb` | API server + CLI (`mc`) — installs as systemd service |
-| Linux amd64 | `minicluster-api-<version>-linux-amd64.tar.gz` | API server + CLI + config + systemd unit |
-| Linux arm64 | `minicluster-api-<version>-linux-arm64.tar.gz` | API server + CLI + config + systemd unit |
-| Windows x64 | `minicluster-<version>-windows-amd64.zip` | API server + CLI + PowerShell installer |
+| 🐧 Linux (deb) | `minicluster_<version>_amd64.deb` | API server + CLI — installs as systemd service |
+| 🐧 Linux (tar) amd64 | `minicluster-api-<version>-linux-amd64.tar.gz` | API server + CLI + config + systemd unit |
+| 🐧 Linux (tar) arm64 | `minicluster-api-<version>-linux-arm64.tar.gz` | API server + CLI + config + systemd unit |
+| 🪟 Windows | `minicluster-<version>-windows-amd64.zip` | API server + CLI + PowerShell installer |
 
-### Raw download URLs (replace `<version>`)
+> 📂 **Browse all versions** in the [`releases/`](releases/) directory.
+
+### Direct Download URLs
+
+Replace `<version>` with any release number (e.g. `1.0.12`):
 
 ```
 # Linux .deb
@@ -94,70 +156,50 @@ https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v<vers
 
 ---
 
-## Linux — Debian/Ubuntu (.deb)
+## 🔧 Installation Details
+
+### Linux — Debian/Ubuntu (.deb)
 
 ```bash
-# Download
-wget https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v1.0.0/minicluster_1.0.0_amd64.deb
+# Download & install
+wget https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v1.0.12/minicluster_1.0.12_amd64.deb
+sudo dpkg -i minicluster_1.0.12_amd64.deb
 
-# Install
-sudo dpkg -i minicluster_1.0.0_amd64.deb
-
-# Start
+# Start & check
 sudo systemctl start minicluster
-
-# Check status
 sudo systemctl status minicluster
 ```
 
-After install:
-- API server: `http://localhost:2016`
-- Config file: `/etc/minicluster/config.yaml`
-- Data directory: `/var/lib/minicluster`
-- Logs: `journalctl -u minicluster -f`
+**After install:**
 
-**Change the port:**
+| Item | Path / URL |
+|------|------------|
+| Dashboard | http://localhost:2016 |
+| Config file | `/etc/minicluster/config.yaml` |
+| Data directory | `/var/lib/minicluster` |
+| Logs | `journalctl -u minicluster -f` |
 
-```bash
-sudo nano /etc/minicluster/config.yaml   # set port: 9000
-sudo systemctl restart minicluster
-```
-
-Or via environment variable:
+### Linux — Tarball (manual)
 
 ```bash
-sudo systemctl edit minicluster
-# Add under [Service]:
-# Environment=MINICLUSTER_PORT=9000
-```
-
----
-
-## Linux — Tarball
-
-```bash
-tar -xzf minicluster-api-1.0.0-linux-amd64.tar.gz
-cd minicluster-api-1.0.0-linux-amd64
+tar -xzf minicluster-api-1.0.12-linux-amd64.tar.gz
+cd minicluster-api-1.0.12-linux-amd64
 
 # Run directly
 chmod +x minicluster-api mc
 ./minicluster-api
 
 # Or install system-wide
-sudo cp minicluster-api /usr/local/bin/
-sudo cp mc /usr/local/bin/
+sudo cp minicluster-api mc /usr/local/bin/
 ```
 
----
-
-## Windows
+### Windows
 
 **Option 1 — Installer (recommended)**
 
 1. Download `minicluster-<version>-windows-amd64.zip`
 2. Extract the ZIP
 3. Right-click PowerShell → **Run as Administrator**
-4. Run:
 
 ```powershell
 cd minicluster-<version>-windows-amd64
@@ -173,11 +215,14 @@ Installer parameters:
 .\install.ps1 -Uninstall                        # remove
 ```
 
-After install:
-- API server: `http://localhost:2016`
-- Config: `%ProgramFiles%\MiniCluster\config.yaml`
-- Data: `%ProgramData%\MiniCluster`
-- Both `minicluster-api.exe` and `mc.exe` are added to the system PATH
+**After install:**
+
+| Item | Path / URL |
+|------|------------|
+| Dashboard | http://localhost:2016 |
+| Config | `%ProgramFiles%\MiniCluster\config.yaml` |
+| Data | `%ProgramData%\MiniCluster` |
+| Binaries | Added to system `PATH` |
 
 **Option 2 — Run directly (no install)**
 
@@ -188,95 +233,170 @@ After install:
 
 ---
 
-## Environment Variables
+## ⚙️ Configuration
 
-All config values can be overridden with environment variables using the prefix `MINICLUSTER_`:
+### Environment Variables
+
+All config values can be overridden with environment variables using the `MINICLUSTER_` prefix:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MINICLUSTER_PORT` | `2016` | HTTP port |
-| `MINICLUSTER_DATA_DIR` | `/var/lib/minicluster` | Data directory |
-| `MINICLUSTER_AUTHENTICATION_ENABLED` | `true` | Enable/disable auth |
+| `MINICLUSTER_PORT` | `2016` | HTTP port for the API and dashboard |
+| `MINICLUSTER_DATA_DIR` | `/var/lib/minicluster` | Data directory for persistent storage |
+| `MINICLUSTER_AUTHENTICATION_ENABLED` | `true` | Enable/disable authentication |
 | `MINICLUSTER_AUTHENTICATION_JWT_SECRET` | *(auto-generated)* | JWT signing secret |
 
-Example:
+**Example:**
 
 ```bash
 MINICLUSTER_PORT=9000 MINICLUSTER_DATA_DIR=/srv/mc ./minicluster-api
 ```
 
----
-
-## CLI — `mc`
-
-The `mc` CLI is included in every package. It communicates with the API server.
-
-### Global flags
-
-| Flag | Description |
-|------|-------------|
-| `-s, --server` | API server URL (e.g. `http://myhost:2016`) |
-| `-t, --token` | Auth token |
-| `-o, --output` | Output format: `table`, `json`, `yaml`, `quiet` |
-| `--debug` | Show raw API calls |
-| `--timeout` | Request timeout (default `30s`) |
-| `-y, --yes` | Skip confirmation prompts |
-| `--context` | Named context from config file |
-
-### Quickstart
+### Changing the Port (Linux .deb)
 
 ```bash
-# Point mc at your server and log in
-mc login --server http://localhost:2016
+# Option 1: Edit config file
+sudo nano /etc/minicluster/config.yaml   # set port: 9000
+sudo systemctl restart minicluster
 
-# List apps and services
-mc app list
-mc service list
-
-# Start / stop a service
-mc service start my-api
-mc service stop  my-api
-
-# Stream logs
-mc service logs my-api -f
-
-# CLI config is saved at ~/.minicluster/config.yaml
-# You can switch between servers using contexts:
-mc config set-context staging --server http://staging-host:2016
-mc config use-context staging
+# Option 2: Environment variable
+sudo systemctl edit minicluster
+# Add under [Service]:
+# Environment=MINICLUSTER_PORT=9000
+sudo systemctl restart minicluster
 ```
 
-### Available commands
+---
+
+## ⚡ CLI — `mc`
+
+The `mc` command-line tool is your primary interface to MiniCluster. It's included in every package and communicates with the API server.
+
+### Setup
+
+```bash
+# Connect to your server and authenticate
+mc login --server http://localhost:2016
+
+# Verify the connection
+mc version
+```
+
+### Working with Multiple Servers (Contexts)
+
+Manage connections to multiple MiniCluster servers using named contexts:
+
+```bash
+# Add a staging server
+mc config set-context staging --server http://staging-host:2016
+
+# Switch to staging
+mc config use-context staging
+
+# List all contexts
+mc config get-contexts
+
+# Switch back to default
+mc config use-context default
+```
+
+CLI config is saved at `~/.minicluster/config.yaml`.
+
+### App Management
+
+```bash
+mc app list                          # list all applications
+mc app create my-api --type web      # create a new web app
+mc app info my-api                   # show app details
+mc app update my-api --dir /new/path # update app settings
+mc app delete my-api                 # remove an application
+```
+
+### Service Control
+
+```bash
+mc service list                      # list all services
+mc service start my-api              # start a service
+mc service stop my-api               # stop a service
+mc service restart my-api            # restart a service
+mc service status my-api             # detailed status info
+mc service logs my-api -f            # stream logs live
+mc service logs my-api --tail 100    # last 100 lines
+```
+
+### Container Management
+
+```bash
+mc container list                    # list all containers
+mc container start my-container      # start a container
+mc container stop my-container       # stop a container
+mc container restart my-container    # restart a container
+mc container logs my-container -f    # stream container logs
+```
+
+### File Manager
+
+```bash
+mc file ls /path/on/server           # list remote files
+mc file cat /path/to/file            # view file contents
+mc file cp local.txt /remote/path    # upload a file
+mc file cp /remote/file.txt ./       # download a file
+```
+
+### Packages & Deployment
+
+```bash
+mc package build ./my-app            # build .mcpkg from a directory
+mc package install my-app.mcpkg      # install a local package
+mc registry list                     # browse registry packages
+mc registry search nginx             # search the registry
+mc install nginx --from registry     # install from registry
+```
+
+### Global Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-s, --server` | API server URL (e.g. `http://myhost:2016`) | current context |
+| `-t, --token` | Authentication token | current context |
+| `-o, --output` | Output format: `table`, `json`, `yaml`, `quiet` | `table` |
+| `--debug` | Show raw API requests for debugging | off |
+| `--timeout` | Request timeout duration | `30s` |
+| `-y, --yes` | Skip all confirmation prompts | off |
+| `--context` | Use a named context from config | `default` |
+
+### Command Reference
 
 | Command | Description |
 |---------|-------------|
 | `mc app` | Manage applications |
 | `mc service` | Manage services (start/stop/logs/deploy) |
 | `mc container` | Manage container-type services |
-| `mc file` | File manager |
-| `mc package` | Build `.mcpkg` packages |
-| `mc registry` | Package registry |
-| `mc install` | Install a package |
+| `mc file` | Remote file manager |
+| `mc package` | Build `.mcpkg` deployment packages |
+| `mc registry` | Browse and search the package registry |
+| `mc install` | Install a package from registry or file |
 | `mc login` / `mc logout` | Authentication |
-| `mc config` | Manage CLI config and contexts |
+| `mc config` | Manage CLI configuration and contexts |
 | `mc server-config` | View server configuration |
-| `mc version` | Print version info |
+| `mc version` | Print client and server version info |
 
-Run `mc [command] --help` for details on any command.
+> 💡 Run `mc <command> --help` for full details on any command.
 
 ---
 
-## Uninstall
+## 🗑️ Uninstall
 
-**Linux (.deb):**
+### Linux (.deb)
 
 ```bash
 sudo systemctl stop minicluster
 sudo dpkg -r minicluster
 # Data is preserved at /var/lib/minicluster — remove manually if needed
+sudo rm -rf /var/lib/minicluster
 ```
 
-**Windows:**
+### Windows
 
 ```powershell
 # Run as Administrator
@@ -285,7 +405,34 @@ sudo dpkg -r minicluster
 
 ---
 
-## Support
+## 🐛 Troubleshooting
 
-- Issues: [github.com/innovatekswd/mini-cluster/issues](https://github.com/innovatekswd/mini-cluster/issues)
-- Source: [github.com/innovatekswd/mini-cluster](https://github.com/innovatekswd/mini-cluster)
+| Problem | Solution |
+|---------|----------|
+| `Connection refused` on :2016 | Check service status: `sudo systemctl status minicluster` |
+| Port already in use | Change port in config or set `MINICLUSTER_PORT` env var |
+| `mc: command not found` | Ensure install directory is in `$PATH` |
+| Authentication errors | Re-login: `mc login --server http://localhost:2016` |
+| Permission denied on logs | Use `sudo journalctl -u minicluster -f` |
+| Windows: script not allowed | Run `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` first |
+
+### Viewing Logs
+
+```bash
+# Linux (systemd)
+sudo journalctl -u minicluster -f
+
+# Linux (tarball — when running directly)
+./minicluster-api 2>&1 | tee minicluster.log
+
+# Windows (PowerShell)
+Get-Content -Tail 50 -Wait "$env:ProgramData\MiniCluster\logs\*.log"
+```
+
+---
+
+## 💬 Support
+
+- **Issues:** [github.com/innovatekswd/mini-cluster/issues](https://github.com/innovatekswd/mini-cluster/issues)
+- **Source:** [github.com/innovatekswd/mini-cluster](https://github.com/innovatekswd/mini-cluster)
+- **Releases:** Browse all versions in [`releases/`](releases/)
