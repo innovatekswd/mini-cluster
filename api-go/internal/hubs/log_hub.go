@@ -74,8 +74,9 @@ func (h *LogHub) BroadcastMetrics(update MetricsUpdate) {
 }
 
 // BroadcastSystemMetrics sends system-level metrics to subscribers.
-func (h *LogHub) BroadcastSystemMetrics(data map[string]any) {
-	h.Clients().Group("system:metrics").Send("MetricsUpdate", data)
+func (h *LogHub) BroadcastSystemMetrics(data any) {
+	defer func() { recover() }() // Guard against panic if hub not yet initialized
+	h.Clients().Group("system:metrics").Send("SystemMetrics", data)
 }
 
 // SendServiceEvent broadcasts a service lifecycle event (started/stopped).

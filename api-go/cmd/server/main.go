@@ -125,6 +125,10 @@ func main() {
 	if containerMgr != nil {
 		metricsCollector.SetContainerManager(containerMgr, databases.App)
 	}
+	// Wire system metrics broadcast to SignalR for real-time UI updates
+	metricsCollector.OnSystemMetrics = func(snap models.SystemMetricsSnapshot) {
+		logHub.BroadcastSystemMetrics(snap)
+	}
 	metricsAggregator := workers.NewMetricsAggregator(databases.Logs, databases.Aggregated, log)
 	directoryCollector := workers.NewDirectoryMetricsCollector(databases.Aggregated, log)
 	hbMonitor := workers.NewHeartbeatMonitor(databases.App, log)

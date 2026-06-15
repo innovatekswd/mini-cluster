@@ -15,7 +15,9 @@
     "rootDirs": [".", "./.react-router/types"],
     "baseUrl": ".",
     "paths": {
-      "~/*": ["./app/*"]
+      "~/*": ["./app/*"],
+      "@hivemind/grid": ["/home/younan/src/innovatek/HiveMind/packages/react/grid/dist/index.d.ts"],
+      "@hivemind/shared": ["/home/younan/src/innovatek/HiveMind/packages/react/shared/dist/index.d.ts"]
     },
     "forceConsistentCasingInFileNames": true,
     "ignoreDeprecations": "5.0",

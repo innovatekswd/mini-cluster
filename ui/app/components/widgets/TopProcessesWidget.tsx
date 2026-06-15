@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { FaSort, FaSortUp, FaSortDown } from "react-icons/fa";
+import { Link } from "react-router";
+import { FaSort, FaSortUp, FaSortDown, FaArrowRight } from "react-icons/fa";
 import { metricsService, type SystemProcessInfo } from "~/services/metricsService";
 import { useCockpitContext } from "~/context/CockpitContext";
 import { formatBytes } from "~/services/metricsService";
@@ -169,9 +170,35 @@ export const TopProcessesWidget: React.FC = () => {
     );
   }
 
+  if (processes.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-32 text-center">
+        <p className="text-sm text-slate-400">No processes found</p>
+        <button
+          onClick={fetchProcesses}
+          className="mt-2 text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
+    <div className="flex flex-col h-full">
+      {/* Header with View All link */}
+      <div className="flex items-center justify-between mb-3 px-1">
+        <h3 className="text-sm font-medium text-slate-200">Top Processes</h3>
+        <Link
+          to="/observe/processes"
+          className="flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+        >
+          <span>View All</span>
+          <FaArrowRight className="text-[10px]" />
+        </Link>
+      </div>
+      <div className="overflow-x-auto flex-1">
+        <table className="w-full">
         <thead>
           <tr className="border-b border-slate-700/50">
             <SortHeader
@@ -249,6 +276,7 @@ export const TopProcessesWidget: React.FC = () => {
           No processes available
         </div>
       )}
+      </div>
     </div>
   );
 };

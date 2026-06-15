@@ -1,5 +1,5 @@
 import React from "react";
-import { FaDesktop, FaClock, FaSync, FaPlay, FaPause } from "react-icons/fa";
+import { FaClock, FaSync, FaPlay, FaPause } from "react-icons/fa";
 import { useCockpitContext, type TimeRange } from "~/context/CockpitContext";
 
 // ============================================================================
@@ -30,11 +30,9 @@ const REFRESH_RATE_OPTIONS: { value: number; label: string }[] = [
 
 export const GlobalContextBar: React.FC = () => {
   const {
-    machineId,
     timeRange,
     refreshRate,
     isLive,
-    setMachine,
     setTimeRange,
     setRefreshRate,
     toggleLive,
@@ -53,22 +51,6 @@ export const GlobalContextBar: React.FC = () => {
 
   return (
     <div className="glass-card border border-slate-700/50 rounded-xl px-4 py-3 flex flex-wrap items-center gap-4">
-      {/* Machine Scope Selector */}
-      <div className="flex items-center gap-2">
-        <FaDesktop className="text-slate-400 text-sm" />
-        <select
-          value={machineId}
-          onChange={(e) => setMachine(e.target.value)}
-          className="bg-slate-800/50 border border-slate-600/50 rounded-lg px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50"
-        >
-          <option value="local">🖥 local</option>
-          {/* Multi-machine options would be added here */}
-        </select>
-      </div>
-
-      {/* Separator */}
-      <div className="w-px h-6 bg-slate-700/50 hidden sm:block" />
-
       {/* Time Range Picker */}
       <div className="flex items-center gap-2">
         <FaClock className="text-slate-400 text-sm" />

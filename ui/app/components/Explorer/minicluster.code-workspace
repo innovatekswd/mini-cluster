@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../../../.."
+		},
+		{
+			"path": "../../../../../minicluster-releases"
+		},
+		{
+			"path": "../../../../../HiveMind"
+		}
+	],
+	"settings": {}
+}

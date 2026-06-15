@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/innovatek/minicluster/internal/models"
 	"github.com/glebarez/sqlite"
+	"github.com/innovatek/minicluster/internal/models"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -59,7 +59,7 @@ func Open(dataDir string) (*DB, error) {
 	}
 
 	aggDB, err := gorm.Open(sqlite.Open(
-		filepath.Join(dataDir, "metrics-aggregated.db")+"?_journal_mode=WAL&_busy_timeout=5000&cache=shared",
+		filepath.Join(dataDir, "metrics-aggregated.db")+"?_journal_mode=WAL&_busy_timeout=5000",
 	), gormCfg)
 	if err != nil {
 		return nil, fmt.Errorf("open aggregated db: %w", err)

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"sort"
 	"strings"
@@ -38,6 +39,7 @@ func (h *MetricsHandler) Routes() chi.Router {
 	r.Get("/system/history", h.systemHistory)
 	r.Get("/system/sessions", h.systemSessions)
 	r.Get("/processes", h.processes)
+	r.Delete("/processes/{pid}", h.killProcess)
 	r.Get("/aggregated", h.aggregated)
 	r.Get("/catalog", h.catalog)
 	return r
@@ -80,21 +82,71 @@ func (h *MetricsHandler) systemSessions(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *MetricsHandler) processes(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, h.provider.GetSystemProcesses())
+	processes := h.provider.GetSystemProcesses()
+
+	q := r.URL.Query()
+	sortBy := q.Get("sortBy")
+	limitStr := q.Get("limit")
+
+	// Apply limit
+	if limitStr != "" {
+		var limit int
+		if _, err := fmt.Sscanf(limitStr, "%d", &limit); err == nil && limit > 0 && limit < len(processes) {
+			processes = processes[:limit]
+		}
+	}
+
+	// Apply sorting
+	if sortBy != "" {
+		sort.Slice(processes, func(i, j int) bool {
+			switch sortBy {
+			case "name":
+				return processes[i].Name < processes[j].Name
+			case "pid":
+				return processes[i].PID < processes[j].PID
+			case "memory":
+				return processes[i].WorkingSetMemory > processes[j].WorkingSetMemory
+			case "threads":
+				return processes[i].ThreadCount > processes[j].ThreadCount
+			case "cpu":
+				return processes[i].CPU > processes[j].CPU
+			case "memMb":
+				return processes[i].MemMB > processes[j].MemMB
+			default:
+				return false
+			}
+		})
+	}
+
+	writeJSON(w, http.StatusOK, processes)
+}
+
+func (h *MetricsHandler) killProcess(w http.ResponseWriter, r *http.Request) {
+	pidStr := chi.URLParam(r, "pid")
+	var pid int
+	if _, err := fmt.Sscanf(pidStr, "%d", &pid); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid pid"})
+		return
+	}
+	if err := h.provider.KillProcess(pid); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "killed", "pid": pidStr})
 }
 
 // ─── Aggregated Metrics API ───────────────────────────────────────────────────
 
 // AggregatedDataPoint represents a single time-bucketed data point.
 type AggregatedDataPoint struct {
-	Timestamp time.Time  `json:"timestamp"`
-	Count     int        `json:"count"`
-	Min       float64    `json:"min"`
-	Max       float64    `json:"max"`
-	Avg       float64    `json:"avg"`
-	P95       *float64   `json:"p95"`
-	Sum       *float64   `json:"sum"`
-	Last      *float64   `json:"last"`
+	Timestamp time.Time `json:"timestamp"`
+	Count     int       `json:"count"`
+	Min       float64   `json:"min"`
+	Max       float64   `json:"max"`
+	Avg       float64   `json:"avg"`
+	P95       *float64  `json:"p95"`
+	Sum       *float64  `json:"sum"`
+	Last      *float64  `json:"last"`
 }
 
 // MetricSummary contains aggregate statistics for a metric over the time range.
@@ -306,12 +358,12 @@ func (h *MetricsHandler) aggregated(w http.ResponseWriter, r *http.Request) {
 
 // MetricCatalogEntry describes a single metric in the catalog.
 type MetricCatalogEntry struct {
-	Name             string   `json:"name"`
-	Unit             string   `json:"unit"`
-	Scopes           []string `json:"scopes"`
-	HasSubEntities   bool     `json:"hasSubEntities"`
-	SubEntityLabel   string   `json:"subEntityLabel,omitempty"`
-	Description      string   `json:"description"`
+	Name           string   `json:"name"`
+	Unit           string   `json:"unit"`
+	Scopes         []string `json:"scopes"`
+	HasSubEntities bool     `json:"hasSubEntities"`
+	SubEntityLabel string   `json:"subEntityLabel,omitempty"`
+	Description    string   `json:"description"`
 }
 
 // CatalogResponse is the response shape for /api/metrics/catalog.

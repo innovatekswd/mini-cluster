@@ -1,0 +1,23 @@
+# Roo Code ignore file - excludes directories from codebase indexing
+
+# Large dependency/tool directories
+.tools/
+node_modules/
+ui/node_modules/
+
+# Built/minified assets
+api-go/cmd/server/static/assets/
+
+# Git (already ignored but explicit)
+.git/
+
+# Build outputs
+build/
+bin/
+obj/
+
+# Test data
+**/testdata/
+
+# Coverage reports
+coverage/

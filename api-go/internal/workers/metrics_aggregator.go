@@ -41,6 +41,9 @@ func NewMetricsAggregator(rawDB, aggDB *gorm.DB, log *zap.Logger) *MetricsAggreg
 // 2. Cascade rollups at hour/day/week boundaries
 // 3. Perform retention cleanup (once per hour)
 func (a *MetricsAggregator) Run(ctx context.Context) {
+	// Backfill any historical windows that were missed while the server was offline.
+	a.backfill()
+
 	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
 
@@ -52,6 +55,41 @@ func (a *MetricsAggregator) Run(ctx context.Context) {
 			a.tick()
 		}
 	}
+}
+
+// backfill processes all 5-minute windows that have raw data in logs.db but no
+// corresponding bucket in metrics-aggregated.db. Called once at startup so that
+// data collected while the server was offline is not lost.
+func (a *MetricsAggregator) backfill() {
+	// Find the oldest unprocessed raw row.
+	var oldest models.SystemMetrics
+	if err := a.rawDB.Order("timestamp asc").First(&oldest).Error; err != nil {
+		return // no raw data yet
+	}
+
+	now := time.Now().UTC()
+	windowEnd := now.Truncate(5 * time.Minute) // don't process the current incomplete window
+
+	// Walk 5-minute windows from oldest raw data up to now.
+	bucketStart := oldest.Timestamp.Truncate(5 * time.Minute)
+	for bucketStart.Before(windowEnd) {
+		bucketEnd := bucketStart.Add(5 * time.Minute)
+
+		// Skip if already aggregated.
+		var existing int64
+		a.aggDB.Model(&models.MetricBucket{}).
+			Where("bucket_time = ? AND bucket_size = ?", bucketStart, "5m").
+			Count(&existing)
+
+		if existing == 0 {
+			a.aggregateSystemMetrics(bucketStart, bucketEnd)
+			a.aggregateProcessMetrics(bucketStart, bucketEnd)
+		}
+
+		bucketStart = bucketEnd
+	}
+
+	a.log.Info("backfill complete")
 }
 
 func (a *MetricsAggregator) tick() {

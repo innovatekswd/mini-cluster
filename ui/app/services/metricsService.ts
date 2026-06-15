@@ -146,6 +146,9 @@ export interface SystemProcessInfo {
   threadCount: number;
   startTime: string | null;
   isResponding: boolean;
+  cpu?: number;
+  memMb?: number;
+  status?: string;
 }
 
 export interface SystemMetricsHistory {
@@ -303,6 +306,11 @@ export const metricsService = {
     if (sortBy) params.append("sortBy", sortBy);
     if (limit) params.append("limit", limit.toString());
     const res = await apiClient.get(`/api/metrics/processes?${params.toString()}`);
+    return res.data;
+  },
+
+  async killProcess(pid: number): Promise<{ status: string; pid: string }> {
+    const res = await apiClient.delete(`/api/metrics/processes/${pid}`);
     return res.data;
   },
 

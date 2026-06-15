@@ -11,19 +11,16 @@ import {
   FaExpand,
   FaCompress,
   FaFile,
-  FaArchive,
 } from 'react-icons/fa';
-import { 
-  explorerService, 
-  type FileItem, 
+import {
+  explorerService,
+  type FileItem,
   type DirectoryListing,
   isEditable,
   isPreviewable,
-  isArchive,
 } from '~/services/explorerService';
-import { FileIcon } from './FileIcon';
 import { AddressBar } from './AddressBar';
-import { FileRow } from './FileRow';
+import { FileGrid } from './FileGrid';
 import { ContextMenu } from './ContextMenu';
 import { PreviewPanel } from './PreviewPanel';
 import { UploadModal } from './UploadModal';
@@ -139,17 +136,7 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({ initialPath = '', ma
     }
   };
 
-  const handleSelect = (item: FileItem, multi: boolean) => {
-    setSelectedItems(prev => {
-      const newSet = new Set(multi ? prev : []);
-      if (newSet.has(item.path)) {
-        newSet.delete(item.path);
-      } else {
-        newSet.add(item.path);
-      }
-      return newSet;
-    });
-  };
+
 
   const handleOpen = (item: FileItem) => {
     if (item.type === 'directory') {
@@ -447,7 +434,7 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({ initialPath = '', ma
         <div className="flex-none flex items-center justify-between px-6 py-4 border-b border-slate-800">
           <div className="flex items-center gap-3">
             <FaFolder className="text-2xl text-amber-400" />
-            <h1 className="text-xl font-bold">File Explorer</h1>
+            <h1 className="text-xl font-bold">Select a folder to browse</h1>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handleRefresh} className="icon-btn" title="Refresh">
@@ -458,7 +445,6 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({ initialPath = '', ma
 
         {/* Root paths */}
         <div className="flex-1 p-6">
-          <h2 className="text-lg font-medium mb-4 text-slate-300">Select a folder to browse:</h2>
           
           {error && (
             <div className="bg-rose-500/10 border border-rose-500/50 text-rose-400 px-4 py-3 rounded-xl mb-4">
@@ -623,70 +609,17 @@ export const ExplorerPage: React.FC<ExplorerPageProps> = ({ initialPath = '', ma
         )}
         {/* File list */}
         <div className={`flex-1 flex flex-col min-w-0 ${previewItem ? 'hidden md:flex md:w-1/2' : ''}`}>
-          {/* Column headers */}
-          <div className="flex items-center gap-3 px-3 py-2 border-b border-slate-800 text-xs text-slate-500 uppercase tracking-wider">
-            <div className="w-5"></div>
-            <div className="flex-1">Name</div>
-            <div className="w-20 text-right">Size</div>
-            <div className="w-36 text-right hidden md:block">Modified</div>
-          </div>
-
-          {/* Files */}
-          <div className="flex-1 overflow-y-auto">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full" />
-              </div>
-            ) : (listing?.items?.length ?? 0) === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-slate-500">
-                <FaFolder className="text-4xl mb-3 opacity-50" />
-                <p>Empty folder</p>
-              </div>
-            ) : (
-              listing?.items.map(item => (
-                <FileRow
-                  key={item.path}
-                  item={item}
-                  isSelected={selectedItems.has(item.path)}
-                  isCut={clipboard?.action === 'cut' && clipboard.items.includes(item.path)}
-                  onSelect={handleSelect}
-                  onOpen={handleOpen}
-                  onContextMenu={handleContextMenu}
-                />
-              ))
-            )}
-          </div>
-
-          {/* Status bar */}
-          <div className="flex-none px-4 py-2 border-t border-slate-800 text-xs text-slate-500 flex items-center justify-between">
-            <span>
-              {listing && (
-                <>
-                  {listing.totalItems} items
-                  {selectedItems.size > 0 && ` • ${selectedItems.size} selected`}
-                </>
-              )}
-            </span>
-            <div className="flex items-center gap-3">
-              {/* Bulk compress button */}
-              {selectedItems.size > 0 && (
-                <button
-                  onClick={() => setCompressPaths(Array.from(selectedItems))}
-                  className="flex items-center gap-1.5 text-cyan-400 hover:text-cyan-300 transition-colors"
-                  title="Compress selected items"
-                >
-                  <FaArchive className="text-xs" />
-                  <span>Compress</span>
-                </button>
-              )}
-              {clipboard && (
-                <span className="flex items-center gap-2 text-amber-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                  {clipboard.items.length} {clipboard.action === 'copy' ? 'copied' : 'cut'} to clipboard
-                </span>
-              )}
-            </div>
-          </div>
+          <FileGrid
+            listing={listing}
+            loading={loading}
+            selectedItems={selectedItems}
+            clipboard={clipboard}
+            searchQuery={searchQuery}
+            onOpen={handleOpen}
+            onContextMenu={handleContextMenu}
+            onSelectionChange={(paths: string[]) => setSelectedItems(new Set(paths))}
+            onCompress={(paths: string[]) => setCompressPaths(paths)}
+          />
         </div>
 
         {/* Preview panel */}

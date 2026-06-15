@@ -7,6 +7,7 @@ type MetricsProvider interface {
 	GetAllCurrentMetrics() map[string]ProcessMetricsSnapshot
 	GetSystemMetrics() SystemMetricsSnapshot
 	GetSystemProcesses() []SystemProcessInfo
+	KillProcess(pid int) error
 }
 
 type ProcessMetricsSnapshot struct {
@@ -40,19 +41,19 @@ type DiskInfo struct {
 	UsedSpace     int64   `json:"usedSpace"`      // bytes
 	AvailSpace    int64   `json:"availableSpace"` // bytes
 	UsagePercent  float64 `json:"usagePercent"`
-	ReadBytes     int64   `json:"readBytes"`      // cumulative total
-	WriteBytes    int64   `json:"writeBytes"`     // cumulative total
-	ReadRate      float64 `json:"readRate"`       // bytes/sec (delta)
-	WriteRate     float64 `json:"writeRate"`      // bytes/sec (delta)
-	ReadOps       int64   `json:"readOps"`        // cumulative read operations
-	WriteOps      int64   `json:"writeOps"`       // cumulative write operations
-	ReadOpsRate   float64 `json:"readOpsRate"`    // ops/sec (delta)
-	WriteOpsRate  float64 `json:"writeOpsRate"`   // ops/sec (delta)
-	ReadTimeMs    int64   `json:"readTimeMs"`     // cumulative read time (ms)
-	WriteTimeMs   int64   `json:"writeTimeMs"`    // cumulative write time (ms)
-	InodesUsed    int64   `json:"inodesUsed"`     // Linux only
-	InodesFree    int64   `json:"inodesFree"`     // Linux only
-	InodesPercent float64 `json:"inodesPercent"`  // Linux only
+	ReadBytes     int64   `json:"readBytes"`     // cumulative total
+	WriteBytes    int64   `json:"writeBytes"`    // cumulative total
+	ReadRate      float64 `json:"readRate"`      // bytes/sec (delta)
+	WriteRate     float64 `json:"writeRate"`     // bytes/sec (delta)
+	ReadOps       int64   `json:"readOps"`       // cumulative read operations
+	WriteOps      int64   `json:"writeOps"`      // cumulative write operations
+	ReadOpsRate   float64 `json:"readOpsRate"`   // ops/sec (delta)
+	WriteOpsRate  float64 `json:"writeOpsRate"`  // ops/sec (delta)
+	ReadTimeMs    int64   `json:"readTimeMs"`    // cumulative read time (ms)
+	WriteTimeMs   int64   `json:"writeTimeMs"`   // cumulative write time (ms)
+	InodesUsed    int64   `json:"inodesUsed"`    // Linux only
+	InodesFree    int64   `json:"inodesFree"`    // Linux only
+	InodesPercent float64 `json:"inodesPercent"` // Linux only
 }
 
 // NetworkInterfaceInfo mirrors the .NET NetworkInterfaceInfo DTO.
@@ -106,9 +107,13 @@ type SystemMetricsSnapshot struct {
 }
 
 type SystemProcessInfo struct {
-	PID    int     `json:"pid"`
-	Name   string  `json:"name"`
-	CPU    float64 `json:"cpu"`
-	MemMB  float64 `json:"memMb"`
-	Status string  `json:"status"`
+	PID              int     `json:"processId"`
+	Name             string  `json:"processName"`
+	WorkingSetMemory int64   `json:"workingSetMemory"`
+	ThreadCount      int     `json:"threadCount"`
+	StartTime        string  `json:"startTime"`
+	IsResponding     bool    `json:"isResponding"`
+	CPU              float64 `json:"cpu"`
+	MemMB            float64 `json:"memMb"`
+	Status           string  `json:"status"`
 }

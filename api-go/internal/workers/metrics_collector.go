@@ -39,6 +39,12 @@ type diskState struct {
 	prevTime       time.Time
 }
 
+// processCpuState tracks previous CPU times for calculating CPU percent.
+type processCpuState struct {
+	prevTotalTime float64 // total CPU time in seconds
+	prevTime      time.Time
+}
+
 // MetricsCollector collects system and process metrics at regular intervals.
 type MetricsCollector struct {
 	logsDB          *gorm.DB
@@ -47,14 +53,19 @@ type MetricsCollector struct {
 	log             *zap.Logger
 	containerMgr    *services.ContainerManager // nil when no container runtime available
 
-	mu      sync.RWMutex
-	current map[string]models.ProcessMetricsSnapshot
-	system  models.SystemMetricsSnapshot
+	mu               sync.RWMutex
+	processCpuStates map[int32]*processCpuState
+	current          map[string]models.ProcessMetricsSnapshot
+	system           models.SystemMetricsSnapshot
 
 	// Network state for delta computation (keyed by interface name)
 	networkState map[string]*networkState
 	// Disk state for delta computation (keyed by mount point)
 	diskState map[string]*diskState
+
+	// OnSystemMetrics is called after each system metrics collection cycle.
+	// Used to broadcast metrics via SignalR for real-time UI updates.
+	OnSystemMetrics func(models.SystemMetricsSnapshot)
 }
 
 func NewMetricsCollector(logsDB *gorm.DB, intervalSeconds int, log *zap.Logger) *MetricsCollector {
@@ -106,6 +117,22 @@ func (c *MetricsCollector) collect(ctx context.Context) {
 	c.system = snap
 	c.mu.Unlock()
 
+	// Broadcast to SignalR subscribers (if callback is wired)
+	if c.OnSystemMetrics != nil {
+		c.OnSystemMetrics(snap)
+	}
+
+	// Aggregate disk totals across all mount points for the flat DB row.
+	var totalDisk, usedDisk int64
+	for _, d := range snap.Disks {
+		totalDisk += d.TotalSize
+		usedDisk += d.UsedSpace
+	}
+	diskPct := 0.0
+	if totalDisk > 0 {
+		diskPct = float64(usedDisk) / float64(totalDisk) * 100
+	}
+
 	c.logsDB.Create(&models.SystemMetrics{
 		Timestamp:            time.Now().UTC(),
 		CpuUsagePercent:      snap.CpuUsagePercent,
@@ -121,6 +148,9 @@ func (c *MetricsCollector) collect(ctx context.Context) {
 		SwapTotal:            snap.SwapTotal,
 		SwapUsed:             snap.SwapUsed,
 		SwapPercent:          snap.SwapPercent,
+		TotalDiskSpace:       totalDisk,
+		UsedDiskSpace:        usedDisk,
+		DiskUsagePercent:     diskPct,
 		TotalProcesses:       snap.TotalProcesses,
 		NetworkBytesSent:     snap.TotalBytesSent,
 		NetworkBytesReceived: snap.TotalBytesRecv,
@@ -228,9 +258,126 @@ func (c *MetricsCollector) GetSystemMetrics() models.SystemMetricsSnapshot {
 	return c.system
 }
 
-// GetSystemProcesses implements MetricsProvider (returns empty list — OS-level enumeration is platform-specific).
+// GetSystemProcesses implements MetricsProvider by enumerating OS processes via gopsutil.
 func (c *MetricsCollector) GetSystemProcesses() []models.SystemProcessInfo {
-	return []models.SystemProcessInfo{}
+	pids, err := psproc.Pids()
+	if err != nil {
+		c.log.Warn("Failed to get process list", zap.Error(err))
+		return []models.SystemProcessInfo{}
+	}
+
+	now := time.Now()
+
+	// Collect info for all processes (limit to avoid excessive work)
+	var results []models.SystemProcessInfo
+	for _, pid := range pids {
+		proc, err := psproc.NewProcess(pid)
+		if err != nil {
+			continue // process may have exited
+		}
+
+		name, err := proc.Name()
+		if err != nil {
+			name = "unknown"
+		}
+
+		memInfo, err := proc.MemoryInfo()
+		var workingSet int64
+		var memMb float64
+		if err == nil {
+			workingSet = int64(memInfo.RSS)
+			memMb = float64(memInfo.RSS) / (1024 * 1024)
+		}
+
+		threads, err := proc.NumThreads()
+		if err != nil {
+			threads = 0
+		}
+
+		createTime, err := proc.CreateTime()
+		var startTime string
+		if err == nil {
+			startTime = time.UnixMilli(createTime).UTC().Format(time.RFC3339)
+		}
+
+		// isResponding and status: on Linux, check if process is not zombie
+		isResponding := true
+		statusStr := "Running"
+		statuses, err := proc.Status()
+		if err == nil && len(statuses) > 0 {
+			statusStr = statuses[0]
+			for _, s := range statuses {
+				if s == psproc.Zombie {
+					isResponding = false
+					statusStr = "Zombie"
+					break
+				}
+				if s == psproc.Stop {
+					isResponding = false
+					statusStr = "Stopped"
+					break
+				}
+			}
+		}
+
+		// Calculate CPU percent
+		var cpuPercent float64
+		times, err := proc.Times()
+		if err == nil {
+			totalTime := times.User + times.System
+
+			c.mu.Lock()
+			if c.processCpuStates == nil {
+				c.processCpuStates = make(map[int32]*processCpuState)
+			}
+			prev := c.processCpuStates[pid]
+			if prev != nil {
+				elapsed := now.Sub(prev.prevTime).Seconds()
+				if elapsed > 0 {
+					cpuPercent = ((totalTime - prev.prevTotalTime) / elapsed) * 100
+					if cpuPercent < 0 {
+						cpuPercent = 0
+					}
+					if cpuPercent > 100*8 { // cap at 800% (8 cores)
+						cpuPercent = 0
+					}
+				}
+			}
+			c.processCpuStates[pid] = &processCpuState{
+				prevTotalTime: totalTime,
+				prevTime:      now,
+			}
+			c.mu.Unlock()
+		}
+
+		results = append(results, models.SystemProcessInfo{
+			PID:              int(pid),
+			Name:             name,
+			WorkingSetMemory: workingSet,
+			ThreadCount:      int(threads),
+			StartTime:        startTime,
+			IsResponding:     isResponding,
+			CPU:              cpuPercent,
+			MemMB:            memMb,
+			Status:           statusStr,
+		})
+
+		// Cap at 500 processes to avoid overwhelming the client
+		if len(results) >= 500 {
+			break
+		}
+	}
+
+	return results
+}
+
+// KillProcess terminates a process by PID using SIGKILL on Linux/macOS or TerminateProcess on Windows.
+func (c *MetricsCollector) KillProcess(pid int) error {
+	proc, err := psproc.NewProcess(int32(pid))
+	if err != nil {
+		return fmt.Errorf("process %d not found: %w", pid, err)
+	}
+	return proc.Kill()
 }
 
 func (c *MetricsCollector) collectSystem() models.SystemMetricsSnapshot {
@@ -272,7 +419,7 @@ func (c *MetricsCollector) collectSystem() models.SystemMetricsSnapshot {
 	if parts, err := disk.Partitions(false); err == nil {
 		// Get IO counters for rate computation
 		ioCounters, _ := disk.IOCounters()
-		
+
 		for _, p := range parts {
 			if usage, err := disk.Usage(p.Mountpoint); err == nil {
 				diskInfo := models.DiskInfo{
@@ -285,7 +432,7 @@ func (c *MetricsCollector) collectSystem() models.SystemMetricsSnapshot {
 					InodesFree:    int64(usage.InodesFree),
 					InodesPercent: usage.InodesUsedPercent,
 				}
-				
+
 				// Compute IO rates if available
 				if io, ok := ioCounters[p.Device]; ok {
 					prev := c.diskState[p.Mountpoint]
@@ -293,22 +440,22 @@ func (c *MetricsCollector) collectSystem() models.SystemMetricsSnapshot {
 						prev = &diskState{prevTime: now}
 						c.diskState[p.Mountpoint] = prev
 					}
-					
+
 					elapsed := now.Sub(prev.prevTime).Seconds()
-					
+
 					diskInfo.ReadBytes = int64(io.ReadBytes)
 					diskInfo.WriteBytes = int64(io.WriteBytes)
 					diskInfo.ReadOps = int64(io.ReadCount)
 					diskInfo.WriteOps = int64(io.WriteCount)
 					diskInfo.ReadTimeMs = int64(io.ReadTime)
 					diskInfo.WriteTimeMs = int64(io.WriteTime)
-					
+
 					// Compute rates
 					diskInfo.ReadRate = computeDelta(io.ReadBytes, prev.prevReadBytes, elapsed)
 					diskInfo.WriteRate = computeDelta(io.WriteBytes, prev.prevWriteBytes, elapsed)
 					diskInfo.ReadOpsRate = computeDelta(io.ReadCount, prev.prevReadCount, elapsed)
 					diskInfo.WriteOpsRate = computeDelta(io.WriteCount, prev.prevWriteCount, elapsed)
-					
+
 					// Update state
 					prev.prevReadBytes = io.ReadBytes
 					prev.prevWriteBytes = io.WriteBytes
@@ -318,7 +465,7 @@ func (c *MetricsCollector) collectSystem() models.SystemMetricsSnapshot {
 					prev.prevWriteTime = io.WriteTime
 					prev.prevTime = now
 				}
-				
+
 				snap.Disks = append(snap.Disks, diskInfo)
 			}
 		}
@@ -405,4 +552,3 @@ func (c *MetricsCollector) collectSystem() models.SystemMetricsSnapshot {
 
 	return snap
 }
-

@@ -1,5 +1,4 @@
-import React, { useMemo } from "react";
-import { Link } from "react-router";
+import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { metricsService, type SystemMetricsHistory } from "~/services/metricsService";
 
@@ -13,8 +12,24 @@ interface SparklineData {
   color: string;
   unit: string;
   currentValue: string;
-  link: string;
 }
+
+export type SparklineRange = "1h" | "6h" | "24h" | "7d" | "30d";
+
+interface TimeRangeOption {
+  value: SparklineRange;
+  label: string;
+  hours: number;
+  buckets: number;
+}
+
+export const SPARKLINE_RANGE_OPTIONS: TimeRangeOption[] = [
+  { value: "1h", label: "1h", hours: 1, buckets: 12 },      // 5-min buckets
+  { value: "6h", label: "6h", hours: 6, buckets: 24 },      // 15-min buckets
+  { value: "24h", label: "24h", hours: 24, buckets: 48 },   // 30-min buckets
+  { value: "7d", label: "7d", hours: 168, buckets: 56 },    // 3-hour buckets
+  { value: "30d", label: "30d", hours: 720, buckets: 60 },  // 12-hour buckets
+];
 
 // ============================================================================
 // Sparkline SVG Component
@@ -83,14 +98,25 @@ const Sparkline: React.FC<{
 // Main Component
 // ============================================================================
 
-export const SparklinesWidget: React.FC = () => {
-  // Fetch 24h of data with 48 points (30-minute buckets)
+interface SparklinesWidgetProps {
+  selectedRange?: SparklineRange;
+  onRangeChange?: (range: SparklineRange) => void;
+}
+
+export const SparklinesWidget: React.FC<SparklinesWidgetProps> = ({ selectedRange: controlledRange, onRangeChange }) => {
+  const [internalRange, setInternalRange] = useState<SparklineRange>("24h");
+  const selectedRange = controlledRange ?? internalRange;
+  const setSelectedRange = onRangeChange ?? setInternalRange;
+
+  const rangeOption = SPARKLINE_RANGE_OPTIONS.find((o) => o.value === selectedRange) || SPARKLINE_RANGE_OPTIONS[2];
+
+  // Fetch data based on selected time range
   const { data: history, isLoading } = useQuery({
-    queryKey: ["sparklines-24h"],
+    queryKey: ["sparklines", selectedRange],
     queryFn: async () => {
       const to = new Date();
-      const from = new Date(to.getTime() - 24 * 60 * 60 * 1000);
-      return metricsService.getSystemMetricsHistory(from, to, 48);
+      const from = new Date(to.getTime() - rangeOption.hours * 60 * 60 * 1000);
+      return metricsService.getSystemMetricsHistory(from, to, rangeOption.buckets);
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchInterval: 60 * 1000, // 1 minute
@@ -99,11 +125,11 @@ export const SparklinesWidget: React.FC = () => {
   const sparklines = useMemo<SparklineData[]>(() => {
     if (!history || history.length === 0) {
       return [
-        { label: "CPU", data: [], color: "#06b6d4", unit: "%", currentValue: "—", link: "/analytics" },
-        { label: "Memory", data: [], color: "#8b5cf6", unit: "%", currentValue: "—", link: "/analytics" },
-        { label: "Disk", data: [], color: "#10b981", unit: "%", currentValue: "—", link: "/analytics" },
-        { label: "Net ↑", data: [], color: "#f59e0b", unit: "MB/s", currentValue: "—", link: "/analytics" },
-        { label: "Net ↓", data: [], color: "#f97316", unit: "MB/s", currentValue: "—", link: "/analytics" },
+        { label: "CPU", data: [], color: "#06b6d4", unit: "%", currentValue: "—" },
+        { label: "Memory", data: [], color: "#8b5cf6", unit: "%", currentValue: "—" },
+        { label: "Disk", data: [], color: "#10b981", unit: "%", currentValue: "—" },
+        { label: "Net ↑", data: [], color: "#f59e0b", unit: "MB/s", currentValue: "—" },
+        { label: "Net ↓", data: [], color: "#f97316", unit: "MB/s", currentValue: "—" },
       ];
     }
 
@@ -120,11 +146,11 @@ export const SparklinesWidget: React.FC = () => {
     const lastRecv = recvRateData[recvRateData.length - 1] ?? 0;
 
     return [
-      { label: "CPU", data: cpuData, color: "#06b6d4", unit: "%", currentValue: `${lastCpu.toFixed(1)}%`, link: "/analytics?metric=cpu" },
-      { label: "Memory", data: memData, color: "#8b5cf6", unit: "%", currentValue: `${lastMem.toFixed(1)}%`, link: "/analytics?metric=memory" },
-      { label: "Disk", data: diskData, color: "#10b981", unit: "%", currentValue: `${lastDisk.toFixed(1)}%`, link: "/analytics?metric=disk" },
-      { label: "Net ↑", data: sendRateData, color: "#f59e0b", unit: "MB/s", currentValue: `${lastSend.toFixed(1)} MB/s`, link: "/analytics?metric=network" },
-      { label: "Net ↓", data: recvRateData, color: "#f97316", unit: "MB/s", currentValue: `${lastRecv.toFixed(1)} MB/s`, link: "/analytics?metric=network" },
+      { label: "CPU", data: cpuData, color: "#06b6d4", unit: "%", currentValue: `${lastCpu.toFixed(1)}%` },
+      { label: "Memory", data: memData, color: "#8b5cf6", unit: "%", currentValue: `${lastMem.toFixed(1)}%` },
+      { label: "Disk", data: diskData, color: "#10b981", unit: "%", currentValue: `${lastDisk.toFixed(1)}%` },
+      { label: "Net ↑", data: sendRateData, color: "#f59e0b", unit: "MB/s", currentValue: `${lastSend.toFixed(1)} MB/s` },
+      { label: "Net ↓", data: recvRateData, color: "#f97316", unit: "MB/s", currentValue: `${lastRecv.toFixed(1)} MB/s` },
     ];
   }, [history]);
 
@@ -145,23 +171,44 @@ export const SparklinesWidget: React.FC = () => {
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-      {sparklines.map((sparkline) => (
-        <Link
-          key={sparkline.label}
-          to={sparkline.link}
-          className="bg-slate-800/30 border border-slate-700/30 rounded-lg p-3 hover:bg-slate-800/50 transition-colors group"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-medium text-slate-400">{sparkline.label}</span>
-            <span className="text-xs text-slate-500 group-hover:text-slate-300">24h</span>
+    <div className="space-y-3">
+      {/* Time Range Selector */}
+      <div className="flex items-center justify-end">
+        <div className="flex items-center gap-1 bg-slate-800/50 border border-slate-700/50 rounded-lg p-1">
+          {SPARKLINE_RANGE_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => setSelectedRange(option.value)}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                selectedRange === option.value
+                  ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-700/50"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Sparklines Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+        {sparklines.map((sparkline) => (
+          <div
+            key={sparkline.label}
+            className="bg-slate-800/30 border border-slate-700/30 rounded-lg p-3 group"
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-medium text-slate-400">{sparkline.label}</span>
+              <span className="text-xs text-slate-500">{selectedRange}</span>
+            </div>
+            <Sparkline data={sparkline.data} color={sparkline.color} height={28} />
+            <div className="mt-1">
+              <span className="text-sm font-medium text-slate-200">{sparkline.currentValue}</span>
+            </div>
           </div>
-          <Sparkline data={sparkline.data} color={sparkline.color} height={28} />
-          <div className="mt-1">
-            <span className="text-sm font-medium text-slate-200">{sparkline.currentValue}</span>
-          </div>
-        </Link>
-      ))}
+        ))}
+      </div>
     </div>
   );
 };

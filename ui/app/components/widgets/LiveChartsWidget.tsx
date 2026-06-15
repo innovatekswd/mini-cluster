@@ -10,7 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { useSystemMetricsHistory } from "~/hooks/useSystemMetricsHistory";
+import { useLiveSystemMetrics } from "~/hooks/useLiveSystemMetrics";
 
 // ============================================================================
 // Types
@@ -65,7 +65,7 @@ interface ChartCardProps {
   data: number[];
   timestamps: string[];
   color: "blue" | "green" | "violet" | "cyan" | "amber";
-  maxValue?: number;
+  maxValue?: number; // Set to undefined for dynamic scaling
   unit?: string;
   viewAllLink: string;
   currentLabel?: string;
@@ -87,6 +87,14 @@ const ChartCard: React.FC<ChartCardProps> = ({
   const stats = useMemo(() => calcStats(data), [data]);
   const currentValue = data.length > 0 ? data[data.length - 1] : 0;
 
+  // Dynamic Y-axis scaling: if maxValue is not provided, calculate from data
+  const dynamicMaxValue = useMemo(() => {
+    if (maxValue !== undefined) return maxValue;
+    const max = stats.max;
+    // Add 20% padding and minimum of 10 to avoid tiny scales
+    return Math.max(max * 1.2, 10);
+  }, [maxValue, stats.max]);
+
   const chartData = useMemo(() => {
     return data.map((value, index) => ({
       time: timestamps[index] || "",
@@ -97,7 +105,7 @@ const ChartCard: React.FC<ChartCardProps> = ({
   const colors = COLOR_MAP[color] || COLOR_MAP.blue;
 
   return (
-    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex flex-col">
+    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
@@ -114,8 +122,8 @@ const ChartCard: React.FC<ChartCardProps> = ({
       </div>
 
       {/* Chart */}
-      <div className="flex-1 min-h-0 h-32">
-        <ResponsiveContainer width="100%" height="100%">
+      <div style={{ height: 128, width: "100%" }}>
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id={`gradient-${color}`} x1="0" y1="0" x2="0" y2="1">
@@ -134,7 +142,7 @@ const ChartCard: React.FC<ChartCardProps> = ({
               interval="preserveStartEnd"
             />
             <YAxis
-              domain={[0, maxValue]}
+              domain={[0, dynamicMaxValue]}
               stroke="#64748b"
               fontSize={10}
               tickLine={false}
@@ -202,6 +210,22 @@ interface NetworkChartCardProps {
   viewAllLink: string;
 }
 
+// Adaptive unit formatting: show KB/s for small values, MB/s for larger
+function formatNetworkRate(valueMBps: number): string {
+  if (valueMBps < 0.1) {
+    return `${(valueMBps * 1024).toFixed(1)} KB/s`;
+  }
+  return `${valueMBps.toFixed(2)} MB/s`;
+}
+
+function getNetworkUnit(valueMBps: number): string {
+  return valueMBps < 0.1 ? "KB/s" : "MB/s";
+}
+
+function toDisplayValue(valueMBps: number): number {
+  return valueMBps < 0.1 ? valueMBps * 1024 : valueMBps;
+}
+
 const NetworkChartCard: React.FC<NetworkChartCardProps> = ({
   sendData,
   receiveData,
@@ -215,21 +239,26 @@ const NetworkChartCard: React.FC<NetworkChartCardProps> = ({
 
   // Combine data for max value calculation
   const allData = [...sendData, ...receiveData];
-  const maxValue = allData.length > 0 ? Math.max(...allData) * 1.2 : 100;
+  const maxMBps = allData.length > 0 ? Math.max(...allData) * 1.2 : 0.1;
+  // Use KB/s scale if max is small
+  const useKB = maxMBps < 0.1;
+  const maxValue = useKB ? maxMBps * 1024 : maxMBps;
+  const unit = useKB ? "KB/s" : "MB/s";
+  const toDisplay = (v: number) => (useKB ? v * 1024 : v);
 
   const sendChartData = useMemo(() => {
     return sendData.map((value, index) => ({
       time: timestamps[index] || "",
-      value,
+      value: toDisplay(value),
     }));
-  }, [sendData, timestamps]);
+  }, [sendData, timestamps, useKB]);
 
   const receiveChartData = useMemo(() => {
     return receiveData.map((value, index) => ({
       time: timestamps[index] || "",
-      value,
+      value: toDisplay(value),
     }));
-  }, [receiveData, timestamps]);
+  }, [receiveData, timestamps, useKB]);
 
   return (
     <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex flex-col">
@@ -254,10 +283,10 @@ const NetworkChartCard: React.FC<NetworkChartCardProps> = ({
         <div>
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs text-emerald-400">↑ Send</span>
-            <span className="text-xs text-slate-300">{currentSend.toFixed(1)} MB/s</span>
+            <span className="text-xs text-slate-300">{formatNetworkRate(currentSend)}</span>
           </div>
           <div className="h-16">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <AreaChart data={sendChartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="gradient-send" x1="0" y1="0" x2="0" y2="1">
@@ -277,7 +306,7 @@ const NetworkChartCard: React.FC<NetworkChartCardProps> = ({
                   }}
                   labelStyle={{ color: "#94a3b8" }}
                   itemStyle={{ color: "#10b981" }}
-                  formatter={(value) => [`${Number(value).toFixed(1)} MB/s`, "Send"]}
+                  formatter={(value) => [`${Number(value).toFixed(2)} ${unit}`, "Send"]}
                   labelFormatter={(label) => formatTimeLabel(String(label))}
                 />
                 <Area
@@ -297,10 +326,10 @@ const NetworkChartCard: React.FC<NetworkChartCardProps> = ({
         <div>
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs text-cyan-400">↓ Receive</span>
-            <span className="text-xs text-slate-300">{currentReceive.toFixed(1)} MB/s</span>
+            <span className="text-xs text-slate-300">{formatNetworkRate(currentReceive)}</span>
           </div>
           <div className="h-16">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <AreaChart
                 data={receiveChartData}
                 margin={{ top: 5, right: 5, left: -20, bottom: 0 }}
@@ -331,7 +360,7 @@ const NetworkChartCard: React.FC<NetworkChartCardProps> = ({
                   }}
                   labelStyle={{ color: "#94a3b8" }}
                   itemStyle={{ color: "#06b6d4" }}
-                  formatter={(value) => [`${Number(value).toFixed(1)} MB/s`, "Receive"]}
+                  formatter={(value) => [`${Number(value).toFixed(2)} ${unit}`, "Receive"]}
                   labelFormatter={(label) => formatTimeLabel(String(label))}
                 />
                 <Area
@@ -353,12 +382,12 @@ const NetworkChartCard: React.FC<NetworkChartCardProps> = ({
         <div className="flex items-center gap-2">
           <span className="text-emerald-400">↑</span>
           <span className="text-slate-500">Peak:</span>
-          <span className="text-slate-300">{sendStats.max.toFixed(1)} MB/s</span>
+          <span className="text-slate-300">{formatNetworkRate(sendStats.max)}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-cyan-400">↓</span>
           <span className="text-slate-500">Peak:</span>
-          <span className="text-slate-300">{receiveStats.max.toFixed(1)} MB/s</span>
+          <span className="text-slate-300">{formatNetworkRate(receiveStats.max)}</span>
         </div>
       </div>
     </div>
@@ -371,7 +400,6 @@ const NetworkChartCard: React.FC<NetworkChartCardProps> = ({
 
 export const LiveChartsWidget: React.FC = () => {
   const {
-    current,
     cpuHistory,
     memoryHistory,
     diskHistory,
@@ -379,7 +407,7 @@ export const LiveChartsWidget: React.FC = () => {
     networkReceiveHistory,
     timestamps,
     isLoading,
-  } = useSystemMetricsHistory();
+  } = useLiveSystemMetrics();
 
   if (isLoading) {
     return (
@@ -406,7 +434,7 @@ export const LiveChartsWidget: React.FC = () => {
         color="blue"
         maxValue={100}
         unit="%"
-        viewAllLink="/machines/local/resources"
+        viewAllLink="/observe/resources"
         currentColor="text-cyan-400"
       />
 
@@ -419,7 +447,7 @@ export const LiveChartsWidget: React.FC = () => {
         color="violet"
         maxValue={100}
         unit="%"
-        viewAllLink="/machines/local/resources"
+        viewAllLink="/observe/resources"
         currentColor="text-violet-400"
       />
 
@@ -428,7 +456,7 @@ export const LiveChartsWidget: React.FC = () => {
         sendData={networkSendHistory}
         receiveData={networkReceiveHistory}
         timestamps={timestamps}
-        viewAllLink="/machines/local/network"
+        viewAllLink="/observe/resources"
       />
 
       {/* Disk Usage Chart */}
@@ -440,7 +468,7 @@ export const LiveChartsWidget: React.FC = () => {
         color="amber"
         maxValue={100}
         unit="%"
-        viewAllLink="/machines/local/disks"
+        viewAllLink="/observe/resources"
         currentColor="text-amber-400"
       />
     </div>
