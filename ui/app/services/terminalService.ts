@@ -60,12 +60,15 @@ class TerminalService {
     const baseUrl = getBaseUrl();
     
     this.connection = new signalR.HubConnectionBuilder()
-      .withUrl(`${baseUrl}/terminalhub`, {
-        skipNegotiation: false,
-        transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.ServerSentEvents,
+      .withUrl(`${baseUrl}/terminalhub`)
+      .withAutomaticReconnect({
+        nextRetryDelayInMilliseconds: (retryContext) => {
+          // Exponential backoff capped at 60s — retries indefinitely
+          return Math.min(1000 * 2 ** retryContext.previousRetryCount, 60_000);
+        }
       })
-      .withServerTimeout(60000)     // Match server's 60s ClientTimeoutInterval
-      .withKeepAliveInterval(30000) // Match server's 30s KeepAliveInterval
+      .withServerTimeout(120000)    // Match server's 120s ClientTimeoutInterval
+      .withKeepAliveInterval(15000) // Match server's 15s KeepAliveInterval
       .configureLogging(signalR.LogLevel.None)
       .build();
 

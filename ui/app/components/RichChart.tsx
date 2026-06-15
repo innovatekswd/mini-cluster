@@ -109,7 +109,7 @@ export function RichChart({
       viewBox={`0 0 ${width} ${chartHeight}`}
       className="w-full"
       style={{ height: chartHeight }}
-      preserveAspectRatio="none"
+      preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label={ariaLabel}
     >
