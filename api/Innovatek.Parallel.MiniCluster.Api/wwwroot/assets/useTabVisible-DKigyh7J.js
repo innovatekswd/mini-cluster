@@ -1,0 +1,1 @@
+import{r as t}from"./chunk-KNED5TY2-DBlN9BCJ.js";function r(){const[i,n]=t.useState(!document.hidden);return t.useEffect(()=>{const e=()=>n(!document.hidden);return document.addEventListener("visibilitychange",e),()=>document.removeEventListener("visibilitychange",e)},[]),i}export{r as u};
