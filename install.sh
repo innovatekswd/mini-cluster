@@ -7,9 +7,9 @@ set -euo pipefail
 #   curl -fsSL https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/install.sh | bash
 #
 # Environment overrides:
-#   MINICLUSTER_VERSION=1.2.0   install a specific version (default: latest)
-#   MINICLUSTER_PORT=2016       port written to config (default: 2016)
-#   MINICLUSTER_NO_SERVICE=1    skip systemd service setup
+#   MINICLUSTER_VERSION=1.0.14   install a specific version (default: latest)
+#   MINICLUSTER_PORT=2016        port written to config (default: 2016)
+#   MINICLUSTER_NO_SERVICE=1     skip systemd service setup
 #
 
 GITHUB_REPO="innovatekswd/mini-cluster"
@@ -26,7 +26,7 @@ detect_arch() {
     esac
 }
 
-# ── Resolve latest version from GitHub ───────────────────────────────────────
+# ── Resolve latest version from GitHub Releases ──────────────────────────────
 resolve_version() {
     local ver
     ver=$(curl -fsSL "https://api.github.com/repos/$GITHUB_REPO/releases/latest" \
@@ -62,10 +62,12 @@ main() {
     echo "  Port    : $PORT"
     echo ""
 
+    local base_url="https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}"
+
     # ── Prefer .deb on Debian/Ubuntu ─────────────────────────────────────────
     if command -v dpkg &>/dev/null && [ "$arch" = "amd64" ]; then
         local deb="minicluster_${VERSION}_amd64.deb"
-        local url="https://raw.githubusercontent.com/${GITHUB_REPO}/main/releases/v${VERSION}/${deb}"
+        local url="${base_url}/${deb}"
         local tmp
         tmp=$(mktemp)
 
@@ -77,65 +79,57 @@ main() {
         rm -f "$tmp"
 
         if [ "$PORT" != "2016" ]; then
-            sudo sed -i "s/^port:.*/port: $PORT/" /etc/minicluster/config.yaml
+            sudo sed -i "s/^port:.*/port: $PORT/" /etc/minicluster/config.yaml 2>/dev/null || true
         fi
 
-        if [ -z "$NO_SERVICE" ]; then
-            sudo systemctl enable --now minicluster
-        fi
-
-    # ── Fallback: tarball ─────────────────────────────────────────────────────
+    # ── Fallback: tar.gz for non-debian or arm64 ─────────────────────────────
     else
-        local tar="minicluster-api-${VERSION}-linux-${arch}.tar.gz"
-        local url="https://raw.githubusercontent.com/${GITHUB_REPO}/main/releases/v${VERSION}/${tar}"
+        local tarball="minicluster-api-${VERSION}-linux-${arch}.tar.gz"
+        local url="${base_url}/${tarball}"
         local tmpdir
         tmpdir=$(mktemp -d)
 
-        echo "  → Downloading $tar ..."
-        curl -fsSL "$url" -o "$tmpdir/$tar"
+        echo "  → Downloading $tarball ..."
+        curl -fsSL "$url" -o "${tmpdir}/${tarball}"
 
-        echo "  → Extracting ..."
-        tar -xzf "$tmpdir/$tar" -C "$tmpdir"
-        local stage
-        stage=$(find "$tmpdir" -maxdepth 1 -type d | grep -v "^$tmpdir$" | head -1)
+        echo "  → Extracting..."
+        tar -xzf "${tmpdir}/${tarball}" -C "${tmpdir}" --strip-components=1 || \
+            tar -xzf "${tmpdir}/${tarball}" -C "${tmpdir}"
 
-        echo "  → Installing binaries ..."
-        sudo cp "$stage/minicluster-api" /usr/local/bin/minicluster-api
-        sudo chmod 0755 /usr/local/bin/minicluster-api
-        if [ -f "$stage/mc" ]; then
-            sudo cp "$stage/mc" /usr/local/bin/mc
-            sudo chmod 0755 /usr/local/bin/mc
-        fi
-
-        sudo mkdir -p /etc/minicluster /var/lib/minicluster
-        if [ ! -f /etc/minicluster/config.yaml ] && [ -f "$stage/config.yaml.example" ]; then
-            sudo cp "$stage/config.yaml.example" /etc/minicluster/config.yaml
-        fi
-        sudo sed -i "s/^port:.*/port: $PORT/" /etc/minicluster/config.yaml
-
-        if [ -z "$NO_SERVICE" ] && command -v systemctl &>/dev/null && [ -f "$stage/minicluster.service" ]; then
-            sudo cp "$stage/minicluster.service" /lib/systemd/system/minicluster.service
-            sudo systemctl daemon-reload
-            sudo systemctl enable --now minicluster
-        fi
-
+        echo "  → Installing to /opt/minicluster ..."
+        sudo mkdir -p /opt/minicluster
+        sudo cp -r "${tmpdir}"/* /opt/minicluster/
+        sudo ln -sf /opt/minicluster/minicluster-api /usr/bin/minicluster-api
         rm -rf "$tmpdir"
+
+        if [ "$PORT" != "2016" ]; then
+            sudo mkdir -p /etc/minicluster
+            echo "port: $PORT" | sudo tee /etc/minicluster/config.yaml >/dev/null
+        fi
+    fi
+
+    # ── Systemd service ───────────────────────────────────────────────────────
+    if [ -z "$NO_SERVICE" ] && command -v systemctl &>/dev/null; then
+        echo "  → Enabling systemd service..."
+        sudo systemctl daemon-reload 2>/dev/null || true
+        sudo systemctl enable minicluster 2>/dev/null || true
+        sudo systemctl start minicluster 2>/dev/null || true
+        echo "  ✓ Service enabled and started"
     fi
 
     echo ""
     echo "  ═══════════════════════════════════════════"
-    echo "  ✓ MiniCluster installed!"
+    echo "  ✓ MiniCluster v${VERSION} installed!"
     echo ""
-    echo "  Open: http://localhost:$PORT"
+    echo "  Open: http://localhost:${PORT}"
+    echo "  Login: admin / admin"
     echo ""
-    echo "  Service commands:"
-    echo "    sudo systemctl start   minicluster"
-    echo "    sudo systemctl stop    minicluster"
-    echo "    sudo systemctl status  minicluster"
-    echo "    journalctl -u minicluster -f"
-    echo ""
-    echo "  CLI:"
-    echo "    mc login --server http://localhost:$PORT"
+    if command -v systemctl &>/dev/null; then
+        echo "  Manage service:"
+        echo "    sudo systemctl status minicluster"
+        echo "    sudo systemctl restart minicluster"
+        echo ""
+    fi
     echo "  ═══════════════════════════════════════════"
     echo ""
 }
