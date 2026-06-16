@@ -1,6 +1,7 @@
 package hubs
 
 import (
+	"sync"
 	"time"
 
 	"github.com/philippseith/signalr"
@@ -26,7 +27,8 @@ type MetricsUpdate struct {
 // LogHub is a SignalR hub for real-time log streaming.
 type LogHub struct {
 	signalr.Hub
-	log *zap.Logger
+	log    *zap.Logger
+	mu     sync.Mutex // protects group add/remove from concurrent map writes
 }
 
 func NewLogHub(log *zap.Logger) *LogHub {
@@ -35,31 +37,43 @@ func NewLogHub(log *zap.Logger) *LogHub {
 
 // JoinAppGroup subscribes the caller to log events for a specific app.
 func (h *LogHub) JoinAppGroup(appID string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.Groups().AddToGroup("app:"+appID, h.ConnectionID())
 }
 
 // LeaveAppGroup unsubscribes the caller from an app group.
 func (h *LogHub) LeaveAppGroup(appID string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.Groups().RemoveFromGroup("app:"+appID, h.ConnectionID())
 }
 
 // JoinSystemMetrics subscribes to system metrics broadcasts.
 func (h *LogHub) JoinSystemMetrics() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.Groups().AddToGroup("system:metrics", h.ConnectionID())
 }
 
 // LeaveSystemMetrics unsubscribes from system metrics.
 func (h *LogHub) LeaveSystemMetrics() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.Groups().RemoveFromGroup("system:metrics", h.ConnectionID())
 }
 
 // JoinAllMetrics subscribes to all service + system metrics.
 func (h *LogHub) JoinAllMetrics() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.Groups().AddToGroup("all:metrics", h.ConnectionID())
 }
 
 // LeaveAllMetrics unsubscribes from all metrics.
 func (h *LogHub) LeaveAllMetrics() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.Groups().RemoveFromGroup("all:metrics", h.ConnectionID())
 }
 

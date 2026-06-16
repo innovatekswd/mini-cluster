@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -76,6 +77,18 @@ func (h *AppsHandler) Routes() chi.Router {
 	r.Put("/{identifier}", h.update)
 	r.Delete("/{identifier}", h.delete)
 	r.Post("/{identifier}/clone", h.clone)
+
+	// App files sub-routes
+	r.Route("/{identifier}/files", func(r chi.Router) {
+		r.Get("/", h.listFiles)
+		r.Post("/", h.createFile)
+		r.Get("/{fileId}", h.getFile)
+		r.Put("/{fileId}", h.updateFile)
+		r.Delete("/{fileId}", h.deleteFile)
+		r.Get("/{fileId}/content", h.getFileContent)
+		r.Get("/{fileId}/download", h.downloadFile)
+	})
+
 	return r
 }
 
@@ -454,4 +467,247 @@ func (h *AppsHandler) reorder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// ─── App Files Handlers ─────────────────────────────────────────────────────
+
+// AppFileDto represents a file metadata response (without content)
+type AppFileDto struct {
+	ID         string    `json:"id"`
+	AppID      string    `json:"appId"`
+	Name       string    `json:"name"`
+	FilePath   string    `json:"filePath"`
+	FileType   string    `json:"fileType"`
+	CreatedAt  time.Time `json:"createdAt"`
+	ModifiedAt time.Time `json:"modifiedAt"`
+}
+
+// AppFileContentDto represents file content response
+type AppFileContentDto struct {
+	Content  string `json:"content"`
+	Encoding string `json:"encoding"`
+}
+
+// CreateAppFileDto represents the request body for creating a file
+type CreateAppFileDto struct {
+	Name     string `json:"name"`
+	FilePath string `json:"filePath"`
+	Content  string `json:"content"`
+}
+
+// UpdateAppFileDto represents the request body for updating a file
+type UpdateAppFileDto struct {
+	Name    string `json:"name"`
+	Content string `json:"content"`
+}
+
+func toAppFileDto(f *models.AppFile) AppFileDto {
+	return AppFileDto{
+		ID:         f.ID,
+		AppID:      f.AppID,
+		Name:       f.Name,
+		FilePath:   f.FilePath,
+		FileType:   f.FileType,
+		CreatedAt:  f.CreatedAt,
+		ModifiedAt: f.ModifiedAt,
+	}
+}
+
+// listFiles returns all files for an app
+func (h *AppsHandler) listFiles(w http.ResponseWriter, r *http.Request) {
+	app, err := h.resolveApp(chi.URLParam(r, "identifier"))
+	if err != nil {
+		if isNotFound(err) {
+			notFound(w)
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	var files []models.AppFile
+	if err := h.db.Where("app_id = ?", app.ID).Order("file_path asc").Find(&files).Error; err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	result := make([]AppFileDto, len(files))
+	for i, f := range files {
+		result[i] = toAppFileDto(&f)
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+// createFile creates a new file for an app
+func (h *AppsHandler) createFile(w http.ResponseWriter, r *http.Request) {
+	app, err := h.resolveApp(chi.URLParam(r, "identifier"))
+	if err != nil {
+		if isNotFound(err) {
+			notFound(w)
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	var req CreateAppFileDto
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.Name == "" {
+		writeError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	if req.FilePath == "" {
+		writeError(w, http.StatusBadRequest, "filePath is required")
+		return
+	}
+
+	file := models.AppFile{
+		ID:         uuid.NewString(),
+		AppID:      app.ID,
+		Name:       req.Name,
+		FilePath:   req.FilePath,
+		Content:    req.Content,
+		FileType:   "text",
+		CreatedAt:  time.Now().UTC(),
+		ModifiedAt: time.Now().UTC(),
+	}
+
+	if err := h.db.Create(&file).Error; err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, toAppFileDto(&file))
+}
+
+// getFile returns a single file by ID
+func (h *AppsHandler) getFile(w http.ResponseWriter, r *http.Request) {
+	fileID := chi.URLParam(r, "fileId")
+	if fileID == "" {
+		writeError(w, http.StatusBadRequest, "fileId is required")
+		return
+	}
+
+	var file models.AppFile
+	if err := h.db.Where("id = ?", fileID).First(&file).Error; err != nil {
+		if isNotFound(err) {
+			notFound(w)
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusOK, toAppFileDto(&file))
+}
+
+// updateFile updates file metadata and/or content
+func (h *AppsHandler) updateFile(w http.ResponseWriter, r *http.Request) {
+	fileID := chi.URLParam(r, "fileId")
+	if fileID == "" {
+		writeError(w, http.StatusBadRequest, "fileId is required")
+		return
+	}
+
+	var file models.AppFile
+	if err := h.db.Where("id = ?", fileID).First(&file).Error; err != nil {
+		if isNotFound(err) {
+			notFound(w)
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	var req UpdateAppFileDto
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	updates := map[string]any{"modified_at": time.Now().UTC()}
+	if req.Name != "" {
+		updates["name"] = req.Name
+	}
+	if req.Content != "" {
+		updates["content"] = req.Content
+	}
+
+	if err := h.db.Model(&file).Updates(updates).Error; err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	h.db.First(&file, "id = ?", fileID)
+	writeJSON(w, http.StatusOK, toAppFileDto(&file))
+}
+
+// deleteFile removes a file
+func (h *AppsHandler) deleteFile(w http.ResponseWriter, r *http.Request) {
+	fileID := chi.URLParam(r, "fileId")
+	if fileID == "" {
+		writeError(w, http.StatusBadRequest, "fileId is required")
+		return
+	}
+
+	result := h.db.Where("id = ?", fileID).Delete(&models.AppFile{})
+	if result.Error != nil {
+		writeError(w, http.StatusInternalServerError, result.Error.Error())
+		return
+	}
+	if result.RowsAffected == 0 {
+		notFound(w)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// getFileContent returns the file content
+func (h *AppsHandler) getFileContent(w http.ResponseWriter, r *http.Request) {
+	fileID := chi.URLParam(r, "fileId")
+	if fileID == "" {
+		writeError(w, http.StatusBadRequest, "fileId is required")
+		return
+	}
+
+	var file models.AppFile
+	if err := h.db.Where("id = ?", fileID).First(&file).Error; err != nil {
+		if isNotFound(err) {
+			notFound(w)
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusOK, AppFileContentDto{
+		Content:  file.Content,
+		Encoding: "utf8",
+	})
+}
+
+// downloadFile returns the file content as a download
+func (h *AppsHandler) downloadFile(w http.ResponseWriter, r *http.Request) {
+	fileID := chi.URLParam(r, "fileId")
+	if fileID == "" {
+		writeError(w, http.StatusBadRequest, "fileId is required")
+		return
+	}
+
+	var file models.AppFile
+	if err := h.db.Where("id = ?", fileID).First(&file).Error; err != nil {
+		if isNotFound(err) {
+			notFound(w)
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", file.Name))
+	w.Write([]byte(file.Content))
 }

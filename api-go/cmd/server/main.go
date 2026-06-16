@@ -162,7 +162,7 @@ func main() {
 	appsHandler := handlers.NewAppsHandler(databases.App, executor)
 	svcHandler := handlers.NewServicesHandler(databases.App, executor)
 	envHandler := handlers.NewEnvironmentsHandler(databases.App)
-	logsHandler := handlers.NewLogsHandler(databases.App, databases.Logs)
+	logsHandler := handlers.NewLogsHandler(databases.Logs, databases.App)
 	sessionsHandler := handlers.NewSessionsHandler(databases.Logs, databases.App)
 	machinesHandler := handlers.NewMachinesHandler(databases.App)
 	clusterHandler := handlers.NewClusterHandler(databases.App)

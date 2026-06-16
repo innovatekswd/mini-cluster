@@ -2,4 +2,5 @@
 export interface LogViewerProps {
   appId: string;
   miniView?: boolean;
+  refreshKey?: number;
 }

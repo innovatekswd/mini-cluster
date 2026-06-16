@@ -1,17 +1,15 @@
 import React, { memo } from "react";
 import { type Service } from "~/types/Service";
 import { FaPlay, FaStop, FaRedo, FaSpinner } from "react-icons/fa";
-import {
-  useAppStatusQuery,
-  useAppControlMutation,
-} from "../hooks/useServiceQueries";
+import { useAppStatusQuery, useAppControlMutation } from "../hooks/useServiceQueries";
 import { useLogContext } from "../context/LogContext";
 
 type ServiceControlProps = {
   service: Service;
+  onAction?: () => void;
 };
 
-export const ServiceControl = memo<ServiceControlProps>(({ service }) => {
+export const ServiceControl = memo<ServiceControlProps>(({ service, onAction }) => {
   const { data: statusData } = useAppStatusQuery(service.id);
   const status =
     typeof statusData === "object" && statusData !== null
@@ -21,69 +19,56 @@ export const ServiceControl = memo<ServiceControlProps>(({ service }) => {
 
   const controlServiceMutation = useAppControlMutation({
     onMutate: async ({ action }) => {
-      // Clear logs immediately when starting or restarting
-      if (action === "start" || action === "restart") {
-        clearLogs(service.id);
-      }
+      if (action === "start" || action === "restart") clearLogs(service.id);
     },
   });
 
   const handleAction = (action: "start" | "stop" | "restart") => {
-    controlServiceMutation.mutate({ appId: service.id, appName: service.name, action });
+    controlServiceMutation.mutate(
+      { appId: service.id, appName: service.name, action },
+      { onSettled: () => onAction?.() }
+    );
   };
 
   const loading = controlServiceMutation.isPending;
 
+  const btnBase = "flex items-center justify-center w-7 h-7 rounded-lg transition-colors disabled:opacity-40";
+
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex gap-2">
-        {/* Conditionally render controls based on the service's status */}
-        {status !== "Running" && (
-          <button
-            type="button"
-            aria-label={`Start service ${service.id}`}
-            onClick={() => handleAction("start")}
-            disabled={loading}
-            className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center hover:bg-green-700 disabled:opacity-50 transition-all duration-300"
-          >
-            {loading ? (
-              <FaSpinner className="animate-spin text-white" />
-            ) : (
-              <FaPlay className="text-white" />
-            )}
-          </button>
-        )}
-
-        {status === "Running" && (
-          <button
-            type="button"
-            aria-label={`Stop service ${service.id}`}
-            onClick={() => handleAction("stop")}
-            disabled={loading}
-            className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center hover:bg-red-700 disabled:opacity-50 transition-all duration-300"
-          >
-            {loading ? (
-              <FaSpinner className="animate-spin text-white" />
-            ) : (
-              <FaStop className="text-white" />
-            )}
-          </button>
-        )}
-
+    <div className="flex items-center gap-1">
+      {status !== "Running" ? (
         <button
           type="button"
-          aria-label={`Restart service ${service.id}`}
-          onClick={() => handleAction("restart")}
+          aria-label={`Start ${service.name}`}
+          onClick={() => handleAction("start")}
           disabled={loading}
-          className="w-10 h-10 rounded-full bg-yellow-600 flex items-center justify-center hover:bg-yellow-700 disabled:opacity-50 transition-all duration-300"
+          className={`${btnBase} bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400`}
+          title="Start"
         >
-          {loading ? (
-            <FaSpinner className="animate-spin text-white" />
-          ) : (
-            <FaRedo className="text-white" />
-          )}
+          {loading ? <FaSpinner size={11} className="animate-spin" /> : <FaPlay size={11} />}
         </button>
-      </div>
+      ) : (
+        <button
+          type="button"
+          aria-label={`Stop ${service.name}`}
+          onClick={() => handleAction("stop")}
+          disabled={loading}
+          className={`${btnBase} bg-rose-500/15 hover:bg-rose-500/30 text-rose-400`}
+          title="Stop"
+        >
+          {loading ? <FaSpinner size={11} className="animate-spin" /> : <FaStop size={11} />}
+        </button>
+      )}
+      <button
+        type="button"
+        aria-label={`Restart ${service.name}`}
+        onClick={() => handleAction("restart")}
+        disabled={loading}
+        className={`${btnBase} bg-slate-700/50 hover:bg-slate-700 text-slate-400 hover:text-slate-200`}
+        title="Restart"
+      >
+        {loading ? <FaSpinner size={11} className="animate-spin" /> : <FaRedo size={11} />}
+      </button>
     </div>
   );
 });

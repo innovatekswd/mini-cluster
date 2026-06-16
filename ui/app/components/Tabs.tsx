@@ -3,6 +3,7 @@ import React, { useState } from "react";
 export type TabItemConfig = {
   key: string;
   label: string;
+  icon?: React.ReactNode;
   to?: string; // Optional: Relative path for NavLink (e.g., "logs", "files")
 };
 
@@ -30,13 +31,14 @@ export const Tabs: React.FC<TabsProps> = ({ tabs, onTabChange, activeTab: contro
           key={tab.key}
           onClick={() => handleTabClick(tab.key)}
           className={`
-            px-4 py-2 rounded-lg font-medium text-sm
+            flex items-center gap-1.5 px-4 py-2 rounded-lg font-medium text-sm
             transition-all duration-200 ease-out
             ${activeTab === tab.key
               ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400 shadow-lg'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'}
           `}
         >
+          {tab.icon && <span className="opacity-80">{tab.icon}</span>}
           {tab.label}
         </button>
       ))}

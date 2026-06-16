@@ -113,6 +113,10 @@ export const serviceService = {
   async deleteService(serviceId: string): Promise<void> {
     await apiClient.delete(`/api/services/${serviceId}`);
   },
+  async deleteServiceLogs(serviceId: string): Promise<{ deleted: { logs: number; events: number; sessions: number } }> {
+    const res = await apiClient.delete(`/api/services/${serviceId}/logs`);
+    return res.data;
+  },
   async importServices(file: File): Promise<void> {
     const formData = new FormData();
     formData.append("file", file);

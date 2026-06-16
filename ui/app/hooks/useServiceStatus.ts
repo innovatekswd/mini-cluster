@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { HubConnectionState } from "@microsoft/signalr";
 import { useAppStatusContext } from "../context/AppStatusContext";
 import { useSignalRConnection, useSignalRReconnect, useSignalRServiceGroup } from "../context/SignalRConnectionContext";
@@ -15,14 +15,37 @@ export function useServiceStatus(serviceId: string) {
   // Get status from batch cache
   const status = statuses[serviceId] || "Unknown";
 
+  // Exponential backoff for starting the connection
+  const startAttemptRef = useRef(0);
+  const startTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const startConnectionWithBackoff = useCallback(() => {
+    if (connection.state !== HubConnectionState.Disconnected) return;
+    const attempt = startAttemptRef.current;
+    const delay = Math.min(1000 * Math.pow(2, attempt), 30_000);
+    startAttemptRef.current += 1;
+
+    startTimerRef.current = setTimeout(() => {
+      connection
+        .start()
+        .then(() => {
+          // Reset attempt counter on success
+          startAttemptRef.current = 0;
+        })
+        .catch((err) => {
+          console.error("Error starting SignalR connection:", err);
+          // Retry with backoff
+          startConnectionWithBackoff();
+        });
+    }, delay);
+  }, [connection]);
+
   useEffect(() => {
     if (!serviceId) return;
 
-    // Start connection if needed
+    // Start connection if needed (with backoff retry)
     if (connection.state === HubConnectionState.Disconnected) {
-      connection.start().catch((err) =>
-        console.error("Error starting SignalR connection:", err)
-      );
+      startConnectionWithBackoff();
     }
 
     // Join service group for status updates if running
@@ -67,8 +90,13 @@ export function useServiceStatus(serviceId: string) {
       unsubscribeBackendReconnect();
       // Leave service group when unmounting
       leaveServiceGroup(serviceId);
+      // Cancel any pending start retries
+      if (startTimerRef.current) {
+        clearTimeout(startTimerRef.current);
+        startTimerRef.current = null;
+      }
     };
-  }, [serviceId, connection, joinServiceGroup, leaveServiceGroup, onSignalRReconnect, onBackendReconnect, status, updateStatus, refetch]);
+  }, [serviceId, connection, joinServiceGroup, leaveServiceGroup, onSignalRReconnect, onBackendReconnect, status, updateStatus, refetch, startConnectionWithBackoff]);
 
   return status;
 }

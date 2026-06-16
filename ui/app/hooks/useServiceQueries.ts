@@ -4,6 +4,7 @@ import type { Service } from "~/types/Service";
 import type { ServiceFormData } from "~/types/Service";
 import { useError } from "~/context/ErrorProvider";
 import { getBackendConnectionStatus } from "~/lib/queryClient";
+import { progressiveRefetch } from "~/lib/retry";
 
 // Query Keys - centralized to avoid typos and enable easy refactoring
 export const appQueryKeys = {
@@ -152,19 +153,16 @@ export function useAppControlMutation(options?: {
         appQueryKeys.statuses,
         (prev) => prev ? { ...prev, [variables.appId]: optimisticStatus } : { [variables.appId]: optimisticStatus }
       );
-      
-      // Delay the refetch to allow components to react to optimistic update first
-      setTimeout(() => {
-        // Invalidate batch status to refetch and confirm actual status
-        queryClient.invalidateQueries({
-          queryKey: appQueryKeys.statuses,
-        });
-        // Also invalidate the apps list to get updated status
-        queryClient.invalidateQueries({
-          queryKey: appQueryKeys.all,
-        });
-      }, 500);
-      
+
+      const invalidateStatuses = () => {
+        queryClient.invalidateQueries({ queryKey: appQueryKeys.statuses });
+        queryClient.invalidateQueries({ queryKey: appQueryKeys.all });
+      };
+
+      // Progressive refetch: backend needs time to propagate the actual state change.
+      // Refetch at 500ms, 1.5s, 3s, 5s to confirm the real status settles in.
+      progressiveRefetch(invalidateStatuses, [500, 1500, 3000, 5000]);
+
       if (options?.onSuccess) {
         options.onSuccess(data, variables);
       }

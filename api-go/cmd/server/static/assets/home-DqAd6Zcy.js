@@ -1,0 +1,1 @@
+import{w as e}from"./with-props-B4xM3BIW.js";import{j as o,N as t}from"./chunk-KNED5TY2-BQd_j45t.js";const i=e(function(){return o.jsx(t,{to:"/inspect/local/overview",replace:!0})});export{i as default};

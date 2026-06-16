@@ -1,10 +1,19 @@
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router";
 import type { AppWithStats } from "~/types/App";
 import type { Service } from "~/types/Service";
 import { useAppStatusContext } from "~/context/AppStatusContext";
-import { FaPlay, FaStop, FaExclamationTriangle, FaCog, FaExternalLinkAlt, FaEdit, FaPlus } from "react-icons/fa";
-import { ServiceControl } from "./ServiceControl";
-import { useServiceStatus } from "~/hooks/useServiceStatus";
+import { useSignalRConnection, useSignalRServiceGroup } from "~/context/SignalRConnectionContext";
+import { useAppControlMutation } from "~/hooks/useServiceQueries";
+import { metricsService, formatBytes, formatPercent, type ProcessMetricsSnapshot } from "~/services/metricsService";
+import { HubConnectionState } from "@microsoft/signalr";
+import { AppVitalsStrip } from "./AppVitalsStrip";
+import {
+  FaPlay, FaStop, FaSpinner, FaEllipsisV, FaEdit,
+  FaExternalLinkAlt, FaPlus, FaChartBar, FaList,
+  FaTerminal, FaFolderOpen,
+} from "react-icons/fa";
+import { useLogContext } from "~/context/LogContext";
 
 interface AppOverviewProps {
   app: AppWithStats;
@@ -14,31 +23,105 @@ interface AppOverviewProps {
   onAddService: () => void;
 }
 
-// Individual service row component
-function ServiceRow({ service, onSelect, onEdit }: { service: Service; onSelect: () => void; onEdit: () => void }) {
-  const realtimeStatus = useServiceStatus(service.id);
-  const status = realtimeStatus || service.status || "stopped";
-  const isRunning = status.toLowerCase() === "running" || status.toLowerCase() === "started";
+interface ServiceRowMetrics {
+  cpu: number;
+  mem: number;
+}
+
+function ServiceRow({
+  service,
+  onSelect,
+  onEdit,
+}: {
+  service: Service;
+  onSelect: () => void;
+  onEdit: () => void;
+}) {
+  const { statuses } = useAppStatusContext();
+  const connection = useSignalRConnection();
+  const { joinServiceGroup, leaveServiceGroup } = useSignalRServiceGroup();
+  const { clearLogs } = useLogContext();
+  const [metrics, setMetrics] = useState<ServiceRowMetrics | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const status = (statuses[service.id] || service.status || "stopped").toLowerCase();
+  const isRunning = status === "running" || status === "started";
+
+  const controlMutation = useAppControlMutation({
+    onMutate: async ({ action }) => {
+      if (action === "start" || action === "restart") clearLogs(service.id);
+    },
+  });
+  const isPending = controlMutation.isPending;
+
+  const fetchMetrics = useCallback(async () => {
+    const m = await metricsService.getServiceLiveMetrics(service.id).catch(() => null);
+    if (m) setMetrics({ cpu: m.cpuUsagePercent, mem: m.workingSetMemory });
+  }, [service.id]);
+
+  useEffect(() => {
+    fetchMetrics();
+  }, [fetchMetrics, isRunning]);
+
+  useEffect(() => {
+    if (!connection || connection.state !== HubConnectionState.Connected || !isRunning) return;
+    joinServiceGroup(service.id);
+    const handle = (snap: ProcessMetricsSnapshot) => {
+      if (snap.serviceId === service.id) {
+        setMetrics({ cpu: snap.cpuUsagePercent, mem: snap.workingSetMemory });
+      }
+    };
+    connection.on("ProcessMetrics", handle);
+    return () => {
+      connection.off("ProcessMetrics", handle);
+      leaveServiceGroup(service.id);
+    };
+  }, [connection, service.id, isRunning, joinServiceGroup, leaveServiceGroup]);
+
+  const handleControl = (e: React.MouseEvent, action: "start" | "stop") => {
+    e.stopPropagation();
+    controlMutation.mutate({ appId: service.id, appName: service.name, action });
+  };
 
   return (
     <div
-      className="flex items-center gap-4 px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg hover:bg-slate-700/50 cursor-pointer transition-colors group"
+      className="flex items-center gap-3 px-4 py-3 bg-slate-800/40 border border-slate-700/40 rounded-xl hover:bg-slate-700/40 cursor-pointer transition-colors group"
       onClick={onSelect}
     >
-      {/* Status indicator */}
-      <div className={`w-3 h-3 rounded-full flex-shrink-0 ${isRunning ? "bg-emerald-500" : "bg-slate-500"}`} />
+      {/* Status dot */}
+      <div
+        className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+          isRunning ? "bg-emerald-400" : status === "failed" || status === "error" ? "bg-rose-500" : "bg-slate-500"
+        }`}
+      />
 
-      {/* Service info */}
+      {/* Name + path */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-slate-100 truncate">{service.name}</span>
+          <span className="font-medium text-slate-100 text-sm truncate">{service.name}</span>
           {service.isExternal && (
-            <span className="px-1.5 py-0.5 rounded bg-yellow-700/50 text-yellow-300 text-xs">External</span>
+            <span className="px-1.5 py-0.5 rounded bg-yellow-700/40 text-yellow-300 text-xs">External</span>
           )}
         </div>
         <div className="text-xs text-slate-500 truncate mt-0.5">
           {service.executablePath || "No executable"}
         </div>
+      </div>
+
+      {/* Live metrics */}
+      <div className="hidden md:flex items-center gap-4 text-xs text-slate-400 flex-shrink-0">
+        <span className="flex items-center gap-1">
+          <span className="text-slate-500">CPU</span>
+          <span className={`font-mono font-medium ${metrics && metrics.cpu > 80 ? "text-amber-400" : "text-slate-300"}`}>
+            {metrics ? formatPercent(metrics.cpu) : "—"}
+          </span>
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="text-slate-500">MEM</span>
+          <span className="font-mono font-medium text-slate-300">
+            {metrics ? formatBytes(metrics.mem) : "—"}
+          </span>
+        </span>
       </div>
 
       {/* Access link */}
@@ -47,132 +130,105 @@ function ServiceRow({ service, onSelect, onEdit }: { service: Service; onSelect:
           href={service.accessLink}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-cyan-400 hover:text-cyan-300 p-2"
-          onClick={(e) => e.stopPropagation()}
-          title="Open access link"
+          className="text-cyan-400 hover:text-cyan-300 p-1.5 flex-shrink-0"
+          onClick={e => e.stopPropagation()}
+          title="Open"
         >
-          <FaExternalLinkAlt size={12} />
+          <FaExternalLinkAlt size={11} />
         </a>
       )}
 
       {/* Status badge */}
-      <span className={`px-2 py-0.5 rounded text-xs font-medium ${isRunning ? "bg-emerald-500/10 text-emerald-400" : "bg-slate-700/50 text-slate-400"}`}>
-        {isRunning ? "Running" : "Stopped"}
+      <span
+        className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
+          isRunning
+            ? "bg-emerald-500/10 text-emerald-400"
+            : status === "failed" || status === "error"
+            ? "bg-rose-500/10 text-rose-400"
+            : "bg-slate-700/50 text-slate-400"
+        }`}
+      >
+        {isRunning ? "Running" : status.charAt(0).toUpperCase() + status.slice(1)}
       </span>
 
-      {/* Controls */}
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-        <ServiceControl service={service} />
-        <button
-          onClick={onEdit}
-          className="p-1.5 text-slate-400 hover:text-cyan-400 hover:bg-slate-600/50 rounded transition-colors"
-          title="Edit service"
-        >
-          <FaEdit size={12} />
-        </button>
+      {/* Controls — always visible, compact */}
+      <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+        {isRunning ? (
+          <button
+            onClick={e => handleControl(e, "stop")}
+            disabled={isPending}
+            className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors disabled:opacity-50"
+            title="Stop"
+          >
+            {isPending ? <FaSpinner size={11} className="animate-spin" /> : <FaStop size={11} />}
+          </button>
+        ) : (
+          <button
+            onClick={e => handleControl(e, "start")}
+            disabled={isPending}
+            className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors disabled:opacity-50"
+            title="Start"
+          >
+            {isPending ? <FaSpinner size={11} className="animate-spin" /> : <FaPlay size={11} />}
+          </button>
+        )}
+
+        {/* ⋯ menu */}
+        <div className="relative">
+          <button
+            onClick={e => { e.stopPropagation(); setMenuOpen(o => !o); }}
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-700/50 transition-colors"
+          >
+            <FaEllipsisV size={11} />
+          </button>
+          {menuOpen && (
+            <div
+              className="absolute right-0 top-full mt-1 w-36 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 py-1"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                onClick={() => { setMenuOpen(false); onEdit(); }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+              >
+                <FaEdit size={11} /> Edit
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
 export function AppOverview({ app, services, onSelectService, onEditService, onAddService }: AppOverviewProps) {
-  const { statuses } = useAppStatusContext();
+  const navigate = useNavigate();
 
-  // Calculate live stats
-  const stats = React.useMemo(() => {
-    let running = 0, stopped = 0, failed = 0;
-    services.forEach(s => {
-      const status = (statuses[s.id] || s.status || "").toLowerCase();
-      if (status === "running" || status === "started") running++;
-      else if (status === "failed" || status === "error" || status === "crashed") failed++;
-      else stopped++;
-    });
-    return { total: services.length, running, stopped, failed };
-  }, [services, statuses]);
+  const quickLinks = [
+    { label: "Inspect", icon: <FaChartBar size={12} />, path: "/inspect/local/overview" },
+    { label: "Events", icon: <FaList size={12} />, path: "/inspect/local/events" },
+    { label: "Terminal", icon: <FaTerminal size={12} />, path: "/inspect/local/terminal" },
+    { label: "Files", icon: <FaFolderOpen size={12} />, path: "/inspect/local/files" },
+  ];
 
   return (
-    <div className="h-full overflow-auto p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* App Header */}
-        <div className="flex items-start gap-4">
-          <div
-            className="w-16 h-16 rounded-xl flex items-center justify-center text-3xl flex-shrink-0"
-            style={{ backgroundColor: `${app.color || "#3b82f6"}20` }}
+    <div className="h-full overflow-auto p-6 space-y-5">
+      {/* App Vitals Strip */}
+      <AppVitalsStrip services={services} />
+
+      {/* Service Cards — 2-col grid, metric-first layout */}
+      <div>
+        <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Services</h2>
+        {services.length === 0 ? (
+          <button
+            onClick={onAddService}
+            className="w-full py-10 rounded-xl border-2 border-dashed border-slate-700/60 hover:border-slate-600 text-slate-500 hover:text-slate-300 transition-colors text-sm flex flex-col items-center gap-2"
           >
-            {app.icon || "📦"}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold text-slate-100">{app.name}</h1>
-            {app.description && (
-              <p className="text-sm text-slate-400 mt-1">{app.description}</p>
-            )}
-            <div className="flex items-center gap-4 mt-3 text-xs text-slate-500">
-              <span>Created {new Date(app.createdAt).toLocaleDateString()}</span>
-              <span>Modified {new Date(app.modifiedAt).toLocaleDateString()}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4">
-            <div className="text-2xl font-bold text-slate-100">{stats.total}</div>
-            <div className="text-xs text-slate-500 mt-1">Total Services</div>
-          </div>
-          <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-4">
-            <div className="text-2xl font-bold text-emerald-400 flex items-center gap-2">
-              <FaPlay size={12} />
-              {stats.running}
-            </div>
-            <div className="text-xs text-slate-500 mt-1">Running</div>
-          </div>
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4">
-            <div className="text-2xl font-bold text-slate-400 flex items-center gap-2">
-              <FaStop size={12} />
-              {stats.stopped}
-            </div>
-            <div className="text-xs text-slate-500 mt-1">Stopped</div>
-          </div>
-          <div className="bg-rose-500/5 border border-rose-500/20 rounded-lg p-4">
-            <div className="text-2xl font-bold text-rose-400 flex items-center gap-2">
-              <FaExclamationTriangle size={12} />
-              {stats.failed}
-            </div>
-            <div className="text-xs text-slate-500 mt-1">Failed</div>
-          </div>
-        </div>
-
-        {/* Services List */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-200 flex items-center gap-2">
-              <FaCog className="text-slate-500" />
-              Services
-            </h2>
-            <button
-              onClick={onAddService}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-sm transition-colors"
-            >
-              <FaPlus size={10} />
-              Add Service
-            </button>
-          </div>
-
-          {services.length === 0 ? (
-            <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-8 text-center">
-              <FaCog className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400 mb-2">No services in this app yet</p>
-              <p className="text-sm text-slate-500 mb-4">Add a service to get started</p>
-              <button
-                onClick={onAddService}
-                className="px-4 py-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-sm transition-colors"
-              >
-                <FaPlus className="inline mr-2" size={10} />
-                Add Service
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-2">
+            <FaPlus size={14} />
+            Add your first service
+          </button>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {services.map(service => (
                 <ServiceRow
                   key={service.id}
@@ -182,7 +238,31 @@ export function AppOverview({ app, services, onSelectService, onEditService, onA
                 />
               ))}
             </div>
-          )}
+            {/* Add Service — full-width dashed below the cards */}
+            <button
+              onClick={onAddService}
+              className="mt-3 w-full py-2.5 rounded-xl border border-dashed border-slate-700/60 hover:border-slate-600 text-slate-500 hover:text-slate-300 transition-colors text-xs flex items-center justify-center gap-1.5"
+            >
+              <FaPlus size={9} /> Add Service
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Quick Access */}
+      <div>
+        <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Machine Tools</h2>
+        <div className="flex flex-wrap gap-2">
+          {quickLinks.map(link => (
+            <button
+              key={link.path}
+              onClick={() => navigate(link.path)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800/50 border border-slate-700/40 hover:bg-slate-700/50 hover:border-slate-600/50 text-slate-300 text-sm transition-colors"
+            >
+              <span className="text-slate-400">{link.icon}</span>
+              {link.label}
+            </button>
+          ))}
         </div>
       </div>
     </div>

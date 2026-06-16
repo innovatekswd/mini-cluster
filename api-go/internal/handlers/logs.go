@@ -34,6 +34,7 @@ func (h *LogsHandler) InjectRoutes(r chi.Router) {
 	r.Get("/logs", h.getLogs)
 	r.Get("/logs/search", h.searchLogs)
 	r.Get("/history", h.getHistory)
+	r.Delete("/logs", h.deleteServiceLogs)
 }
 
 // ManagementRoutes mounts under /api/logs
@@ -136,7 +137,7 @@ func (h *LogsHandler) searchLogs(w http.ResponseWriter, r *http.Request) {
 		"total":    total,
 		"page":     page,
 		"pageSize": pageSize,
-		"lines":    logs,
+		"results":  logs,
 	})
 }
 
@@ -209,4 +210,44 @@ func (h *LogsHandler) resolveServiceID(identifier string) (string, error) {
 		Where("id = ? OR name = ? OR slug = ?", identifier, identifier, identifier).
 		First(&svc).Error
 	return svc.ID, err
+}
+
+func (h *LogsHandler) deleteServiceLogs(w http.ResponseWriter, r *http.Request) {
+	svcID, err := h.resolveServiceID(chi.URLParam(r, "identifier"))
+	if err != nil {
+		if isNotFound(err) {
+			notFound(w)
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	// Collect counts before deleting
+	var logCount int64
+	h.logsDB.Model(&models.SessionLogEntry{}).Where("service_id = ?", svcID).Count(&logCount)
+
+	var eventCount int64
+	h.logsDB.Model(&models.LifecycleEvent{}).Where("service_id = ?", svcID).Count(&eventCount)
+
+	var sessionCount int64
+	h.logsDB.Model(&models.ServiceSession{}).Where("service_id = ?", svcID).Count(&sessionCount)
+
+	// Delete all log entries for this service (by service_id directly)
+	h.logsDB.Where("service_id = ?", svcID).Delete(&models.SessionLogEntry{})
+
+	// Delete all lifecycle events for this service
+	h.logsDB.Where("service_id = ?", svcID).Delete(&models.LifecycleEvent{})
+
+	// Delete all sessions for this service
+	h.logsDB.Where("service_id = ?", svcID).Delete(&models.ServiceSession{})
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"message": "deleted",
+		"deleted": map[string]int64{
+			"logs":     logCount,
+			"events":   eventCount,
+			"sessions": sessionCount,
+		},
+	})
 }

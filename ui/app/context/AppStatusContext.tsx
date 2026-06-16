@@ -4,6 +4,7 @@ import { serviceService } from "~/services/appService";
 import { getBackendConnectionStatus } from "~/lib/queryClient";
 import { useAuth } from "~/context/AuthContext";
 import { useTabVisible } from "~/hooks/useTabVisible";
+import { withRetry } from "~/lib/retry";
 
 export type AppStatusMap = Record<string, string>;
 
@@ -28,10 +29,18 @@ export const AppStatusProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Batch fetch all statuses with polling (only when authenticated and tab visible)
   const { data: statuses = {}, isLoading, refetch } = useQuery({
     queryKey: statusBatchQueryKey,
-    queryFn: () => serviceService.getAllStatuses(),
+    queryFn: () =>
+      withRetry(() => serviceService.getAllStatuses(), {
+        maxRetries: 3,
+        initialDelay: 500,
+        backoffMultiplier: 2,
+        maxDelay: 5_000,
+      }),
     staleTime: 5 * 1000, // 5 seconds
     refetchInterval: () => isTabVisible && isAuthenticated && getBackendConnectionStatus() ? 10 * 1000 : false,
     refetchOnWindowFocus: () => isAuthenticated && getBackendConnectionStatus(),
+    // Disable react-query's own retry; we handle it via withRetry
+    retry: false,
     enabled: isAuthenticated,
   });
 

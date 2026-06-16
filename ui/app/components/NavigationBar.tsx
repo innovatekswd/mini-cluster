@@ -6,7 +6,6 @@ import {
   FaServer,
   FaNetworkWired,
   FaRobot,
-  FaLayerGroup,
   FaGlobe,
 } from "react-icons/fa";
 
@@ -37,13 +36,6 @@ const NAV_ITEMS: NavItem[] = [
     label: "Apps",
     to: "/apps",
     description: "Applications",
-    group: "manage",
-  },
-  {
-    icon: <FaLayerGroup />,
-    label: "Services",
-    to: "/services",
-    description: "Services",
     group: "manage",
   },
   {

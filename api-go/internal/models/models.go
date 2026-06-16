@@ -416,17 +416,20 @@ type ServiceVersion struct {
 	CreatedBy     string    `gorm:"type:text" json:"createdBy"`
 }
 
-// ─── Service Files ─────────────────────────────────────────────────────────
+// ─── App Files ─────────────────────────────────────────────────────────────
 
-type ServiceFile struct {
-	ID        string    `gorm:"type:text;primaryKey;column:id" json:"id"`
-	ServiceID string    `gorm:"type:text;not null;index;column:service_id" json:"serviceId"`
-	FilePath  string    `gorm:"type:text;not null;column:file_path" json:"filePath"`
-	FileType  string    `gorm:"type:text;column:file_type" json:"fileType"`
-	CreatedAt time.Time `json:"createdAt"`
+type AppFile struct {
+	ID         string    `gorm:"type:text;primaryKey;column:id" json:"id"`
+	AppID      string    `gorm:"type:text;not null;index;column:app_id" json:"appId"`
+	Name       string    `gorm:"type:text;not null;column:name" json:"name"`
+	FilePath   string    `gorm:"type:text;not null;column:file_path" json:"filePath"`
+	Content    string    `gorm:"type:text;column:content" json:"content"`
+	FileType   string    `gorm:"type:text;column:file_type" json:"fileType"`
+	CreatedAt  time.Time `json:"createdAt"`
+	ModifiedAt time.Time `json:"modifiedAt"`
 }
 
-func (ServiceFile) TableName() string { return "app_files" }
+func (AppFile) TableName() string { return "app_files" }
 
 // ─── Registry / Packages ───────────────────────────────────────────────────
 

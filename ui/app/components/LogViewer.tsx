@@ -1,15 +1,17 @@
 // app/components/LogViewer.tsx
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Editor from "@monaco-editor/react";
 import type { LogViewerProps } from "../types/LogViewerProps";
 import { useLogContext } from "../context/LogContext";
 import { FaDownload, FaTrash, FaFilter, FaSearch, FaTerminal, FaTimes, FaDatabase, FaStream, FaSync, FaGlobe } from "react-icons/fa";
 import apiClient from "~/lib/apiClient";
+import { withRetry } from "~/lib/retry";
+import { serviceService } from "../services/appService";
 
 interface DbSearchResult {
   id: number;
   sessionId: string;
-  logType: string;
+  type: string;
   timestamp: string;
   line: string;
 }
@@ -22,7 +24,7 @@ interface DbSearchResponse {
   results: DbSearchResult[];
 }
 
-export const LogViewer: React.FC<LogViewerProps> = ({ appId, miniView = false }) => {
+export const LogViewer: React.FC<LogViewerProps> = ({ appId, miniView = false, refreshKey = 0 }) => {
   const { logs, clearLogs, addLog } = useLogContext();
   const appLogs = logs[appId] || [];
   const [search, setSearch] = useState("");
@@ -35,42 +37,72 @@ export const LogViewer: React.FC<LogViewerProps> = ({ appId, miniView = false })
   const [logType, setLogType] = useState<"all" | "stdout" | "stderr">("all");
   const [sessionScope, setSessionScope] = useState<"latest" | "all">("latest");
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Load recent logs from DB on mount when live logs are empty
+  // Load recent logs from DB on mount ONLY when no live SignalR logs exist.
+  // This is a fallback for stopped services — live logs come via SignalR "LogEntry".
+  // We do NOT re-fetch on refreshKey changes; SignalR handles real-time updates.
   useEffect(() => {
-    if (!appId || initialLoadDone || appLogs.length > 0) return;
+    if (!appId || initialLoadDone) return;
+
+    // If SignalR is already providing live logs, skip DB fetch entirely
+    if (appLogs.length > 0) {
+      setInitialLoadDone(true);
+      return;
+    }
     
+    const controller = new AbortController();
+
     const loadRecentLogs = async () => {
       try {
-        const params = new URLSearchParams();
-        params.append("page", "1");
-        params.append("pageSize", "200");
-        
-        const response = await apiClient.get<DbSearchResponse>(
-          `/api/services/${appId}/logs/search?${params.toString()}`
+        await withRetry(
+          async () => {
+            const params = new URLSearchParams();
+            params.append("page", "1");
+            params.append("pageSize", "200");
+
+            const response = await apiClient.get<DbSearchResponse>(
+              `/api/services/${appId}/logs/search?${params.toString()}`,
+              { signal: controller.signal }
+            );
+
+            if (response.data.results && response.data.results.length > 0) {
+              const sortedLogs = response.data.results
+                .filter(r => r && r.timestamp && r.line !== undefined)
+                .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+              sortedLogs.forEach(r => {
+                const time = new Date(r.timestamp).toLocaleTimeString();
+                const type = r.type === "stderr" ? "[ERR]" : "[OUT]";
+                addLog(appId, `${time} ${type} ${r.line}`);
+              });
+            }
+          },
+          {
+            maxRetries: 3,
+            initialDelay: 500,
+            backoffMultiplier: 2,
+            maxDelay: 4_000,
+            signal: controller.signal,
+          }
         );
-        
-        if (response.data.results && response.data.results.length > 0) {
-          // Sort by timestamp and add to log context
-          const sortedLogs = response.data.results
-            .filter(r => r && r.timestamp && r.line !== undefined)
-            .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-          
-          sortedLogs.forEach(r => {
-            const time = new Date(r.timestamp).toLocaleTimeString();
-            const type = r.logType === "stderr" ? "[ERR]" : "[OUT]";
-            addLog(appId, `${time} ${type} ${r.line}`);
-          });
-        }
       } catch (error) {
-        console.error("Error loading recent logs:", error);
+        if ((error as Error)?.name !== "AbortError") {
+          console.error("Error loading recent logs:", error);
+        }
       } finally {
         setInitialLoadDone(true);
       }
     };
-    
-    loadRecentLogs();
-  }, [appId, initialLoadDone, appLogs.length, addLog]);
+
+    // Small delay to let SignalR ReplayLogs arrive first
+    const timer = setTimeout(loadRecentLogs, 1_500);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [appId, initialLoadDone, addLog, appLogs.length]);
 
   // Search DB logs
   const searchDbLogs = useCallback(async (query: string, page: number = 1) => {
@@ -274,6 +306,31 @@ export const LogViewer: React.FC<LogViewerProps> = ({ appId, miniView = false })
         
         {/* Right side - Actions */}
         <div className="flex items-center gap-2">
+          {/* Refresh Button */}
+          <button
+            className="icon-btn flex items-center justify-center text-emerald-400 hover:bg-emerald-500/10"
+            onClick={async () => {
+              if (isRefreshing) return;
+              setIsRefreshing(true);
+              try {
+                if (searchMode === "live") {
+                  // Clear live logs and reload from DB
+                  clearLogs(appId);
+                  setInitialLoadDone(false);
+                } else {
+                  // Re-run current DB search
+                  await searchDbLogs(dbSearchQuery, 1);
+                }
+              } finally {
+                setIsRefreshing(false);
+              }
+            }}
+            disabled={isRefreshing || dbSearchLoading}
+            aria-label="Refresh logs"
+            title={searchMode === "live" ? "Reload logs from database" : "Refresh search results"}
+          >
+            <FaSync size={14} className={isRefreshing ? "animate-spin" : ""} aria-hidden="true" />
+          </button>
           <button
             className="icon-btn flex items-center justify-center text-cyan-400 hover:bg-cyan-500/10"
             onClick={() => {
@@ -294,17 +351,28 @@ export const LogViewer: React.FC<LogViewerProps> = ({ appId, miniView = false })
           >
             <FaDownload size={14} aria-hidden="true" />
           </button>
-          {searchMode === "live" && (
-            <button
-              className="icon-btn flex items-center justify-center text-rose-400 hover:bg-rose-500/10"
-              onClick={() => {
-                if (confirm("Clear all logs from memory?")) clearLogs(appId);
-              }}
-              aria-label="Clear logs"
-            >
-              <FaTrash size={14} aria-hidden="true" />
-            </button>
-          )}
+          <button
+            className="icon-btn flex items-center justify-center text-rose-400 hover:bg-rose-500/10"
+            onClick={async () => {
+              if (!confirm("Delete all logs from database and memory? This cannot be undone.")) return;
+              try {
+                await serviceService.deleteServiceLogs(appId);
+                clearLogs(appId);
+                if (searchMode === "db") {
+                  await searchDbLogs(dbSearchQuery, 1);
+                } else {
+                  setInitialLoadDone(false);
+                }
+              } catch (error) {
+                console.error("Failed to delete logs:", error);
+                alert("Failed to delete logs. Please try again.");
+              }
+            }}
+            aria-label="Delete logs"
+            title="Delete all logs from database and memory"
+          >
+            <FaTrash size={14} aria-hidden="true" />
+          </button>
         </div>
       </div>
 

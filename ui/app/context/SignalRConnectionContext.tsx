@@ -89,7 +89,8 @@ export const SignalRConnectionProvider: React.FC<{ children: React.ReactNode }> 
       });
 
       // Set up log handler — structured entries
-      connection.on("ReceiveLog", (logData: any) => {
+      // Backend broadcasts as "LogEntry" (see log_hub.go:68)
+      connection.on("LogEntry", (logData: any) => {
         if (typeof logData === "object" && logData !== null) {
           const serviceId = logData.serviceId || logData.appId || "";
           if (serviceId) {
