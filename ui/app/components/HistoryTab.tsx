@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router";
 import {
   ResponsiveContainer,
@@ -23,7 +23,7 @@ import { DirectoryManager } from "./DirectoryManager";
 
 type Scope = "machine" | "service" | "app" | "multi-app" | "directory";
 type TimeRange = "1h" | "6h" | "24h" | "7d" | "30d" | "90d" | "custom";
-type BucketSize = "auto" | "1m" | "5m" | "15m" | "1h" | "1d" | "1w";
+type BucketSize = "auto" | "5m" | "1h" | "1d" | "1w";
 
 const TIME_RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
   { value: "1h", label: "1h" },
@@ -37,9 +37,7 @@ const TIME_RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
 
 const BUCKET_OPTIONS: { value: BucketSize; label: string }[] = [
   { value: "auto", label: "Auto" },
-  { value: "1m", label: "1m" },
   { value: "5m", label: "5m" },
-  { value: "15m", label: "15m" },
   { value: "1h", label: "1h" },
   { value: "1d", label: "1d" },
   { value: "1w", label: "1w" },
@@ -78,39 +76,122 @@ interface HistoryTabProps {
   onSelectService?: (serviceId: string) => void;
 }
 
+// Helper to load/save state from localStorage
+const STORAGE_KEY = "history-tab-state";
+const loadState = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch { return null; }
+};
+const saveState = (state: Partial<HistoryState>) => {
+  try {
+    const current = loadState() || {};
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...current, ...state }));
+  } catch {}
+};
+
+interface HistoryState {
+  scope: Scope;
+  timeRange: TimeRange;
+  bucketSize: BucketSize;
+  selectedMetrics: string[];
+  selectedFamilies: string[];
+  subEntity: string;
+  showSubEntityBreakdown: boolean;
+  comparisonEnabled: boolean;
+  comparisonPreset: string;
+  autoRefresh: boolean;
+  refreshInterval: number;
+}
+
 export function HistoryTab({ onSelectService }: HistoryTabProps) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const savedState = loadState();
 
-  const [scope, setScope] = useState<Scope>((searchParams.get("scope") as Scope) || "machine");
+  const [scope, setScope] = useState<Scope>((searchParams.get("scope") as Scope) || savedState?.scope || "machine");
   const [entityId, setEntityId] = useState("");
   const [entityIds, setEntityIds] = useState<string[]>([]);
-  const [timeRange, setTimeRange] = useState<TimeRange>((searchParams.get("range") as TimeRange) || "24h");
+  const [timeRange, setTimeRange] = useState<TimeRange>((searchParams.get("range") as TimeRange) || savedState?.timeRange || "24h");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
-  const [bucketSize, setBucketSize] = useState<BucketSize>((searchParams.get("bucket") as BucketSize) || "auto");
+  const [bucketSize, setBucketSize] = useState<BucketSize>((searchParams.get("bucket") as BucketSize) || savedState?.bucketSize || "auto");
   const [catalog, setCatalog] = useState<MetricCatalogEntry[]>([]);
-  const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["cpu_usage_percent"]);
-  const [selectedFamilies, setSelectedFamilies] = useState<Set<string>>(new Set(["cpu"]));
-  const [subEntity, setSubEntity] = useState("");
-  const [showSubEntityBreakdown, setShowSubEntityBreakdown] = useState(false);
-  const [comparisonEnabled, setComparisonEnabled] = useState(false);
-  const [comparisonPreset, setComparisonPreset] = useState<"previous-day" | "previous-week" | "previous-month" | "custom">("previous-day");
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>(savedState?.selectedMetrics || ["cpu_usage_percent"]);
+  const [selectedFamilies, setSelectedFamilies] = useState<Set<string>>(new Set(savedState?.selectedFamilies || ["cpu"]));
+  const [subEntity, setSubEntity] = useState(savedState?.subEntity || "");
+  const [showSubEntityBreakdown, setShowSubEntityBreakdown] = useState(savedState?.showSubEntityBreakdown || false);
+  const [comparisonEnabled, setComparisonEnabled] = useState(savedState?.comparisonEnabled || false);
+  const [comparisonPreset, setComparisonPreset] = useState<"previous-day" | "previous-week" | "previous-month" | "custom">(savedState?.comparisonPreset || "previous-day");
   const [comparisonData, setComparisonData] = useState<AggregatedMetricsResponseNew | null>(null);
   const [comparisonLoading, setComparisonLoading] = useState(false);
   const [showDirectoryManager, setShowDirectoryManager] = useState(false);
   const [data, setData] = useState<AggregatedMetricsResponseNew | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [metricsOpen, setMetricsOpen] = useState(false);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
 
-  useEffect(() => { loadCatalog(); }, []);
+  // Track if initial load is done
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
-  useEffect(() => { loadData(); }, [scope, entityId, entityIds, timeRange, customFrom, customTo, bucketSize, selectedMetrics, subEntity]);
+  // Auto-refresh state
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [refreshInterval, setRefreshInterval] = useState(30); // seconds
+
+  useEffect(() => {
+    loadCatalog().then((catalogData) => {
+      // If no saved state, initialize with all CPU metrics
+      if (!savedState) {
+        const cpuMetrics = catalogData.filter(m => m.name.startsWith("cpu_")).map(m => m.name);
+        if (cpuMetrics.length > 0) {
+          setSelectedMetrics(cpuMetrics);
+        }
+      }
+      setInitialLoadDone(true);
+      // Load data after catalog is ready
+      loadData();
+    });
+  }, []);
+
+  // Save state to localStorage when it changes
+  useEffect(() => {
+    saveState({
+      scope,
+      timeRange,
+      bucketSize,
+      selectedMetrics,
+      selectedFamilies: Array.from(selectedFamilies),
+      subEntity,
+      showSubEntityBreakdown,
+      comparisonEnabled,
+      comparisonPreset,
+      autoRefresh,
+      refreshInterval,
+    });
+  }, [scope, timeRange, bucketSize, selectedMetrics, selectedFamilies, subEntity, showSubEntityBreakdown, comparisonEnabled, comparisonPreset, autoRefresh, refreshInterval]);
+
+
+  useEffect(() => {
+    // Skip initial load since we load after catalog
+    if (initialLoadDone && !catalogLoading) {
+      loadData();
+    }
+  }, [scope, entityId, entityIds, timeRange, customFrom, customTo, bucketSize, selectedMetrics, subEntity, initialLoadDone, catalogLoading]);
 
   useEffect(() => {
     if (comparisonEnabled && data) loadComparisonData();
     else setComparisonData(null);
   }, [comparisonEnabled, comparisonPreset, data]);
+
+  // Auto-refresh effect
+  useEffect(() => {
+    if (!autoRefresh || !initialLoadDone) return;
+    const interval = setInterval(() => loadData(true), refreshInterval * 1000);
+    return () => clearInterval(interval);
+  }, [autoRefresh, refreshInterval, scope, entityId, entityIds, timeRange, customFrom, customTo, bucketSize, selectedMetrics, subEntity, initialLoadDone]);
 
   useEffect(() => {
     const params: Record<string, string> = {};
@@ -120,16 +201,25 @@ export function HistoryTab({ onSelectService }: HistoryTabProps) {
     setSearchParams(params, { replace: true });
   }, [scope, timeRange, bucketSize, setSearchParams]);
 
-  const loadCatalog = async () => {
+  const loadCatalog = async (): Promise<MetricCatalogEntry[]> => {
+    setCatalogLoading(true);
+    setCatalogError(null);
     try {
       const res = await metricsService.getMetricsCatalog();
       setCatalog(res.metrics);
-    } catch {}
+      return res.metrics;
+    } catch (err) {
+      setCatalogError(err instanceof Error ? err.message : "Failed to load metrics catalog");
+      return [];
+    } finally {
+      setCatalogLoading(false);
+    }
   };
 
-  const loadData = async () => {
+  const loadData = async (silent = false) => {
     if (selectedMetrics.length === 0) { setData(null); return; }
-    setLoading(true);
+    if (silent) setIsRefreshing(true);
+    else setLoading(true);
     setError(null);
     try {
       const now = new Date();
@@ -157,7 +247,8 @@ export function HistoryTab({ onSelectService }: HistoryTabProps) {
       setError(err instanceof Error ? err.message : "Failed to load metrics");
       setData(null);
     } finally {
-      setLoading(false);
+      if (silent) setIsRefreshing(false);
+      else setLoading(false);
     }
   };
 
@@ -215,7 +306,16 @@ export function HistoryTab({ onSelectService }: HistoryTabProps) {
     downloadBlob(JSON.stringify(data, null, 2), "application/json", `metrics-${scope}-${isoDate()}.json`);
   };
 
-  const metricFamilies = useMemo(() => ({
+  // Define which metric families are available for each scope
+  const scopeFamilies: Record<Scope, string[]> = useMemo(() => ({
+    "machine": ["cpu", "memory", "disk", "network", "system"],
+    "app": ["process"],
+    "service": ["process"],
+    "directory": ["directory"],
+    "multi-app": ["process"],
+  }), []);
+
+  const allMetricFamilies = useMemo(() => ({
     cpu: { label: "CPU", metrics: catalog.filter(m => m.name.startsWith("cpu_")) },
     memory: { label: "Memory", metrics: catalog.filter(m => m.name.startsWith("memory_") || m.name.startsWith("swap_")) },
     disk: { label: "Disk", metrics: catalog.filter(m => m.name.startsWith("disk_")) },
@@ -224,6 +324,38 @@ export function HistoryTab({ onSelectService }: HistoryTabProps) {
     directory: { label: "Directory", metrics: catalog.filter(m => m.name.startsWith("dir_")) },
     system: { label: "System", metrics: catalog.filter(m => m.name.startsWith("total_")) },
   }), [catalog]);
+
+  // When scope changes, reset selected metrics/families to only those valid for the new scope
+  const prevScopeRef = useRef(scope);
+  useEffect(() => {
+    if (prevScopeRef.current !== scope && initialLoadDone) {
+      const allowedFamilies = scopeFamilies[scope] || [];
+      const newFamilies = new Set(allowedFamilies);
+      setSelectedFamilies(newFamilies);
+      // Select all metrics from allowed families
+      const newMetrics: string[] = [];
+      for (const fam of allowedFamilies) {
+        const family = allMetricFamilies[fam as keyof typeof allMetricFamilies];
+        if (family) {
+          newMetrics.push(...family.metrics.map(m => m.name));
+        }
+      }
+      setSelectedMetrics(newMetrics);
+      prevScopeRef.current = scope;
+    }
+  }, [scope, initialLoadDone, scopeFamilies, allMetricFamilies]);
+
+  // Filter metric families based on current scope
+  const metricFamilies = useMemo(() => {
+    const allowedFamilies = scopeFamilies[scope] || [];
+    const filtered: typeof allMetricFamilies = {};
+    for (const key of allowedFamilies) {
+      if (key in allMetricFamilies) {
+        (filtered as any)[key] = (allMetricFamilies as any)[key];
+      }
+    }
+    return filtered;
+  }, [scope, allMetricFamilies, scopeFamilies]);
 
   const toggleFamily = (family: string) => {
     const next = new Set(selectedFamilies);
@@ -344,13 +476,38 @@ export function HistoryTab({ onSelectService }: HistoryTabProps) {
               </button>
             )}
             <button
-              onClick={loadData}
-              disabled={loading}
+              onClick={() => loadData(true)}
+              disabled={loading || isRefreshing}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/60 border border-slate-700/50 text-xs text-slate-300 hover:text-white hover:border-slate-600 transition-colors disabled:opacity-50"
             >
-              <FaSyncAlt className={`text-[10px] ${loading ? "animate-spin" : ""}`} />
+              <FaSyncAlt className={`text-[10px] ${loading || isRefreshing ? "animate-spin" : ""}`} />
               Refresh
             </button>
+            {/* Auto-refresh controls */}
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoRefresh}
+                  onChange={e => setAutoRefresh(e.target.checked)}
+                  className="w-3 h-3 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500"
+                />
+                Auto
+              </label>
+              {autoRefresh && (
+                <select
+                  value={refreshInterval}
+                  onChange={e => setRefreshInterval(Number(e.target.value))}
+                  className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-xs text-slate-300"
+                >
+                  <option value={5}>5s</option>
+                  <option value={10}>10s</option>
+                  <option value={30}>30s</option>
+                  <option value={60}>1m</option>
+                  <option value={300}>5m</option>
+                </select>
+              )}
+            </div>
             {data && (
               <>
                 <button
@@ -511,7 +668,31 @@ export function HistoryTab({ onSelectService }: HistoryTabProps) {
 
       {/* Content */}
       <div className="flex-1 min-h-0 overflow-auto p-5">
-        {loading && (
+        {catalogLoading && (
+          <div className="flex items-center justify-center h-full">
+            <div className="flex flex-col items-center gap-3 text-slate-400">
+              <FaSyncAlt className="animate-spin text-2xl text-cyan-500" />
+              <span className="text-sm">Loading metrics catalog…</span>
+            </div>
+          </div>
+        )}
+
+        {catalogError && (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-rose-400 text-sm bg-rose-500/10 border border-rose-500/20 rounded-xl px-6 py-4">
+              <p className="font-semibold mb-2">Failed to load metrics catalog</p>
+              <p className="text-xs opacity-80">{catalogError}</p>
+              <button
+                onClick={loadCatalog}
+                className="mt-3 px-3 py-1.5 text-xs bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 rounded-lg transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
+
+        {loading && !catalogLoading && (
           <div className="flex items-center justify-center h-full">
             <div className="flex flex-col items-center gap-3 text-slate-400">
               <FaSyncAlt className="animate-spin text-2xl text-cyan-500" />
@@ -520,9 +701,18 @@ export function HistoryTab({ onSelectService }: HistoryTabProps) {
           </div>
         )}
 
-        {error && (
+        {error && !catalogLoading && (
           <div className="flex items-center justify-center h-full">
-            <div className="text-rose-400 text-sm bg-rose-500/10 border border-rose-500/20 rounded-xl px-6 py-4">{error}</div>
+            <div className="text-rose-400 text-sm bg-rose-500/10 border border-rose-500/20 rounded-xl px-6 py-4">
+              <p className="font-semibold mb-2">Failed to load metrics</p>
+              <p className="text-xs opacity-80">{error}</p>
+              <button
+                onClick={loadData}
+                className="mt-3 px-3 py-1.5 text-xs bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 rounded-lg transition-colors"
+              >
+                Retry
+              </button>
+            </div>
           </div>
         )}
 
@@ -584,10 +774,12 @@ export function HistoryTab({ onSelectService }: HistoryTabProps) {
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-px bg-slate-800/30">
                       {[
                         { label: "Current", value: formatValue(series[series.length - 1].avg, catalogEntry?.unit) },
+                        { label: "Last", value: series[series.length - 1].last != null ? formatValue(series[series.length - 1].last!, catalogEntry?.unit) : "—" },
                         { label: "Avg", value: formatValue(summary.avg, catalogEntry?.unit) },
                         { label: "Min", value: formatValue(summary.min, catalogEntry?.unit) },
                         { label: "Max", value: formatValue(summary.max, catalogEntry?.unit) },
                         ...(summary.p95 != null ? [{ label: "P95", value: formatValue(summary.p95, catalogEntry?.unit) }] : []),
+                        ...(summary.sum != null ? [{ label: "Sum", value: formatValue(summary.sum!, catalogEntry?.unit) }] : []),
                         { label: "Samples", value: series.reduce((s, p) => s + p.count, 0).toString() },
                       ].map(stat => (
                         <div key={stat.label} className="bg-slate-900/40 px-4 py-3">
@@ -606,8 +798,8 @@ export function HistoryTab({ onSelectService }: HistoryTabProps) {
                   )}
 
                   {/* Chart */}
-                  <div className="p-5 h-52">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="p-5" style={{ height: 208 }}>
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <AreaChart data={rows} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                         <defs>
                           <linearGradient id={`grad-${metricIdx}`} x1="0" y1="0" x2="0" y2="1">
@@ -648,6 +840,7 @@ export function HistoryTab({ onSelectService }: HistoryTabProps) {
                             strokeDasharray="5 3"
                             fill="none"
                             dot={false}
+                            isAnimationActive={false}
                           />
                         )}
                         <Area
@@ -659,6 +852,7 @@ export function HistoryTab({ onSelectService }: HistoryTabProps) {
                           fill={`url(#grad-${metricIdx})`}
                           dot={false}
                           activeDot={{ r: 4, strokeWidth: 0 }}
+                          isAnimationActive={false}
                         />
                         {compSeries && (
                           <Legend

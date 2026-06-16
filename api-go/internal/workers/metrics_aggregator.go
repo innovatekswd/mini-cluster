@@ -94,6 +94,7 @@ func (a *MetricsAggregator) backfill() {
 
 func (a *MetricsAggregator) tick() {
 	now := time.Now().UTC()
+	a.log.Debug("aggregator tick", zap.Time("now", now))
 
 	// 1. Aggregate raw rows into 5-minute buckets
 	a.aggregateRawTo5m(now)
@@ -123,14 +124,19 @@ func (a *MetricsAggregator) aggregateRawTo5m(now time.Time) {
 	bucketEnd := now.Truncate(5 * time.Minute)
 	bucketStart := bucketEnd.Add(-5 * time.Minute)
 
+	a.log.Debug("aggregateRawTo5m", zap.Time("bucketStart", bucketStart), zap.Time("bucketEnd", bucketEnd))
+
 	// Skip if we've already processed this bucket
 	var existing int64
 	a.aggDB.Model(&models.MetricBucket{}).
 		Where("bucket_time = ? AND bucket_size = ?", bucketStart, "5m").
 		Count(&existing)
 	if existing > 0 {
+		a.log.Debug("bucket already exists", zap.Time("bucketStart", bucketStart))
 		return
 	}
+
+	a.log.Info("aggregating 5m bucket", zap.Time("bucketStart", bucketStart), zap.Time("bucketEnd", bucketEnd))
 
 	// Aggregate system metrics
 	a.aggregateSystemMetrics(bucketStart, bucketEnd)

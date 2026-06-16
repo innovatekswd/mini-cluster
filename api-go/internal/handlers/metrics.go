@@ -170,15 +170,12 @@ type AggregatedResponse struct {
 }
 
 // autoBucketSize selects the appropriate bucket size based on the time range.
+// Only returns bucket sizes that the aggregator actually creates: 5m, 1h, 1d, 1w.
 func autoBucketSize(from, to time.Time) string {
 	duration := to.Sub(from)
 	switch {
-	case duration <= time.Hour:
-		return "1m"
 	case duration <= 6*time.Hour:
 		return "5m"
-	case duration <= 24*time.Hour:
-		return "15m"
 	case duration <= 7*24*time.Hour:
 		return "1h"
 	case duration <= 90*24*time.Hour:
