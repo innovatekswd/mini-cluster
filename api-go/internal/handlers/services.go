@@ -140,9 +140,13 @@ func (h *ServicesHandler) Routes() chi.Router {
 
 func (h *ServicesHandler) list(w http.ResponseWriter, r *http.Request) {
 	appID := r.URL.Query().Get("appId")
+	machineID := r.URL.Query().Get("machineId")
 	query := h.db.Order("order_index asc, name asc")
 	if appID != "" {
 		query = query.Where("app_id = ?", appID)
+	}
+	if machineID != "" {
+		query = query.Where("machine_id = ?", machineID)
 	}
 
 	var services []models.Service

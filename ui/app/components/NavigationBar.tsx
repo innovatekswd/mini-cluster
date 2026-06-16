@@ -172,8 +172,8 @@ export const NavigationBar: React.FC = () => {
           />
         )}
 
-        {/* Tooltip */}
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-slate-900 border border-slate-700 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+        {/* Tooltip - below */}
+        <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 text-xs text-white bg-slate-900 border border-slate-700 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
           {item.description}
         </span>
       </Link>

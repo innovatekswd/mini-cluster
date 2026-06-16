@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -59,6 +61,7 @@ func (h *MachinesHandler) Routes() chi.Router {
 	r.Get("/{id}/services", h.getWithServices)
 	r.Put("/{id}", h.update)
 	r.Delete("/{id}", h.delete)
+	r.Post("/{id}/test", h.testConnection)
 	return r
 }
 
@@ -228,4 +231,46 @@ func toMachineDto(m *models.Machine) MachineDto {
 		CreatedAt:        m.CreatedAt,
 		ModifiedAt:       m.ModifiedAt,
 	}
+}
+
+// testConnection tests connectivity to a machine
+func (h *MachinesHandler) testConnection(w http.ResponseWriter, r *http.Request) {
+	var machine models.Machine
+	if err := h.db.First(&machine, "id = ?", chi.URLParam(r, "id")).Error; err != nil {
+		if isNotFound(err) {
+			notFound(w)
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	// For local machines, always succeed
+	if machine.IsLocal {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"success":   true,
+			"message":   "Local machine is reachable",
+			"latencyMs": 1,
+		})
+		return
+	}
+
+	// For remote machines, attempt a TCP connection test
+	start := time.Now()
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", machine.Host, machine.Port), 5*time.Second)
+	latency := time.Since(start).Milliseconds()
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"success": false,
+			"message": fmt.Sprintf("Connection failed: %v", err),
+		})
+		return
+	}
+	conn.Close()
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":   true,
+		"message":   "Connection successful",
+		"latencyMs": latency,
+	})
 }

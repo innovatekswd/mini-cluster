@@ -11,6 +11,7 @@ import { FaPlus, FaServer, FaExclamationTriangle, FaRocket, FaKeyboard, FaTimes 
 import { AppFilter } from "~/components/AppFilter";
 import { useDashboardData } from "~/hooks/useDashboardData";
 import { SystemDashboardCharts } from "~/components/SystemDashboardCharts";
+import { AppOverview } from "~/components/AppOverview";
 
 export default function DashboardPage() {
   const toast = useToast();
@@ -54,6 +55,18 @@ export default function DashboardPage() {
   
   // Additional local state for edit mode
   const [editingService, setEditingService] = useState<Service | null>(null);
+
+  // When mode changes to edit and we have a selected service, set it for editing
+  useEffect(() => {
+    if (mode === "edit" && selectedServiceId) {
+      const service = filteredServices.find(s => s.id === selectedServiceId);
+      if (service) {
+        setEditingService(service);
+      }
+    } else if (mode !== "edit") {
+      setEditingService(null);
+    }
+  }, [mode, selectedServiceId, filteredServices]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -290,6 +303,17 @@ export default function DashboardPage() {
                       onError={(error) => setError(error)}
                     />
                   </div>
+                ) : mode === "view" && selectedAppId ? (
+                  <AppOverview
+                    app={apps.find(a => a.id === selectedAppId) || { id: selectedAppId, name: 'Unknown App', slug: '', createdAt: '', modifiedAt: '', sortOrder: 0, serviceCount: 0, runningCount: 0, stoppedCount: 0, failedCount: 0 }}
+                    services={filteredServices}
+                    onSelectService={(service) => {
+                      handleSelectService(service);
+                      setActiveTab("logs");
+                    }}
+                    onEditService={handleEditService}
+                    onAddService={() => setMode("add")}
+                  />
                 ) : mode === "view" ? (
                   <SystemDashboardCharts />
                 ) : null}

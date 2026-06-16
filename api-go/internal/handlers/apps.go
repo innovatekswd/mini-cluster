@@ -70,9 +70,12 @@ func (h *AppsHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/", h.list)
 	r.Post("/", h.create)
+	r.Post("/seed", h.seed)
+	r.Post("/reorder", h.reorder)
 	r.Get("/{identifier}", h.get)
 	r.Put("/{identifier}", h.update)
 	r.Delete("/{identifier}", h.delete)
+	r.Post("/{identifier}/clone", h.clone)
 	return r
 }
 
@@ -246,4 +249,209 @@ func toAppWithStats(a *models.App, serviceCount int, runtime RuntimeStatusProvid
 		AppDto:       toAppDto(a),
 		ServiceCount: serviceCount,
 	}
+}
+
+// seed creates sample apps and services for testing
+func (h *AppsHandler) seed(w http.ResponseWriter, r *http.Request) {
+	sampleApps := []struct {
+		Name        string
+		Description string
+		Icon        string
+		Color       string
+		Services    []struct {
+			Name           string
+			ExecutablePath string
+			Arguments      string
+		}
+	}{
+		{
+			Name:        "Web Application",
+			Description: "Frontend web application stack",
+			Icon:        "🌐",
+			Color:       "#3B82F6",
+			Services: []struct {
+				Name           string
+				ExecutablePath string
+				Arguments      string
+			}{
+				{Name: "nginx", ExecutablePath: "/usr/sbin/nginx", Arguments: "-g 'daemon off;'"},
+				{Name: "node-api", ExecutablePath: "/usr/bin/node", Arguments: "server.js"},
+			},
+		},
+		{
+			Name:        "Database Cluster",
+			Description: "Database services and replicas",
+			Icon:        "🗄️",
+			Color:       "#10B981",
+			Services: []struct {
+				Name           string
+				ExecutablePath string
+				Arguments      string
+			}{
+				{Name: "postgres-primary", ExecutablePath: "/usr/bin/postgres", Arguments: "-D /var/lib/postgresql/data"},
+				{Name: "postgres-replica", ExecutablePath: "/usr/bin/postgres", Arguments: "-D /var/lib/postgresql/data"},
+			},
+		},
+		{
+			Name:        "Monitoring Stack",
+			Description: "Metrics and monitoring services",
+			Icon:        "📊",
+			Color:       "#8B5CF6",
+			Services: []struct {
+				Name           string
+				ExecutablePath string
+				Arguments      string
+			}{
+				{Name: "prometheus", ExecutablePath: "/usr/bin/prometheus", Arguments: "--config.file=/etc/prometheus/prometheus.yml"},
+				{Name: "grafana", ExecutablePath: "/usr/sbin/grafana-server", Arguments: "--config=/etc/grafana/grafana.ini"},
+			},
+		},
+	}
+
+	var maxOrder int
+	h.db.Model(&models.App{}).Select("COALESCE(MAX(sort_order),0)").Scan(&maxOrder)
+
+	createdApps := 0
+	createdServices := 0
+
+	for i, sa := range sampleApps {
+		app := models.App{
+			ID:          uuid.NewString(),
+			Name:        sa.Name,
+			Slug:        uniqueSlug(h.db, "apps", slugify(sa.Name), ""),
+			Description: sa.Description,
+			Icon:        sa.Icon,
+			Color:       sa.Color,
+			SortOrder:   maxOrder + i + 1,
+			CreatedAt:   time.Now().UTC(),
+			ModifiedAt:  time.Now().UTC(),
+		}
+		if err := h.db.Create(&app).Error; err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to create app: "+err.Error())
+			return
+		}
+		createdApps++
+
+		for _, ss := range sa.Services {
+			svc := models.Service{
+				ID:             uuid.NewString(),
+				Name:           ss.Name,
+				Slug:           uniqueSlug(h.db, "services", slugify(ss.Name), ""),
+				ExecutablePath: ss.ExecutablePath,
+				Arguments:      ss.Arguments,
+				AppID:          &app.ID,
+				CreatedAt:      time.Now().UTC(),
+				ModifiedAt:     time.Now().UTC(),
+			}
+			if err := h.db.Create(&svc).Error; err != nil {
+				writeError(w, http.StatusInternalServerError, "failed to create service: "+err.Error())
+				return
+			}
+			createdServices++
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"message":         "Seed data created successfully",
+		"appsCreated":     createdApps,
+		"servicesCreated": createdServices,
+	})
+}
+
+// clone creates a copy of an app with all its services
+func (h *AppsHandler) clone(w http.ResponseWriter, r *http.Request) {
+	app, err := h.resolveApp(chi.URLParam(r, "identifier"))
+	if err != nil {
+		if isNotFound(err) {
+			notFound(w)
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	// Load services for this app
+	var services []models.Service
+	h.db.Where("app_id = ?", app.ID).Find(&services)
+
+	var maxOrder int
+	h.db.Model(&models.App{}).Select("COALESCE(MAX(sort_order),0)").Scan(&maxOrder)
+
+	// Create cloned app
+	newApp := models.App{
+		ID:          uuid.NewString(),
+		Name:        app.Name + " (Copy)",
+		Slug:        uniqueSlug(h.db, "apps", slugify(app.Name+"-copy"), ""),
+		Description: app.Description,
+		Icon:        app.Icon,
+		Color:       app.Color,
+		ParentAppID: app.ParentAppID,
+		SortOrder:   maxOrder + 1,
+		CreatedAt:   time.Now().UTC(),
+		ModifiedAt:  time.Now().UTC(),
+	}
+	if err := h.db.Create(&newApp).Error; err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to clone app: "+err.Error())
+		return
+	}
+
+	// Clone services
+	clonedServices := 0
+	for _, svc := range services {
+		newSvc := models.Service{
+			ID:                   uuid.NewString(),
+			Name:                 svc.Name,
+			Slug:                 uniqueSlug(h.db, "services", slugify(svc.Name+"-"+newApp.ID[:8]), ""),
+			ExecutablePath:       svc.ExecutablePath,
+			Arguments:            svc.Arguments,
+			EnvironmentVariables: svc.EnvironmentVariables,
+			WorkingDirectory:     svc.WorkingDirectory,
+			AutoStart:            svc.AutoStart,
+			AccessLink:           svc.AccessLink,
+			IsExternal:           svc.IsExternal,
+			CaptureOutput:        svc.CaptureOutput,
+			RestartPolicy:        svc.RestartPolicy,
+			HealthCheckType:      svc.HealthCheckType,
+			HealthCheckUrl:       svc.HealthCheckUrl,
+			HealthCheckInterval:  svc.HealthCheckInterval,
+			HealthCheckTimeout:   svc.HealthCheckTimeout,
+			HealthCheckRetries:   svc.HealthCheckRetries,
+			HealthCheckCommand:   svc.HealthCheckCommand,
+			AppID:                &newApp.ID,
+			MachineID:            svc.MachineID,
+			CreatedAt:            time.Now().UTC(),
+			ModifiedAt:           time.Now().UTC(),
+		}
+		if err := h.db.Create(&newSvc).Error; err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to clone service: "+err.Error())
+			return
+		}
+		clonedServices++
+	}
+
+	writeJSON(w, http.StatusCreated, toAppDto(&newApp))
+}
+
+// reorder updates the sort order of apps based on the provided ordered list of IDs
+func (h *AppsHandler) reorder(w http.ResponseWriter, r *http.Request) {
+	var orderedIDs []string
+	if err := readJSON(r, &orderedIDs); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body: expected array of app IDs")
+		return
+	}
+
+	tx := h.db.Begin()
+	for i, id := range orderedIDs {
+		if err := tx.Model(&models.App{}).Where("id = ?", id).Update("sort_order", i).Error; err != nil {
+			tx.Rollback()
+			writeError(w, http.StatusInternalServerError, "failed to reorder apps: "+err.Error())
+			return
+		}
+	}
+	if err := tx.Commit().Error; err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to commit reorder: "+err.Error())
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

@@ -1,11 +1,12 @@
 /**
  * Custom hook for dashboard data and state management
- * 
+ *
  * Encapsulates all dashboard-related data fetching, filtering, and computed values.
- * Uses path-based routing: /dashboard/:appName?/:serviceName?
+ * Uses path-based routing: /apps/:appName?/:serviceName?
+ * Supports multi-app via query params: /apps?apps=slug1,slug2
  */
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useParams, useNavigate } from "react-router";
+import { useParams, useNavigate, useSearchParams } from "react-router";
 import { useAppsQuery, useDeleteAppMutation } from "./useServiceQueries";
 import { useAppsWithStatsQuery } from "./useAppsQueries";
 import { useAppStatusContext } from "~/context/AppStatusContext";
@@ -77,11 +78,12 @@ export function useDashboardData(): UseDashboardDataReturn {
   const isConnected = connectionStatus === "connected";
   const navigate = useNavigate();
   
-  // Get route params: /dashboard/:appName?/:serviceName?
+  // Get route params: /apps/:appName?/:serviceName?
   const { appName: appNameFromRoute, serviceName: serviceNameFromRoute } = useParams<{
     appName?: string;
     serviceName?: string;
   }>();
+  const [searchParams] = useSearchParams();
   
   // UI State
   const [mode, setMode] = useState<"view" | "add" | "edit">("view");
@@ -137,9 +139,20 @@ export function useDashboardData(): UseDashboardDataReturn {
     if (selectedAppId) {
       setSelectedAppIds([selectedAppId]);
     } else {
-      setSelectedAppIds([]);
+      // Check for multi-app query param: ?apps=slug1,slug2
+      const appsParam = searchParams.get('apps');
+      if (appsParam) {
+        const slugs = appsParam.split(',').map(s => decodeURIComponent(s).toLowerCase());
+        const ids = slugs.map(slug => {
+          const app = apps.find(a => a.slug === slug) || apps.find(a => a.name.toLowerCase() === slug);
+          return app?.id || null;
+        }).filter(Boolean) as string[];
+        setSelectedAppIds(ids);
+      } else {
+        setSelectedAppIds([]);
+      }
     }
-  }, [selectedAppId]);
+  }, [selectedAppId, searchParams, apps]);
 
   // Auto-select service when route has service name
   useEffect(() => {
@@ -148,18 +161,28 @@ export function useDashboardData(): UseDashboardDataReturn {
     }
   }, [selectedServiceId]);
 
-  // Filter services by selected app (from route)
+  // Filter services by selected app(s) (from route or query params)
   const filteredServices = useMemo(() => {
-    if (!selectedAppId) return services;
-    return services.filter(s => s.appId === selectedAppId);
-  }, [services, selectedAppId]);
+    if (selectedAppId) {
+      return services.filter(s => s.appId === selectedAppId);
+    }
+    if (selectedAppIds.length > 0) {
+      return services.filter(s => selectedAppIds.includes(s.appId || ''));
+    }
+    return services;
+  }, [services, selectedAppId, selectedAppIds]);
 
   // Get the filtered apps details
   const filteredApps = useMemo(() => {
-    if (!selectedAppId) return [];
-    const app = apps.find(a => a.id === selectedAppId);
-    return app ? [app] : [];
-  }, [selectedAppId, apps]);
+    if (selectedAppId) {
+      const app = apps.find(a => a.id === selectedAppId);
+      return app ? [app] : [];
+    }
+    if (selectedAppIds.length > 0) {
+      return apps.filter(a => selectedAppIds.includes(a.id));
+    }
+    return [];
+  }, [selectedAppId, selectedAppIds, apps]);
 
   // Calculate app stats based on real-time statuses
   const appStats: AppStats = useMemo(() => {
@@ -183,15 +206,15 @@ export function useDashboardData(): UseDashboardDataReturn {
 
   // Navigation helpers
   const navigateToDashboard = useCallback(() => {
-    navigate('/dashboard');
+    navigate('/apps');
   }, [navigate]);
 
   const navigateToApp = useCallback((appSlug: string) => {
-    navigate(`/dashboard/${encodeURIComponent(appSlug)}`);
+    navigate(`/apps/${encodeURIComponent(appSlug)}`);
   }, [navigate]);
 
   const navigateToService = useCallback((appSlug: string, serviceSlug: string) => {
-    navigate(`/dashboard/${encodeURIComponent(appSlug)}/${encodeURIComponent(serviceSlug)}`);
+    navigate(`/apps/${encodeURIComponent(appSlug)}/${encodeURIComponent(serviceSlug)}`);
   }, [navigate]);
 
   // Actions
@@ -245,13 +268,21 @@ export function useDashboardData(): UseDashboardDataReturn {
       if (app) {
         navigateToApp(app.slug || app.name);
       }
+    } else {
+      // Multiple apps selected - use query params
+      const slugs = appIds.map(id => {
+        const app = apps.find(a => a.id === id);
+        return app ? (app.slug || app.name) : null;
+      }).filter(Boolean);
+      navigate(`/apps?apps=${slugs.join(',')}`);
     }
-    // For multiple apps, we stay on dashboard (multi-app filter not supported in path routing)
-  }, [apps, navigateToDashboard, navigateToApp]);
+  }, [apps, navigateToDashboard, navigateToApp, navigate]);
 
-  const handleEditService = useCallback((serviceId: string) => {
+  const handleEditService = useCallback((serviceIdOrService: string | Service) => {
     try {
-      const serviceToEdit = services.find((s) => s.id === serviceId);
+      const serviceToEdit = typeof serviceIdOrService === 'string'
+        ? services.find((s) => s.id === serviceIdOrService)
+        : serviceIdOrService;
       if (!serviceToEdit) {
         throw new Error("Service not found");
       }
@@ -260,7 +291,7 @@ export function useDashboardData(): UseDashboardDataReturn {
         navigateToService(app.slug || app.name, serviceToEdit.slug || serviceToEdit.name);
         setActiveTab("config");
       }
-      setMode("view");
+      setMode("edit");
       setError(null);
     } catch (err) {
       setError("Failed to edit service. The service may have been deleted.");
