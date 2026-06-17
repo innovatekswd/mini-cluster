@@ -1,4 +1,4 @@
-minicluster-cli (1.0.11) stable; urgency=medium
+minicluster-cli (1.0.16) stable; urgency=medium
 
   * Initial CLI package release
   * Command-line interface for MiniCluster API

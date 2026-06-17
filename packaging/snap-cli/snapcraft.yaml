@@ -1,6 +1,6 @@
 name: minicluster-cli
 base: core22
-version: '1.0.11'
+version: '1.0.16'
 summary: MiniCluster CLI - Command-line tool for MiniCluster
 description: |
   MiniCluster CLI enables DevOps automation, CI/CD integration,

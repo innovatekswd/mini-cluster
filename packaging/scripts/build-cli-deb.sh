@@ -6,7 +6,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 BUILD_DIR="$PROJECT_ROOT/build/cli-deb"
-VERSION="1.0.11"
+VERSION="1.0.16"
 
 echo "Building MiniCluster CLI v${VERSION}..."
 

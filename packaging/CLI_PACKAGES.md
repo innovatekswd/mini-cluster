@@ -13,7 +13,7 @@ The MiniCluster CLI (`mc`) is packaged for multiple platforms:
 
 ## Version Information
 
-Current version: **1.0.11**
+Current version: **1.0.16**
 
 ## Installation
 
@@ -21,10 +21,10 @@ Current version: **1.0.11**
 
 ```bash
 # Download and install
-sudo dpkg -i minicluster-cli_1.0.11_amd64.deb
+sudo dpkg -i minicluster-cli_1.0.16_amd64.deb
 
 # Or use apt
-sudo apt install ./minicluster-cli_1.0.11_amd64.deb
+sudo apt install ./minicluster-cli_1.0.16_amd64.deb
 
 # Verify installation
 mc version
@@ -52,7 +52,7 @@ This installer:
 
 #### Option 2: Manual Installation
 
-1. Extract `minicluster-cli-1.0.11-windows-amd64.zip`
+1. Extract `minicluster-cli-1.0.16-windows-amd64.zip`
 2. Copy `mc.exe` to a directory in your PATH
 3. Or add the extracted directory to your PATH
 

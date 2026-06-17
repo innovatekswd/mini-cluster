@@ -1,4 +1,4 @@
-minicluster (1.0.12-1) stable; urgency=medium
+minicluster (1.0.16-1) stable; urgency=medium
 
   * Go API server replaces .NET backend — single static binary, no runtime required
   * Container lifecycle management (Docker/Podman)
