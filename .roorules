@@ -4,53 +4,77 @@
 ## Git & Release Workflow (CRITICAL)
 
 **Source of truth for code: Azure DevOps (`origin` remote)**
-- ALL code commits, branches, and pushes MUST go to `origin` (Azure DevOps)
-- GitHub is used ONLY for public releases (tags + binary artifacts)
+**Public-facing docs and releases: GitHub (`github` remote)**
 
-### What goes where
+### Remotes
 
-| Remote   | Purpose                                | What to push                           |
-|----------|----------------------------------------|----------------------------------------|
-| `origin` | Source code repository (Azure DevOps)  | All commits, branches, code changes    |
-| `github` | Public releases only                   | Tags only, via `gh release create` or GitHub API (artifacts uploaded to release) |
+| Remote | Branch | Contains | When to push |
+|--------|--------|----------|--------------|
+| `origin` (Azure DevOps) | `master` | **ALL source code** — full repo, all branches | Every commit |
+| `github` | `main` | **Public docs only** — README.md, LICENSE, INSTALL docs | On each release (cherry-pick docs from origin) |
+| `github` | *(tag)* | **Release artifacts** (`.deb`, `.tar.gz`, `.zip`) | On each release via `gh release create` or API |
 
 ### Rules
 
-1. **NEVER push commits/code/branches to `github`.** Only push tags (`git push github <tag>`).
-2. **ALWAYS push commits/code/branches to `origin`.** This is the development remote.
-3. **Tags must be pushed to BOTH remotes** so GitHub can host releases:
+1. **NEVER push source code / application code / internal files to `github`.**
+   Only push public-facing docs (README.md, LICENSE, install.sh) and release tags/artifacts.
+2. **ALL code commits and branches go to `origin` (Azure DevOps).**
+3. **Tags must be pushed to BOTH remotes** (Azure stores the tag; GitHub uses it for releases):
    ```bash
-   git push origin <tag>      # code + tag to Azure DevOps
-   git push github <tag>      # tag only to GitHub (enables release)
+   git push origin <tag>
+   git push github <tag>
    ```
-4. **Commits only go to origin:**
+4. **On each release, update GitHub's `main` branch with public docs only:**
    ```bash
-   git push origin <branch>   # correct
-   # git push github <branch> # WRONG — never do this
+   # Create a temporary branch from origin/master
+   git checkout -b github-main-temp origin/master
+
+   # Copy only public-facing files from origin
+   git checkout origin/master -- README.md LICENSE install.sh
+
+   # Commit and push to github's main
+   git commit -m "docs: update public docs for v1.x.x"
+   git push github HEAD:main
+
+   # Clean up
+   git checkout master
+   git branch -D github-main-temp
    ```
-5. **Releases** are created on GitHub (via `gh release create` or GitHub REST API) with binary artifacts (`.deb`, `.tar.gz`, `.zip`).
-6. **README.md and docs** that belong with the public release should be committed to `origin` first; GitHub's repo page can mirror from tags, but do not push doc-only commits directly to `github`.
+5. **Releases** are created on GitHub with binary artifacts:
+   ```bash
+   gh release create v1.x.x --title "..." --notes-file /tmp/notes.md \
+     build/*.deb build/*.tar.gz build/*.zip
+   ```
+6. **If using GitHub REST API** (when `gh` is not authenticated), create the release via
+   `POST /repos/{owner}/{repo}/releases` then upload assets via the `upload_url`.
 
 ### Correct release flow
 
 ```bash
-# 1. Commit changes to origin
+# 1. Commit all code to origin
 git add -A && git commit -m "feat: ..."
 git push origin master
 
 # 2. Create tag and push to BOTH remotes
 git tag v1.x.x
-git push origin v1.x.x      # tag to Azure DevOps
-git push github v1.x.x      # tag to GitHub (no code!)
+git push origin v1.x.x
+git push github v1.x.x
 
 # 3. Build artifacts
 make build-go-linux VERSION=1.x.x
 make build-go-windows VERSION=1.x.x
 
-# 4. Create GitHub release with artifacts (uses tag)
-gh release create v1.x.x --title "..." --notes "..." \
-  build/artifact1.deb \
-  build/artifact2.tar.gz
+# 4. Update GitHub's main branch with public docs only
+git checkout -b github-main-temp
+git checkout origin/master -- README.md LICENSE install.sh
+git commit -m "docs: update public docs for v1.x.x"
+git push github HEAD:main
+git checkout master && git branch -D github-main-temp
+
+# 5. Create GitHub release with artifacts
+gh release create v1.x.x --title "MiniCluster v1.x.x" \
+  --notes-file /tmp/release-notes.md \
+  build/*.deb build/*.tar.gz build/*.zip
 ```
 
 ### If in doubt
