@@ -1,0 +1,57 @@
+# Zoo Project Rules — MiniCluster
+# This file is read by Zoo on every task. Follow these rules strictly.
+
+## Git & Release Workflow (CRITICAL)
+
+**Source of truth for code: Azure DevOps (`origin` remote)**
+- ALL code commits, branches, and pushes MUST go to `origin` (Azure DevOps)
+- GitHub is used ONLY for public releases (tags + binary artifacts)
+
+### What goes where
+
+| Remote   | Purpose                                | What to push                           |
+|----------|----------------------------------------|----------------------------------------|
+| `origin` | Source code repository (Azure DevOps)  | All commits, branches, code changes    |
+| `github` | Public releases only                   | Tags only, via `gh release create` or GitHub API (artifacts uploaded to release) |
+
+### Rules
+
+1. **NEVER push commits/code/branches to `github`.** Only push tags (`git push github <tag>`).
+2. **ALWAYS push commits/code/branches to `origin`.** This is the development remote.
+3. **Tags must be pushed to BOTH remotes** so GitHub can host releases:
+   ```bash
+   git push origin <tag>      # code + tag to Azure DevOps
+   git push github <tag>      # tag only to GitHub (enables release)
+   ```
+4. **Commits only go to origin:**
+   ```bash
+   git push origin <branch>   # correct
+   # git push github <branch> # WRONG — never do this
+   ```
+5. **Releases** are created on GitHub (via `gh release create` or GitHub REST API) with binary artifacts (`.deb`, `.tar.gz`, `.zip`).
+6. **README.md and docs** that belong with the public release should be committed to `origin` first; GitHub's repo page can mirror from tags, but do not push doc-only commits directly to `github`.
+
+### Correct release flow
+
+```bash
+# 1. Commit changes to origin
+git add -A && git commit -m "feat: ..."
+git push origin master
+
+# 2. Create tag and push to BOTH remotes
+git tag v1.x.x
+git push origin v1.x.x      # tag to Azure DevOps
+git push github v1.x.x      # tag to GitHub (no code!)
+
+# 3. Build artifacts
+make build-go-linux VERSION=1.x.x
+make build-go-windows VERSION=1.x.x
+
+# 4. Create GitHub release with artifacts (uses tag)
+gh release create v1.x.x --title "..." --notes "..." \
+  build/artifact1.deb \
+  build/artifact2.tar.gz
+```
+
+### If in doubt
+When a rule is unclear, **ask the user** before executing `git push` to any remote.
