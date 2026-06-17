@@ -286,100 +286,526 @@ sudo systemctl restart minicluster
 
 ## ⚡ CLI — `mc`
 
-The `mc` command-line tool is your primary interface to MiniCluster. It's included in every package and communicates with the API server.
+The `mc` command-line tool is your primary interface to MiniCluster from the terminal, scripts, and CI/CD pipelines. It's included in every package and communicates with the MiniCluster API server over HTTP.
 
-### Setup
+### Authentication
+
+Before using any command, you must authenticate with the server:
 
 ```bash
-# Connect to your server and authenticate
-mc login --server http://localhost:2016
+# Interactive login (prompts for username and password)
+mc login
 
-# Verify the connection
-mc version
+# Login with username (prompts for password securely)
+mc login --username admin
+
+# Login to a specific server
+mc login --server http://192.168.1.100:2016
+
+# Use an existing JWT token directly
+mc login --token eyJhbGciOiJIUzI1NiIsInR5cCI6...
+
+# Check current authentication status
+mc login --status
+
+# Logout (remove stored credentials)
+mc logout
+
+# Logout from all servers
+mc logout --all
 ```
 
-### Working with Multiple Servers (Contexts)
+**How it works:** Credentials are stored in `~/.minicluster/credentials.json`. The token is automatically attached to all subsequent API requests.
+
+### Multi-Server Management (Contexts)
 
 Manage connections to multiple MiniCluster servers using named contexts:
 
 ```bash
-# Add a staging server
-mc config set-context staging --server http://staging-host:2016
+# View all configuration
+mc config get
 
-# Switch to staging
+# List all available contexts
+mc config contexts
+
+# Add and switch to a staging server
+mc config set-context staging --server http://staging-host:2016
 mc config use-context staging
 
-# List all contexts
-mc config get-contexts
+# Show the currently active context
+mc config current-context
 
 # Switch back to default
 mc config use-context default
 ```
 
-CLI config is saved at `~/.minicluster/config.yaml`.
+**Example config file** (`~/.minicluster/config.yaml`):
+
+```yaml
+context: production
+contexts:
+  production:
+    server:
+      url: https://prod.example.com:2016
+    auth:
+      token: eyJhbGciOi...
+  staging:
+    server:
+      url: https://staging.example.com:2016
+    auth:
+      token: eyJhbGciOi...
+  local:
+    server:
+      url: http://localhost:2016
+    auth:
+      token: local-dev-token
+output:
+  format: table
+  no_color: false
+```
 
 ### App Management
 
+Apps are logical groupings for related services (e.g., "Backend", "Frontend", "Monitoring"):
+
 ```bash
-mc app list                          # list all applications
-mc app create my-api --type web      # create a new web app
-mc app info my-api                   # show app details
-mc app update my-api --dir /new/path # update app settings
-mc app delete my-api                 # remove an application
+# List all apps with service statistics
+mc app list
+mc app list -o json
+
+# Get detailed information about an app
+mc app get my-app
+mc app get "My App" -o json
+
+# Create a new app
+mc app create "Backend Services"
+mc app create "Frontend" --description "Web applications" --icon "🌐" --color "#3b82f6"
+
+# Update app settings
+mc app update my-app --description "Updated description"
+
+# Delete an app (services become unassigned, not deleted)
+mc app delete my-app
+mc app delete my-app --yes    # skip confirmation prompt
+
+# Clone an app with all its services
+mc app clone my-app
+```
+
+**Output example** (`mc app list`):
+
+```
+NAME              SERVICES  RUNNING  STOPPED  CREATED
+────────────────  ────────  ───────  ───────  ──────────────────
+Backend Services  5         4        1        2026-01-15 10:30:00
+Frontend          3         3        0        2026-01-16 14:22:00
+Monitoring        2         2        0        2026-02-01 09:00:00
 ```
 
 ### Service Control
 
+Services are the core unit of MiniCluster. Each service represents a managed process or container with lifecycle control, auto-restart, health checks, and log capture:
+
 ```bash
-mc service list                      # list all services
-mc service start my-api              # start a service
-mc service stop my-api               # stop a service
-mc service restart my-api            # restart a service
-mc service status my-api             # detailed status info
-mc service logs my-api -f            # stream logs live
-mc service logs my-api --tail 100    # last 100 lines
+# List all services with current status
+mc service list
+mc service list -o json
+
+# Get detailed information about a service
+mc service get my-api
+mc service get "API Server" -o json
+
+# Start a stopped service
+mc service start my-api
+mc service start "API Server"
+
+# Stop a running service
+mc service stop my-api
+
+# Restart a service (stop then start)
+mc service restart my-api
+
+# Get runtime status of all services
+mc service status
+
+# Get status of a specific service
+mc service status my-api
+
+# Clone a service with its full configuration
+mc service clone my-api
+
+# Delete a service (must be stopped first)
+mc service delete my-api
+mc service delete my-api --yes
 ```
+
+**Services can be identified by name or ID** — both work interchangeably in all commands.
+
+### Streaming Logs
+
+View and stream real-time logs from any service:
+
+```bash
+# View the last 100 lines of logs
+mc service logs my-api
+
+# Follow/stream logs in real-time (like tail -f)
+mc service logs my-api -f
+
+# Show last N lines
+mc service logs my-api --tail 500
+
+# Combine with --no-color for piping to files
+mc service logs my-api --tail 1000 --no-color > api-logs.txt
+```
+
+**Tips:**
+- Use `-f` (follow) to stream logs live — press `Ctrl+C` to stop
+- Use `--tail N` to control how many historical lines are shown before streaming begins
+- Logs include both stdout and stderr from the managed process
+- Logs are persisted in the server's SQLite database and survive service restarts
 
 ### Container Management
 
+MiniCluster has deep Docker integration for managing container-type services, images, volumes, and networks.
+
+#### Container Runtime & Info
+
 ```bash
-mc container list                    # list all containers
-mc container start my-container      # start a container
-mc container stop my-container       # stop a container
-mc container restart my-container    # restart a container
-mc container logs my-container -f    # stream container logs
+# Show Docker runtime information (version, containers, images)
+mc container runtime
+
+# List all containers
+mc container list
+
+# Start, stop, or restart a container
+mc container start my-container
+mc container stop my-container
+mc container restart my-container
+
+# Stream container logs
+mc container logs my-container -f
 ```
 
-### File Manager
+#### Docker Images
 
 ```bash
-mc file ls /path/on/server           # list remote files
-mc file cat /path/to/file            # view file contents
-mc file cp local.txt /remote/path    # upload a file
-mc file cp /remote/file.txt ./       # download a file
+# List local Docker images
+mc container images list
+
+# Pull an image from a registry
+mc container images pull nginx:latest
+mc container images pull postgres:16
+
+# Remove a local image
+mc container images remove nginx:latest
+mc container images rm nginx:latest    # shorthand
 ```
 
-### Packages & Deployment
+#### Container Configuration for Services
+
+Each service can have a container configuration that defines how it runs as a Docker container:
 
 ```bash
-mc package build ./my-app            # build .mcpkg from a directory
-mc package install my-app.mcpkg      # install a local package
-mc registry list                     # browse registry packages
-mc registry search nginx             # search the registry
-mc install nginx --from registry     # install from registry
+# View the container config for a service
+mc container config get my-service
+
+# Set container configuration
+mc container config set my-service \
+  --image nginx \
+  --tag latest \
+  --ports "8080:80,8443:443" \
+  --volumes "/data:/usr/share/nginx/html:ro" \
+  --network my-network \
+  --memory 512 \
+  --cpu 1.0 \
+  --entrypoint "/docker-entrypoint.sh" \
+  --command "nginx -g 'daemon off;'" \
+  --user "nginx" \
+  --workdir "/usr/share/nginx/html" \
+  --privileged=false \
+  --read-only=true \
+  --remove-on-stop=true \
+  --labels "app=web,env=production"
+
+# Delete container config (service reverts to process mode)
+mc container config delete my-service
+mc container config rm my-service
+```
+
+**Container config flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--image` | Docker image name |
+| `--tag` | Image tag (default: `latest`) |
+| `--registry` | Private registry URL |
+| `--pull-policy` | Pull policy: `always`, `missing`, `never` |
+| `--ports` | Port mappings (comma-separated `host:container`) |
+| `--volumes` | Volume mounts (comma-separated `host:container[:options]`) |
+| `--network` | Docker network name |
+| `--memory` | Memory limit in MB |
+| `--cpu` | CPU limit (e.g., `1.5` for 1.5 cores) |
+| `--entrypoint` | Container entrypoint override |
+| `--command` | Container command override |
+| `--user` | Run as user |
+| `--workdir` | Working directory inside container |
+| `--privileged` | Run in privileged mode |
+| `--read-only` | Read-only root filesystem |
+| `--remove-on-stop` | Remove container when service stops |
+| `--labels` | Docker labels (comma-separated `key=value`) |
+
+#### Container Stats & Exec
+
+```bash
+# Show CPU/memory/network stats for a container
+mc container stats my-service
+
+# Execute a command inside a running container
+mc container exec my-service ls -la /app
+mc container exec my-service cat /etc/nginx/nginx.conf
+mc container exec my-service sh -c "echo hello"
+```
+
+#### Docker Volumes & Networks
+
+```bash
+# List all Docker volumes
+mc container volumes list
+
+# Create a named volume
+mc container volumes create my-data
+mc container volumes create my-data --driver local --label "backup=daily"
+
+# Remove a volume
+mc container volumes remove my-data
+
+# List all Docker networks
+mc container networks list
+
+# Create a network
+mc container networks create my-network
+mc container networks create my-network --driver bridge --subnet "172.20.0.0/16"
+
+# Remove a network
+mc container networks remove my-network
+```
+
+### File Management
+
+Upload, download, and manage files on the MiniCluster server:
+
+```bash
+# List files in the root directory
+mc file list
+
+# List files in a specific folder
+mc file list prod
+mc file list backup/2026-01
+
+# Upload a file
+mc file upload ./config.json prod
+mc file upload ~/data.csv backup/data
+
+# Upload multiple files with a glob pattern
+mc file upload-bulk "*.json" prod
+mc file upload-bulk "./data/*.csv" backup/data
+
+# Download a file
+mc file download prod/config.json ./config.json
+mc file download backup/data/data.csv ~/downloads/
+
+# Download an entire folder (downloaded as zip and extracted)
+mc file download prod/configs ./local-configs
+mc file download backup/2026-01 ~/backups/january
+```
+
+**Notes:**
+- File paths with spaces should be quoted: `mc file upload "./my file.json" prod`
+- Folder downloads are automatically zipped server-side and extracted locally
+- The `--no-progress` flag disables the upload/download progress bar for scripting
+
+### Package Registry
+
+MiniCluster includes a built-in package registry for publishing, discovering, and installing heterogeneous multi-component packages (`.mcpkg`):
+
+```bash
+# List all packages in the registry
+mc registry list
+
+# Filter by name
+mc registry list --name my-package
+
+# Filter by tag
+mc registry list --tag production
+
+# Show all versions of a package
+mc registry versions my-package
+
+# Show details of a specific version
+mc registry show my-package
+mc registry show my-package@1.2.0
+
+# Search packages by keyword
+mc registry search "web server"
+
+# Install the latest version
+mc install my-package
+
+# Install a specific version
+mc install my-package@1.2.0
+
+# List installed packages
+mc registry installs
+
+# Uninstall a package
+mc registry uninstall <installation-id>
+
+# Delete a package version from the registry
+mc registry delete my-package@1.0.0
+mc registry delete my-package          # delete all versions
+```
+
+#### Publishing Packages
+
+```bash
+# Publish a directory (reads name/version from manifest.json)
+mc registry push ./my-package-dir
+
+# Publish with overrides
+mc registry push ./my-package-dir \
+  --name my-package \
+  --version 1.0.0 \
+  --description "My awesome package" \
+  --author "Your Name" \
+  --tags "web,api,server"
+
+# Publish a pre-built .mcpkg file
+mc registry push my-package-1.0.0.mcpkg \
+  --name my-package \
+  --version 1.0.0
+```
+
+**Directory structure for publishing:**
+
+```
+my-package-dir/
+├── manifest.json        # Required: defines components and metadata
+├── .mcignore           # Optional: patterns to exclude from package
+├── frontend/
+│   └── ...
+├── backend/
+│   └── ...
+└── config/
+    └── ...
+```
+
+### Package Building & Inspection
+
+Build and validate `.mcpkg` packages locally before publishing:
+
+```bash
+# Initialize a new package directory with a template manifest.json
+mc package init
+mc package init ./my-package
+
+# Validate a package directory
+mc package validate
+mc package validate ./my-package
+
+# Build a .mcpkg file from a directory
+mc package build
+mc package build ./my-package
+
+# Push (build + publish in one step)
+mc package push ./my-package
+
+# Inspect a .mcpkg file — show components and required env vars
+mc inspect my-package-1.0.0.mcpkg
+mc inspect my-package@1.2.0          # inspect from registry
+```
+
+### Output Formats
+
+All commands that produce output support multiple formats via the `--output` (`-o`) flag:
+
+```bash
+# Human-readable table (default)
+mc app list
+mc app list -o table
+
+# JSON output — ideal for scripting and jq processing
+mc app list -o json
+
+# YAML output
+mc app list -o yaml
+
+# Quiet mode — only essential output (useful for CI/CD)
+mc service start my-api -o quiet
+```
+
+**Scripting example:**
+
+```bash
+# Get all running service names
+mc service list -o json | jq -r '.[] | select(.status == "Running") | .name'
+
+# Stop all services in an app
+mc app get "Backend" -o json | jq -r '.services[].name' | while read svc; do
+  mc service stop "$svc" -y
+done
+
+# Check if a service is healthy
+status=$(mc service status my-api -o json | jq -r '.health')
+if [ "$status" = "healthy" ]; then
+  echo "Service is healthy!"
+fi
 ```
 
 ### Global Flags
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `-s, --server` | API server URL (e.g. `http://myhost:2016`) | current context |
-| `-t, --token` | Authentication token | current context |
-| `-o, --output` | Output format: `table`, `json`, `yaml`, `quiet` | `table` |
-| `--debug` | Show raw API requests for debugging | off |
-| `--timeout` | Request timeout duration | `30s` |
-| `-y, --yes` | Skip all confirmation prompts | off |
-| `--context` | Use a named context from config | `default` |
+These flags are available on every command:
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--config` | `-c` | `~/.minicluster/config.yaml` | Path to configuration file |
+| `--server` | `-s` | `http://localhost:2016` | MiniCluster API server URL |
+| `--token` | `-t` | *(from credentials)* | Authentication token override |
+| `--output` | `-o` | `table` | Output format: `table`, `json`, `yaml`, `quiet` |
+| `--context` | | *(active context)* | Named context from config file |
+| `--no-color` | | `false` | Disable colored output |
+| `--verbose` | `-v` | `false` | Show additional detail in output |
+| `--debug` | | `false` | Show raw HTTP API calls for troubleshooting |
+| `--timeout` | | `30s` | Request timeout duration |
+| `--yes` | `-y` | `false` | Skip confirmation prompts (non-interactive mode) |
+
+**Environment variables:** You can also configure the CLI using environment variables:
+
+| Variable | Equivalent Flag |
+|----------|----------------|
+| `MC_SERVER_URL` | `--server` |
+| `MC_AUTH_TOKEN` | `--token` |
+| `MC_OUTPUT_FORMAT` | `--output` |
+| `MC_CONTEXT` | `--context` |
+
+### Shell Completions
+
+Generate auto-completion scripts for popular shells:
+
+```bash
+# Bash
+mc completion bash > /etc/bash_completion.d/mc
+# Or for current session:
+source <(mc completion bash)
+
+# Zsh
+mc completion zsh > "${fpath[1]}/_mc"
+
+# Fish
+mc completion fish > ~/.config/fish/completions/mc.fish
+```
+
+After installing completions, you can tab-complete commands, flags, and in some cases service/app names.
 
 ### Command Reference
 
@@ -387,15 +813,17 @@ mc install nginx --from registry     # install from registry
 |---------|-------------|
 | `mc app` | Manage applications |
 | `mc service` | Manage services (start/stop/logs/deploy) |
-| `mc container` | Manage container-type services |
-| `mc file` | Remote file manager |
+| `mc container` | Manage container-type services and Docker resources |
+| `mc file` | Remote file manager (upload/download/list) |
 | `mc package` | Build `.mcpkg` deployment packages |
-| `mc registry` | Browse and search the package registry |
+| `mc registry` | Browse, search, and install from the package registry |
 | `mc install` | Install a package from registry or file |
+| `mc inspect` | Inspect `.mcpkg` package contents |
 | `mc login` / `mc logout` | Authentication |
 | `mc config` | Manage CLI configuration and contexts |
 | `mc server-config` | View server configuration |
 | `mc version` | Print client and server version info |
+| `mc completion` | Generate shell completion scripts |
 
 > 💡 Run `mc <command> --help` for full details on any command.
 
