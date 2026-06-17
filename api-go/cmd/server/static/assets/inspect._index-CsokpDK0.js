@@ -1,1 +1,0 @@
-import{w as t}from"./with-props-CidvmoIs.js";import{j as e,N as o}from"./chunk-KNED5TY2-B43C9OGh.js";const i=t(function(){return e.jsx(o,{to:"/inspect/local/overview",replace:!0})});export{i as default};

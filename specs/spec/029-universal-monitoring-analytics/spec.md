@@ -103,8 +103,19 @@ It also answers the open question: **yes, we adopt a query language** for the gr
 - From **Inspect**: the Monitors list + "Add monitor" entry point.
 - From **File Explorer**: "Monitor this file/folder" on the `⋮` menu.
 
-### 7. Query Language (MQL)
-See [§7 below](#7-query-language-mql) — adopt a **PromQL/LogQL-inspired subset**, server-translated to `MetricBucket`. Not an embedded Prometheus/Loki.
+### 7. Query Language (MQL) — **deferred to Phase 2**
+See [§7 below](#7-query-language-mql). MQL is a **convenience layer over the v1 backend**, not a prerequisite. **v1 ships without it**: the chip selectors + `targets[]` cover ~95% of use, and saved queries are stored as **structured JSON** (not strings) so MQL can be added later as an *alternate input* that compiles to the same JSON — no rework. See [§9 Phasing](#9-phasing).
+
+### 8. Explorer & Processes Enrichment
+Make the two surfaces where users most often "find a thing to monitor" first-class data views. See the dedicated [explorer-processes.md](./explorer-processes.md):
+- **Explorer:** recursive **folder sizes** (computed, cached), a **Disk Usage Analyzer** (treemap + largest/oldest files + by-type breakdown + growth-over-time trend — the WinDirStat/TreeSize genre, with history as the differentiator; duplicate detection deferred), **advanced search** (by name/glob/regex, content, size range, date range, type), and a **"Monitor" action** in the context menu.
+- **Processes:** move the hand-built table onto the HiveMind grid (filter/sort/search/group), add a **"Monitor" action**, and link a process row straight into the analytics explorer.
+
+### 9. Phasing
+| Phase | Contents | MQL? |
+|-------|----------|------|
+| **P1 (core)** | Monitor Target registry + "Monitor this" action; multi-entity overlay; grid view; saved queries as **JSON**; Explorer folder-size + advanced search; Processes grid | ❌ no |
+| **P2 (power)** | MQL parser/compiler + `/api/metrics/query`; "Show query" reveal/edit; MQL-backed widgets | ✅ yes |
 
 ---
 

@@ -29,15 +29,18 @@ Generalizes `watched_directories`.
 - **No schema change required** — universal monitoring is collector + registry work, the store already supports it.
 
 ### 1.3 `saved_queries` (new)
+
+**Stored as structured JSON, not as an MQL string** — so v1 ships without MQL and MQL (P2) becomes an *alternate input* compiling to the same JSON.
+
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | uuid | PK |
 | `name` | text | |
-| `targets` | json | array of target ids |
-| `metrics` | json | metric names / families |
-| `mql` | text | optional raw MQL |
-| `range` / `bucket` | text | explorer state |
+| `spec` | json | the canonical query: `{ targets:[id…], metrics:[name…], range, bucket, agg, groupBy }` |
+| `mql` | text | **P2, nullable** — raw MQL if authored that way; always compilable to `spec` |
 | `pinned_widget` | bool | surfaced in cockpit |
+
+> The `spec` JSON is the source of truth. The chip explorer writes `spec` directly; in P2 the MQL parser produces the same `spec`. A widget re-runs `spec` on a schedule.
 
 ---
 

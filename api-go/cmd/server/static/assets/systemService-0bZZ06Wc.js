@@ -1,0 +1,1 @@
+import{a as s}from"./AuthContext-mokAr4q2.js";const a={async getInfo(){return(await s.get("/api/system/info")).data},async installService(){return(await s.post("/api/system/service/install")).data},async uninstallService(){return(await s.delete("/api/system/service/uninstall")).data}};export{a as s};
