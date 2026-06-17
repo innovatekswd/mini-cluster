@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { FaCubes, FaCog, FaSync } from "react-icons/fa";
 import { useToast } from "~/components/Toast";
@@ -12,12 +12,21 @@ type LayoutProps = {
   children: React.ReactNode;
 };
 
+import { systemService, type SystemInfo } from "~/services/systemService";
+
 export const Layout = ({ children }: LayoutProps) => {
   const { status: connectionStatus, checkConnection, isChecking, lastOnline, onDisconnect, onReconnect } = useConnection();
   const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications } = useToast();
   const { clearStatuses } = useAppStatusContext();
   const { logout } = useAuth();
   const toast = useToast();
+  const [sysInfo, setSysInfo] = useState<SystemInfo | null>(null);
+
+  useEffect(() => {
+    if (connectionStatus === "connected") {
+      systemService.getInfo().then(setSysInfo).catch(() => {});
+    }
+  }, [connectionStatus]);
 
   useEffect(() => {
     const unsubDisconnect = onDisconnect(() => {
@@ -69,7 +78,9 @@ export const Layout = ({ children }: LayoutProps) => {
               <h1 className="text-lg font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
                 MiniCluster
               </h1>
-              <p className="text-xs text-slate-500 -mt-0.5 hidden sm:block">Control Center</p>
+              <p className="text-xs text-slate-500 -mt-0.5 hidden sm:block">
+                {sysInfo?.version ? `v${sysInfo.version}` : ""}
+              </p>
             </div>
           </div>
 

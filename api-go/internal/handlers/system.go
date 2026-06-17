@@ -1,13 +1,18 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/go-chi/chi/v5"
+
+	"github.com/innovatek/minicluster/internal/update"
 )
 
 // SystemHandler exposes OS/runtime info and service install/uninstall endpoints.
@@ -18,26 +23,75 @@ type SystemHandler struct {
 	isServiceFn        func() bool
 	installServiceFn   func(exePath string) error
 	uninstallServiceFn func() error
+	version            string
+	gitCommit          string
+	buildTime          string
+	updateChecker      *update.CachedChecker // may be nil if updates disabled
 }
 
 func NewSystemHandler(
 	isServiceFn func() bool,
 	installServiceFn func(exePath string) error,
 	uninstallServiceFn func() error,
+	version, gitCommit, buildTime string,
+	updateChecker *update.CachedChecker,
 ) *SystemHandler {
 	return &SystemHandler{
 		isServiceFn:        isServiceFn,
 		installServiceFn:   installServiceFn,
 		uninstallServiceFn: uninstallServiceFn,
+		version:            version,
+		gitCommit:          gitCommit,
+		buildTime:          buildTime,
+		updateChecker:      updateChecker,
 	}
 }
 
 func (h *SystemHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/info", h.GetInfo)
+	r.Get("/update/check", h.CheckUpdate)
 	r.Post("/service/install", h.InstallService)
 	r.Delete("/service/uninstall", h.UninstallService)
 	return r
+}
+
+// GET /api/system/update/check
+func (h *SystemHandler) CheckUpdate(w http.ResponseWriter, r *http.Request) {
+	if h.updateChecker == nil {
+		writeJSON(w, http.StatusOK, update.CheckResult{
+			CurrentVersion:  h.version,
+			LatestVersion:   h.version,
+			UpdateAvailable: false,
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	latest, err := h.updateChecker.Latest(ctx)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, "update check failed: "+err.Error())
+		return
+	}
+
+	// Compare versions
+	currentVer, currErr := semver.NewVersion(strings.TrimPrefix(h.version, "v"))
+	latestVer, latErr := semver.NewVersion(strings.TrimPrefix(latest.Version, "v"))
+
+	updateAvailable := false
+	if currErr == nil && latErr == nil {
+		updateAvailable = latestVer.GreaterThan(currentVer)
+	}
+
+	result := update.CheckResult{
+		CurrentVersion:  h.version,
+		LatestVersion:   latest.Version,
+		UpdateAvailable: updateAvailable,
+		Release:         latest,
+	}
+	writeJSON(w, http.StatusOK, result)
 }
 
 // GET /api/system/info
@@ -63,6 +117,9 @@ func (h *SystemHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 		"isService":    isService,
 		"serviceType":  serviceType,
 		"serviceName":  "MiniCluster",
+		"version":      h.version,
+		"gitCommit":    h.gitCommit,
+		"buildTime":    h.buildTime,
 	})
 }
 

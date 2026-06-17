@@ -23,6 +23,14 @@ type Config struct {
 	SignalR          SignalRConfig          `mapstructure:"signalr"`
 	ContainerRuntime ContainerRuntimeConfig `mapstructure:"container_runtime"`
 	Registry         RegistryConfig         `mapstructure:"registry"`
+	Update           UpdateConfig           `mapstructure:"update"`
+}
+
+type UpdateConfig struct {
+	Enabled      bool   `mapstructure:"enabled"`
+	GithubOwner  string `mapstructure:"github_owner"`
+	GithubRepo   string `mapstructure:"github_repo"`
+	CacheMinutes int    `mapstructure:"cache_minutes"` // TTL for caching release checks
 }
 
 type AuthConfig struct {
@@ -115,6 +123,10 @@ func Load() (*Config, error) {
 	v.SetDefault("signalr.max_message_size_kb", 256)
 	v.SetDefault("signalr.keepalive_interval_seconds", 15)
 	v.SetDefault("signalr.client_timeout_seconds", 120)
+	v.SetDefault("update.enabled", true)
+	v.SetDefault("update.github_owner", "innovatek")
+	v.SetDefault("update.github_repo", "minicluster")
+	v.SetDefault("update.cache_minutes", 60)
 
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")

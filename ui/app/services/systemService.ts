@@ -7,6 +7,9 @@ export interface SystemInfo {
   isService: boolean;
   serviceType: "windows" | "systemd" | "none";
   serviceName: string;
+  version: string;
+  gitCommit: string;
+  buildTime: string;
 }
 
 export const systemService = {

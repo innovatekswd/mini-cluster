@@ -93,14 +93,17 @@ export function SystemPanel() {
 
         <dl className="grid grid-cols-2 gap-4">
           {[
+            { label: "Version",          value: info.version || "dev", mono: true },
+            { label: "Build Time",       value: info.buildTime && info.buildTime !== "unknown" ? info.buildTime : "—" },
             { label: "Operating System", value: osLabel },
             { label: "Architecture",     value: info.arch },
             { label: "Runtime",          value: info.runtime === "go" ? "Go" : ".NET" },
             { label: "Service Name",     value: info.serviceName },
-          ].map(({ label, value }) => (
+            { label: "Git Commit",       value: info.gitCommit && info.gitCommit !== "unknown" ? info.gitCommit.substring(0, 8) : "—", mono: true },
+          ].map(({ label, value, mono }) => (
             <div key={label} className="bg-slate-800/60 rounded-lg p-3">
               <dt className="text-xs text-slate-500 uppercase tracking-wide mb-1">{label}</dt>
-              <dd className="text-sm font-medium text-slate-200">{value}</dd>
+              <dd className={`text-sm font-medium text-slate-200 ${mono ? "font-mono" : ""}`}>{value}</dd>
             </div>
           ))}
         </dl>

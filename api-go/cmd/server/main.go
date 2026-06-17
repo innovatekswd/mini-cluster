@@ -25,6 +25,7 @@ import (
 	"github.com/innovatek/minicluster/internal/middleware"
 	"github.com/innovatek/minicluster/internal/models"
 	"github.com/innovatek/minicluster/internal/services"
+	"github.com/innovatek/minicluster/internal/update"
 	"github.com/innovatek/minicluster/internal/workers"
 	"github.com/philippseith/signalr"
 	"go.uber.org/zap"
@@ -182,7 +183,18 @@ func main() {
 	healthHandler := handlers.NewHealthHandler(databases.App, databases.Logs)
 	containerHandler := handlers.NewContainerHandler(containerSvc, databases.App, databases.Logs, log)
 	registryHandler := handlers.NewRegistryHandler(databases.App, cfg.Registry.StorageDir, log)
-	systemHandler := handlers.NewSystemHandler(IsWindowsServiceActive, InstallWindowsService, UninstallWindowsService)
+	// ─── Update checker (optional) ───────────────────────────────────────────
+	var updateChecker *update.CachedChecker
+	if cfg.Update.Enabled && cfg.Update.GithubOwner != "" && cfg.Update.GithubRepo != "" {
+		githubChecker := update.NewGitHubChecker(cfg.Update.GithubOwner, cfg.Update.GithubRepo)
+		cacheTTL := time.Duration(cfg.Update.CacheMinutes) * time.Minute
+		updateChecker = update.NewCachedChecker(githubChecker, cacheTTL)
+		log.Info("update checker enabled",
+			zap.String("repo", cfg.Update.GithubOwner+"/"+cfg.Update.GithubRepo),
+			zap.Duration("cacheTTL", cacheTTL))
+	}
+	
+	systemHandler := handlers.NewSystemHandler(IsWindowsServiceActive, InstallWindowsService, UninstallWindowsService, version, gitCommit, buildTime, updateChecker)
 
 	// ─── SignalR servers ─────────────────────────────────────────────────────
 	signalROrigins := []string{

@@ -36,6 +36,7 @@
 | 023 | [Alerting & Threshold Rules](#023-alerting) | 📋 Spec Ready | 2-3 weeks |
 | 027 | [Operations Cockpit UX, Realtime & Route Alignment](#027-operations-cockpit-ux-realtime-route-alignment) | 📋 Spec Ready | 4-6 weeks |
 | 028 | [Time-Series Performance Monitoring](#028-time-series-performance-monitoring) | 📋 Spec Ready | 5-6 weeks |
+| 029 | [Universal Monitoring & Analytics](#029-universal-monitoring-analytics) | 📋 Spec Draft | ~6 weeks |
 
 ### Legend
 - ✅ **Implemented** — Feature is complete and in production
