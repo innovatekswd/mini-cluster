@@ -4,8 +4,10 @@
 
 **Lightweight process management & monitoring with a built-in web dashboard**
 
-[![Latest Release](https://img.shields.io/github/v/release/innovatekswd/mini-cluster?label=latest)](releases/)
+[![Latest Release](https://img.shields.io/github/v/release/innovatekswd/mini-cluster?label=latest)](https://github.com/innovatekswd/mini-cluster/releases/latest)
 [![License](https://img.shields.io/github/license/innovatekswd/mini-cluster)](https://github.com/innovatekswd/mini-cluster)
+
+**Latest version: [v1.0.17](https://github.com/innovatekswd/mini-cluster/releases/tag/v1.0.17)**
 
 [Quick Start](#-quick-start) • [First Steps](#-first-steps) • [CLI Reference](#-cli--mc) • [Downloads](#-downloads) • [Troubleshooting](#-troubleshooting)
 
@@ -125,7 +127,19 @@ mc service list
 
 ## 📦 Downloads
 
-All release packages are hosted in the [`releases/`](releases/) directory of this repository.
+### Quick Download — v1.0.17
+
+| Platform | Download |
+|----------|----------|
+| 🐧 Linux (.deb) | [minicluster_1.0.17_amd64.deb](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.17/minicluster_1.0.17_amd64.deb) |
+| 🐧 Linux (.tar.gz amd64) | [minicluster-api-1.0.17-linux-amd64.tar.gz](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.17/minicluster-api-1.0.17-linux-amd64.tar.gz) |
+| 🐧 Linux (.tar.gz arm64) | [minicluster-api-1.0.17-linux-arm64.tar.gz](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.17/minicluster-api-1.0.17-linux-arm64.tar.gz) |
+| 🪟 Windows (.zip) | [minicluster-1.0.17-windows-amd64.zip](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.17/minicluster-1.0.17-windows-amd64.zip) |
+| 🐧 CLI (standalone) | [mc-linux-amd64](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.17/mc-linux-amd64) |
+
+> 📂 **Browse all releases** on the [GitHub Releases page](https://github.com/innovatekswd/mini-cluster/releases).
+
+### Package Contents
 
 | Platform | Package | Contents |
 |----------|---------|----------|
@@ -134,24 +148,25 @@ All release packages are hosted in the [`releases/`](releases/) directory of thi
 | 🐧 Linux (tar) arm64 | `minicluster-api-<version>-linux-arm64.tar.gz` | API server + CLI + config + systemd unit |
 | 🪟 Windows | `minicluster-<version>-windows-amd64.zip` | API server + CLI + PowerShell installer |
 
-> 📂 **Browse all versions** in the [`releases/`](releases/) directory.
-
 ### Direct Download URLs
 
-Replace `<version>` with any release number (e.g. `1.0.12`):
+Replace `<version>` with any release number (e.g. `1.0.17`):
 
 ```
 # Linux .deb
-https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v<version>/minicluster_<version>_amd64.deb
+https://github.com/innovatekswd/mini-cluster/releases/download/v<version>/minicluster_<version>_amd64.deb
 
 # Linux tarball (amd64)
-https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v<version>/minicluster-api-<version>-linux-amd64.tar.gz
+https://github.com/innovatekswd/mini-cluster/releases/download/v<version>/minicluster-api-<version>-linux-amd64.tar.gz
 
 # Linux tarball (arm64)
-https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v<version>/minicluster-api-<version>-linux-arm64.tar.gz
+https://github.com/innovatekswd/mini-cluster/releases/download/v<version>/minicluster-api-<version>-linux-arm64.tar.gz
 
 # Windows ZIP
-https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v<version>/minicluster-<version>-windows-amd64.zip
+https://github.com/innovatekswd/mini-cluster/releases/download/v<version>/minicluster-<version>-windows-amd64.zip
+
+# CLI (standalone)
+https://github.com/innovatekswd/mini-cluster/releases/download/v<version>/mc-linux-amd64
 ```
 
 ---
@@ -162,8 +177,8 @@ https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v<vers
 
 ```bash
 # Download & install
-wget https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/releases/v1.0.12/minicluster_1.0.12_amd64.deb
-sudo dpkg -i minicluster_1.0.12_amd64.deb
+wget https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.17/minicluster_1.0.17_amd64.deb
+sudo dpkg -i minicluster_1.0.17_amd64.deb
 
 # Start & check
 sudo systemctl start minicluster
@@ -182,8 +197,9 @@ sudo systemctl status minicluster
 ### Linux — Tarball (manual)
 
 ```bash
-tar -xzf minicluster-api-1.0.12-linux-amd64.tar.gz
-cd minicluster-api-1.0.12-linux-amd64
+wget https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.17/minicluster-api-1.0.17-linux-amd64.tar.gz
+tar -xzf minicluster-api-1.0.17-linux-amd64.tar.gz
+cd minicluster
 
 # Run directly
 chmod +x minicluster-api mc
