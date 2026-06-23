@@ -4,7 +4,7 @@
 
 **The lightweight platform to deploy, manage, and monitor all your processes — from a beautiful web dashboard or CLI.**
 
-[![Latest Release](https://img.shields.io/github/v/release/innovatekswd/mini-cluster?label=v1.0.22)](https://github.com/innovatekswd/mini-cluster/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/innovatekswd/mini-cluster?label=v1.0.23)](https://github.com/innovatekswd/mini-cluster/releases/latest)
 [![License](https://img.shields.io/github/license/innovatekswd/mini-cluster)](https://github.com/innovatekswd/mini-cluster)
 [![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black)](https://github.com/innovatekswd/mini-cluster#-quick-start)
 [![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white)](https://github.com/innovatekswd/mini-cluster#-quick-start)
