@@ -4,7 +4,7 @@
 
 **The lightweight platform to deploy, manage, and monitor all your processes — from a beautiful web dashboard or CLI.**
 
-[![Latest Release](https://img.shields.io/github/v/release/innovatekswd/mini-cluster?label=v1.0.20)](https://github.com/innovatekswd/mini-cluster/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/innovatekswd/mini-cluster?label=v1.0.21)](https://github.com/innovatekswd/mini-cluster/releases/latest)
 [![License](https://img.shields.io/github/license/innovatekswd/mini-cluster)](https://github.com/innovatekswd/mini-cluster)
 [![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black)](https://github.com/innovatekswd/mini-cluster#-quick-start)
 [![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white)](https://github.com/innovatekswd/mini-cluster#-quick-start)
@@ -41,6 +41,13 @@ irm https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/install.ps1
 ---
 
 ## 🖥️ See It In Action
+
+### Operations Cockpit — System overview at a glance
+
+![Overview](docs/screenshots/hero-overview.png)
+
+Widget-based dashboard with live system metrics (CPU, memory, disk, network), top consumers, service health, process list with service-linked prioritization, recent events, and sparkline trends. All metrics via REST polling at 2-second cadence.
+
 
 ### Process Manager — Every process, every metric, in real time
 
@@ -152,13 +159,13 @@ mc service list
 
 ## 📦 Downloads
 
-### Quick Download — v1.0.20
+### Quick Download — v1.0.21
 
 | Platform | Download |
 |----------|----------|
-| 🐧 Linux (.deb) | [minicluster_1.0.20_amd64.deb](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.20/minicluster_1.0.20_amd64.deb) |
-| 🐧 Linux (.tar.gz amd64) | [minicluster-api-1.0.20-linux-amd64.tar.gz](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.20/minicluster-api-1.0.20-linux-amd64.tar.gz) |
-| 🐧 CLI (standalone) | [mc-linux-amd64](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.20/mc-linux-amd64) |
+| 🐧 Linux (.deb) | [minicluster_1.0.20_amd64.deb](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.21/minicluster_1.0.20_amd64.deb) |
+| 🐧 Linux (.tar.gz amd64) | [minicluster-api-1.0.20-linux-amd64.tar.gz](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.21/minicluster-api-1.0.20-linux-amd64.tar.gz) |
+| 🐧 CLI (standalone) | [mc-linux-amd64](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.21/mc-linux-amd64) |
 
 > 📂 **Browse all releases** on the [GitHub Releases page](https://github.com/innovatekswd/mini-cluster/releases).
 
