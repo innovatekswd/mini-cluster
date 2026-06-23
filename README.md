@@ -7,7 +7,7 @@
 [![Latest Release](https://img.shields.io/github/v/release/innovatekswd/mini-cluster?label=latest)](https://github.com/innovatekswd/mini-cluster/releases/latest)
 [![License](https://img.shields.io/github/license/innovatekswd/mini-cluster)](https://github.com/innovatekswd/mini-cluster)
 
-**Latest version: [v1.0.18](https://github.com/innovatekswd/mini-cluster/releases/tag/v1.0.18)**
+**Latest version: [v1.0.20](https://github.com/innovatekswd/mini-cluster/releases/tag/v1.0.20)**
 
 [Quick Start](#-quick-start) • [First Steps](#-first-steps) • [CLI Reference](#-cli--mc) • [Downloads](#-downloads) • [Troubleshooting](#-troubleshooting)
 
@@ -125,17 +125,28 @@ mc service list
 
 ---
 
+## 🖥️ Dashboard Tour
+
+| | | |
+|---|---|---|
+| ![Dashboard](docs/screenshots/01-dashboard.png) | ![Apps](docs/screenshots/02-apps.png) | ![Services](docs/screenshots/03-services.png) |
+| **Dashboard** — System health at a glance | **Apps** — Logical groupings of services | **Services** — Manage individual services |
+| ![Processes](docs/screenshots/04-processes.png) | ![History](docs/screenshots/05-history.png) | ![Overview](docs/screenshots/06-overview.png) |
+| **Processes** — Real-time process monitor | **History** — Historical metrics with charts | **Overview** — Machine health & resources |
+| ![Files](docs/screenshots/07-files.png) | ![Terminal](docs/screenshots/08-terminal.png) | ![Explorer](docs/screenshots/09-explorer.png) |
+| **Files** — File browser & editor | **Terminal** — Web-based terminal | **Explorer** — Directory size monitoring |
+
+---
+
 ## 📦 Downloads
 
-### Quick Download — v1.0.18
+### Quick Download — v1.0.20
 
 | Platform | Download |
 |----------|----------|
-| 🐧 Linux (.deb) | [minicluster_1.0.18_amd64.deb](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.18/minicluster_1.0.18_amd64.deb) |
-| 🐧 Linux (.tar.gz amd64) | [minicluster-api-1.0.18-linux-amd64.tar.gz](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.18/minicluster-api-1.0.18-linux-amd64.tar.gz) |
-| 🐧 Linux (.tar.gz arm64) | [minicluster-api-1.0.18-linux-arm64.tar.gz](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.18/minicluster-api-1.0.18-linux-arm64.tar.gz) |
-| 🪟 Windows (.zip) | [minicluster-1.0.18-windows-amd64.zip](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.18/minicluster-1.0.18-windows-amd64.zip) |
-| 🐧 CLI (standalone) | [mc-1.0.18-linux-amd64](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.18/mc-1.0.18-linux-amd64) |
+| 🐧 Linux (.deb) | [minicluster_1.0.20_amd64.deb](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.20/minicluster_1.0.20_amd64.deb) |
+| 🐧 Linux (.tar.gz amd64) | [minicluster-api-1.0.20-linux-amd64.tar.gz](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.20/minicluster-api-1.0.20-linux-amd64.tar.gz) |
+| 🐧 CLI (standalone) | [mc-linux-amd64](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.20/mc-linux-amd64) |
 
 > 📂 **Browse all releases** on the [GitHub Releases page](https://github.com/innovatekswd/mini-cluster/releases).
 
