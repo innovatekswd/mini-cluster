@@ -2,86 +2,113 @@
 
 # ⚡ MiniCluster
 
-**Lightweight process management & monitoring with a built-in web dashboard**
+**The lightweight platform to deploy, manage, and monitor all your processes — from a beautiful web dashboard or CLI.**
 
-[![Latest Release](https://img.shields.io/github/v/release/innovatekswd/mini-cluster?label=latest)](https://github.com/innovatekswd/mini-cluster/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/innovatekswd/mini-cluster?label=v1.0.20)](https://github.com/innovatekswd/mini-cluster/releases/latest)
 [![License](https://img.shields.io/github/license/innovatekswd/mini-cluster)](https://github.com/innovatekswd/mini-cluster)
+[![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black)](https://github.com/innovatekswd/mini-cluster#-quick-start)
+[![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white)](https://github.com/innovatekswd/mini-cluster#-quick-start)
 
-**Latest version: [v1.0.20](https://github.com/innovatekswd/mini-cluster/releases/tag/v1.0.20)**
+<br>
 
-[Quick Start](#-quick-start) • [First Steps](#-first-steps) • [CLI Reference](#-cli--mc) • [Downloads](#-downloads) • [Troubleshooting](#-troubleshooting)
+[Quick Start](#-quick-start) • [See It In Action](#-see-it-in-action) • [CLI Reference](#-cli--mc) • [Downloads](#-downloads)
 
 </div>
 
 ---
 
-<details>
-<summary><strong>📖 Table of Contents</strong></summary>
-
-- [What is MiniCluster?](#-what-is-minicluster)
-- [Quick Start](#-quick-start)
-- [First Steps](#-first-steps)
-- [Architecture](#️-architecture)
-- [Downloads](#-downloads)
-- [Installation Details](#-installation-details)
-- [Configuration](#-configuration)
-- [CLI Reference — mc](#-cli--mc)
-- [Uninstall](#-uninstall)
-- [Troubleshooting](#-troubleshooting)
-- [Support](#-support)
-
-</details>
-
----
-
-## 🤔 What is MiniCluster?
-
-MiniCluster is a self-hosted platform for managing and monitoring applications, services, and containers — all through a clean web dashboard or the `mc` CLI.
-
-- 🖥️ **Web Dashboard** — manage apps, services, and containers from your browser
-- ⚙️ **Process Manager** — auto-restart, log streaming, environment management
-- 📦 **Package System** — build and deploy `.mcpkg` packages with one command
-- 🔐 **Authentication** — JWT-based auth out of the box
-- 🐧🪟 **Cross-Platform** — first-class support for Linux and Windows
-- 🪶 **Lightweight** — single binary, minimal resource footprint
-
----
-
 ## 🚀 Quick Start
 
-### Linux
+### One-command install. Open your browser. Done.
 
+**Linux:**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/install.sh | bash
 ```
 
-### Windows (PowerShell — run as Administrator)
-
+**Windows (PowerShell as Administrator):**
 ```powershell
 irm https://raw.githubusercontent.com/innovatekswd/mini-cluster/main/install.ps1 | iex
 ```
 
-> **That's it!** Open **http://localhost:2016** to access the dashboard.
+> Open **http://localhost:2016** — you're in.
 
-### Custom Install Options
-
-| Option | Linux | Windows |
-|--------|-------|---------|
+| Customize | Linux | Windows |
+|-----------|-------|---------|
 | Custom port | `MINICLUSTER_PORT=9000 curl ... \| bash` | `$env:MINICLUSTER_PORT="9000"; irm ... \| iex` |
-| Custom version | `MINICLUSTER_VERSION=1.2.0 curl ... \| bash` | `$env:MINICLUSTER_VERSION="1.2.0"; irm ... \| iex` |
-| Skip service setup | `MINICLUSTER_NO_SERVICE=1 curl ... \| bash` | — |
+| Specific version | `MINICLUSTER_VERSION=1.0.20 curl ... \| bash` | `$env:MINICLUSTER_VERSION="1.0.20"; irm ... \| iex` |
 
 ---
 
-## 🎯 First Steps
+## 🖥️ See It In Action
 
-Once installed, get up and running in under a minute:
+### Process Manager — Every process, every metric, in real time
+
+![Process Manager](docs/screenshots/hero-processes.png)
+
+CPU, memory, I/O, threads, file descriptors — sort, filter, and inspect every process on the machine. Drill into services, kill rogue processes, adjust priorities.
+
+---
+
+### File Explorer — Browse, edit, upload, download
+
+![File Explorer](docs/screenshots/hero-files.png)
+
+Navigate the server filesystem from your browser. Syntax-highlighted code editor, upload/download with progress, create folders, delete files — no SSH needed.
+
+---
+
+### Historical Metrics — Analyze performance over time
+
+![History](docs/screenshots/hero-history.png)
+
+Flexible time ranges (1h → 90d), selectable metrics, comparison mode vs previous day/week/month. Export to CSV or JSON. Powered by time-bucketed aggregation for fast queries.
+
+---
+
+### Web Terminal — Full PTY in your browser
+
+![Terminal](docs/screenshots/hero-terminal.png)
+
+Interactive terminal session right in the dashboard. Run commands, edit configs, tail logs — everything you'd do over SSH, now in one place.
+
+---
+
+### Directory Explorer — Track folder sizes over time
+
+![Explorer](docs/screenshots/hero-explorer.png)
+
+Monitor directory growth, file counts, and storage trends. Set up watched directories and view historical size data.
+
+---
+
+## 🎯 What is MiniCluster?
+
+MiniCluster is a **self-hosted** platform that gives you complete control over your applications, services, and containers:
+
+| | |
+|---|---|
+| 🖥️ **Web Dashboard** | Manage everything from a modern, reactive browser UI |
+| ⌨️ **`mc` CLI** | Full-featured command-line tool for automation and scripting |
+| ⚙️ **Process Manager** | Auto-restart, health checks, log capture, environment management |
+| 📊 **Real-Time Metrics** | CPU, memory, disk, network — historical charts and live monitoring |
+| 📦 **Package Registry** | Build, publish, and deploy `.mcpkg` packages |
+| 🐳 **Docker Integration** | Container-type services with image, volume, and network management |
+| 🔐 **JWT Authentication** | Role-based access (Admin, Operator, Viewer) out of the box |
+| 🐧🪟 **Cross-Platform** | First-class Linux and Windows support |
+| 🪶 **Lightweight** | Single binary, SQLite storage, minimal resource footprint |
+
+---
+
+## 🎯 First Steps with the CLI
+
+Once MiniCluster is running, the `mc` CLI gives you full control:
 
 ```bash
-# 1. Log in to your server
+# 1. Log in
 mc login --server http://localhost:2016
 
-# 2. Verify the connection
+# 2. Verify connection
 mc version
 
 # 3. Create your first app
@@ -90,16 +117,14 @@ mc app create my-api --type web --dir /path/to/app
 # 4. Start it
 mc service start my-api
 
-# 5. Watch the logs
+# 5. Watch live logs
 mc service logs my-api -f
 
-# 6. Check all running services
+# 6. See everything running
 mc service list
 ```
 
-> 💡 The CLI config is saved at `~/.minicluster/config.yaml`. Use **contexts** to manage multiple servers — see [CLI Contexts](#working-with-multiple-servers-contexts) below.
-
----
+> 💡 CLI config is at `~/.minicluster/config.yaml`. Use **contexts** to manage multiple servers.
 
 ## 🏗️ Architecture
 
@@ -122,19 +147,6 @@ mc service list
      │ Browser │              │ (terminal) │
      └─────────┘              └───────────┘
 ```
-
----
-
-## 🖥️ Dashboard Tour
-
-| | | |
-|---|---|---|
-| ![Dashboard](docs/screenshots/01-dashboard.png) | ![Apps](docs/screenshots/02-apps.png) | ![Services](docs/screenshots/03-services.png) |
-| **Dashboard** — System health at a glance | **Apps** — Logical groupings of services | **Services** — Manage individual services |
-| ![Processes](docs/screenshots/04-processes.png) | ![History](docs/screenshots/05-history.png) | ![Overview](docs/screenshots/06-overview.png) |
-| **Processes** — Real-time process monitor | **History** — Historical metrics with charts | **Overview** — Machine health & resources |
-| ![Files](docs/screenshots/07-files.png) | ![Terminal](docs/screenshots/08-terminal.png) | ![Explorer](docs/screenshots/09-explorer.png) |
-| **Files** — File browser & editor | **Terminal** — Web-based terminal | **Explorer** — Directory size monitoring |
 
 ---
 
