@@ -4,7 +4,7 @@
 
 **The lightweight platform to deploy, manage, and monitor all your processes — from a beautiful web dashboard or CLI.**
 
-[![Latest Release](https://img.shields.io/github/v/release/innovatekswd/mini-cluster?label=v1.0.58)](https://github.com/innovatekswd/mini-cluster/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/innovatekswd/mini-cluster?label=v1.0.59)](https://github.com/innovatekswd/mini-cluster/releases/latest)
 [![License](https://img.shields.io/github/license/innovatekswd/mini-cluster)](https://github.com/innovatekswd/mini-cluster)
 [![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black)](https://github.com/innovatekswd/mini-cluster#-quick-start)
 [![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white)](https://github.com/innovatekswd/mini-cluster#-quick-start)
@@ -159,13 +159,13 @@ mc service list
 
 ## 📦 Downloads
 
-### Quick Download — v1.0.58
+### Quick Download — v1.0.59
 
 | Platform | Download |
 |----------|----------|
-| 🐧 Linux (.deb) | [minicluster_1.0.58_amd64.deb](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.58/minicluster_1.0.58_amd64.deb) |
-| 🐧 Linux (.tar.gz amd64) | [minicluster-api-1.0.58-linux-amd64.tar.gz](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.58/minicluster-api-1.0.58-linux-amd64.tar.gz) |
-| 🐧 CLI (standalone) | [mc-linux-amd64](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.58/mc-linux-amd64) |
+| 🐧 Linux (.deb) | [minicluster_1.0.59_amd64.deb](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.59/minicluster_1.0.59_amd64.deb) |
+| 🐧 Linux (.tar.gz amd64) | [minicluster-api-1.0.59-linux-amd64.tar.gz](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.59/minicluster-api-1.0.59-linux-amd64.tar.gz) |
+| 🐧 CLI (standalone) | [mc-linux-amd64](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.59/mc-linux-amd64) |
 
 > 📂 **Browse all releases** on the [GitHub Releases page](https://github.com/innovatekswd/mini-cluster/releases).
 
