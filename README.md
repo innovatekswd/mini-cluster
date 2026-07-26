@@ -4,7 +4,7 @@
 
 **The lightweight platform to deploy, manage, and monitor all your processes — from a beautiful web dashboard or CLI.**
 
-[![Latest Release](https://img.shields.io/github/v/release/innovatekswd/mini-cluster?label=v1.0.70)](https://github.com/innovatekswd/mini-cluster/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/innovatekswd/mini-cluster?label=v1.0.71)](https://github.com/innovatekswd/mini-cluster/releases/latest)
 [![License](https://img.shields.io/github/license/innovatekswd/mini-cluster)](https://github.com/innovatekswd/mini-cluster)
 [![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black)](https://github.com/innovatekswd/mini-cluster#-quick-start)
 [![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white)](https://github.com/innovatekswd/mini-cluster#-quick-start)
@@ -159,14 +159,14 @@ mc service list
 
 ## 📦 Downloads
 
-### Quick Download — v1.0.70
+### Quick Download — v1.0.71
 
 | Platform | Download |
 |----------|----------|
-| 🐧 Linux (.deb) | [minicluster_1.0.70_amd64.deb](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.70/minicluster_1.0.70_amd64.deb) |
-| 🐧 Linux (.tar.gz amd64) | [minicluster-api-1.0.70-linux-amd64.tar.gz](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.70/minicluster-api-1.0.70-linux-amd64.tar.gz) |
-| 🐧 CLI (standalone) | [mc-linux-amd64](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.70/mc-linux-amd64) |
-| 🪟 Windows (.zip) | [minicluster-1.0.70-windows-amd64.zip](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.70/minicluster-1.0.70-windows-amd64.zip) |
+| 🐧 Linux (.deb) | [minicluster_1.0.71_amd64.deb](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.71/minicluster_1.0.71_amd64.deb) |
+| 🐧 Linux (.tar.gz amd64) | [minicluster-api-1.0.71-linux-amd64.tar.gz](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.71/minicluster-api-1.0.71-linux-amd64.tar.gz) |
+| 🐧 CLI (standalone) | [mc-linux-amd64](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.71/mc-linux-amd64) |
+| 🪟 Windows (.zip) | [minicluster-1.0.71-windows-amd64.zip](https://github.com/innovatekswd/mini-cluster/releases/download/v1.0.71/minicluster-1.0.71-windows-amd64.zip) |
 
 > 📂 **Browse all releases** on the [GitHub Releases page](https://github.com/innovatekswd/mini-cluster/releases).
 
