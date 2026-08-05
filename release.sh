@@ -73,6 +73,24 @@ echo ""
 BUILD_DIR="$PROJECT_DIR/build"
 
 if ! $NO_BUILD; then
+    # The build compiles the working tree, not the committed tree. v1.4.0
+    # shipped a /reference page that died on load because a half-finished,
+    # uncommitted edit was on disk when the release was built: the committed
+    # source was fine, the released bundle was not, and nothing in the release
+    # output hinted at the difference. Refuse to build from a dirty tree.
+    if [ -z "${ALLOW_DIRTY_RELEASE:-}" ]; then
+        DIRTY=$(git -C "$PROJECT_DIR" status --porcelain 2>/dev/null || true)
+        if [ -n "$DIRTY" ]; then
+            echo "  Error: $PROJECT_DIR has uncommitted changes."
+            echo ""
+            echo "$DIRTY" | head -20
+            echo ""
+            echo "  The build packages the working tree, so anything above ships."
+            echo "  Commit or stash first, or set ALLOW_DIRTY_RELEASE=1 to override."
+            exit 1
+        fi
+    fi
+
     echo "▸ Building packages for v${VERSION} ..."
     echo ""
 
