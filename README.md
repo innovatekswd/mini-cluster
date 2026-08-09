@@ -313,6 +313,128 @@ sudo systemctl edit minicluster
 sudo systemctl restart minicluster
 ```
 
+### Running Behind nginx (Reverse Proxy)
+
+MiniCluster relies on **WebSockets** for several core features:
+
+| Feature | Endpoint |
+|----------|----------|
+| Web terminal | `/api/terminal/sessions/{id}/attach` |
+| Container shell | `/api/containers/{id}/exec/attach` |
+| Live logs, metrics & status | `/api/graphql` (subscriptions) |
+
+A plain `proxy_pass` **does not** forward WebSocket upgrades, so these break while
+the rest of the dashboard works normally.
+
+**Symptoms of a misconfigured proxy:**
+
+- The terminal shows `[Error: Terminal WebSocket failed to connect]`
+- Live logs and service status never update, but the page itself loads fine
+- The attach request returns `426 Upgrade Required` (or a `4xx` from a CDN in front)
+
+**Why:** nginx talks HTTP/1.0 to the upstream by default, and `Upgrade` /
+`Connection` are hop-by-hop headers that nginx drops unless you re-set them
+explicitly. The handshake is rejected before it ever reaches MiniCluster.
+
+#### Working configuration
+
+Step 1 — define the `$connection_upgrade` variable in the **`http` context**:
+
+```nginx
+# /etc/nginx/conf.d/websocket_upgrade.conf
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+```
+
+> **`unknown "connection_upgrade" variable`?**
+> `$connection_upgrade` is **not** a built-in nginx variable — in every nginx
+> version it must be defined by a `map`, and `map` is only valid at the `http`
+> level. Putting it inside a `server { }` or `location { }` block produces this
+> error. On Debian/Ubuntu, `/etc/nginx/conf.d/*.conf` is included in the `http`
+> context, so the file above works as-is. In a `sites-available` file, put the
+> `map` at the very top, *outside* the `server { }` block.
+
+Step 2 — the site itself:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name mc.example.com;
+
+    # ... your ssl_certificate directives ...
+
+    # Explorer uploads: nginx caps request bodies at 1 MB by default.
+    client_max_body_size 0;
+
+    location / {
+        proxy_pass http://127.0.0.1:2016;
+
+        # Required for WebSockets — without these the terminal cannot connect.
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Terminals and log streams idle for long stretches. At nginx's 60s
+        # default, an open terminal is dropped every minute of inactivity.
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+
+        # Stream output as it arrives instead of waiting for a buffer to fill.
+        proxy_buffering off;
+    }
+}
+```
+
+Apply and verify:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Then open the dashboard, go to **Terminal**, and check the browser's Network tab:
+the `.../attach` request should report **101 Switching Protocols**. A `426` means
+the upgrade headers are still being stripped — check for another proxy or CDN in
+front of nginx.
+
+#### Without a `map` block
+
+If you cannot edit the `http` context (shared or managed nginx), pass the
+client's own `Connection` header through instead. This works on every nginx
+version and needs no `map`:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:2016;
+
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade    $http_upgrade;
+    proxy_set_header Connection $http_connection;   # no map required
+
+    proxy_set_header Host              $host;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_read_timeout 3600s;
+    proxy_buffering off;
+}
+```
+
+The `map` version is preferred: it sends `Connection: close` on ordinary
+requests, while this one forwards whatever the client sent.
+
+#### HTTPS
+
+Serve the dashboard over `https://` and the browser automatically uses `wss://`
+for the sockets — no extra configuration. Just keep `X-Forwarded-Proto $scheme`
+so MiniCluster generates correct links.
+
 ---
 
 ## ⚡ CLI — `mc`
