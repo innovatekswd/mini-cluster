@@ -27,10 +27,16 @@ detect_arch() {
 }
 
 # ── Resolve latest version from GitHub Releases ──────────────────────────────
+# Deliberately not api.github.com/repos/.../releases/latest: that endpoint
+# shares GitHub's unauthenticated API rate limit (60 req/hour) across every
+# installer run from the same IP, so one busy office/VPN egress starves
+# everyone behind it with a 403. The releases page redirect isn't API traffic
+# and isn't subject to that limit.
 resolve_version() {
     local ver
-    ver=$(curl -fsSL "https://api.github.com/repos/$GITHUB_REPO/releases/latest" \
-        | grep '"tag_name"' | sed -E 's/.*"v?([^"]+)".*/\1/')
+    ver=$(curl -fsSL -o /dev/null -w '%{url_effective}' \
+        "https://github.com/$GITHUB_REPO/releases/latest" \
+        | sed -E 's#.*/releases/tag/v?##')
     if [ -z "$ver" ]; then
         echo "Error: could not resolve latest version from GitHub." >&2
         exit 1
