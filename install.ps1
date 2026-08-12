@@ -48,10 +48,19 @@ if ($Uninstall) {
 }
 
 # ── Resolve version ───────────────────────────────────────────────────────────
+# Deliberately not api.github.com/repos/.../releases/latest: that endpoint
+# shares GitHub's unauthenticated API rate limit (60 req/hour) across every
+# installer run from the same IP, so one busy office/VPN egress starves
+# everyone behind it with a 403. The releases page redirect isn't API traffic
+# and isn't subject to that limit.
 if (-not $Version) {
     Write-Host "  → Resolving latest version..."
-    $release = Invoke-RestMethod "https://api.github.com/repos/$GithubRepo/releases/latest"
-    $Version = $release.tag_name -replace '^v', ''
+    $resp = Invoke-WebRequest -Uri "https://github.com/$GithubRepo/releases/latest" -MaximumRedirection 5 -UseBasicParsing
+    $Version = $resp.BaseResponse.ResponseUri.AbsoluteUri -replace '^.*/releases/tag/v?', ''
+    if (-not $Version) {
+        Write-Error "Could not resolve latest version from GitHub."
+        exit 1
+    }
 }
 
 Write-Host ""
