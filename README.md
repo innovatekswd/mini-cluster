@@ -4,7 +4,7 @@
 
 **The lightweight platform to deploy, manage, and monitor all your processes — from a beautiful web dashboard or CLI.**
 
-[![Latest Release](https://img.shields.io/github/v/release/innovatekswd/mini-cluster?label=v1.16.0)](https://github.com/innovatekswd/mini-cluster/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/innovatekswd/mini-cluster?label=v1.17.0)](https://github.com/innovatekswd/mini-cluster/releases/latest)
 [![License](https://img.shields.io/github/license/innovatekswd/mini-cluster)](https://github.com/innovatekswd/mini-cluster)
 [![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black)](https://github.com/innovatekswd/mini-cluster#-quick-start)
 [![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white)](https://github.com/innovatekswd/mini-cluster#-quick-start)
@@ -159,14 +159,14 @@ mc service list
 
 ## 📦 Downloads
 
-### Quick Download — v1.16.0
+### Quick Download — v1.17.0
 
 | Platform | Download |
 |----------|----------|
-| 🐧 Linux (.deb) | [minicluster_1.16.0_amd64.deb](https://github.com/innovatekswd/mini-cluster/releases/download/v1.16.0/minicluster_1.16.0_amd64.deb) |
-| 🐧 Linux (.tar.gz amd64) | [minicluster-api-1.16.0-linux-amd64.tar.gz](https://github.com/innovatekswd/mini-cluster/releases/download/v1.16.0/minicluster-api-1.16.0-linux-amd64.tar.gz) |
-| 🐧 CLI (standalone) | [mc-linux-amd64](https://github.com/innovatekswd/mini-cluster/releases/download/v1.16.0/mc-linux-amd64) |
-| 🪟 Windows (.zip) | [minicluster-1.16.0-windows-amd64.zip](https://github.com/innovatekswd/mini-cluster/releases/download/v1.16.0/minicluster-1.16.0-windows-amd64.zip) |
+| 🐧 Linux (.deb) | [minicluster_1.17.0_amd64.deb](https://github.com/innovatekswd/mini-cluster/releases/download/v1.17.0/minicluster_1.17.0_amd64.deb) |
+| 🐧 Linux (.tar.gz amd64) | [minicluster-api-1.17.0-linux-amd64.tar.gz](https://github.com/innovatekswd/mini-cluster/releases/download/v1.17.0/minicluster-api-1.17.0-linux-amd64.tar.gz) |
+| 🐧 CLI (standalone) | [mc-linux-amd64](https://github.com/innovatekswd/mini-cluster/releases/download/v1.17.0/mc-linux-amd64) |
+| 🪟 Windows (.zip) | [minicluster-1.17.0-windows-amd64.zip](https://github.com/innovatekswd/mini-cluster/releases/download/v1.17.0/minicluster-1.17.0-windows-amd64.zip) |
 
 > 📂 **Browse all releases** on the [GitHub Releases page](https://github.com/innovatekswd/mini-cluster/releases).
 
@@ -453,7 +453,7 @@ mc login
 mc login --username admin
 
 # Login to a specific server
-mc login --server http://1.16.068.1.100:2016
+mc login --server http://1.17.068.1.100:2016
 
 # Use an existing JWT token directly
 mc login --token eyJhbGciOiJIUzI1NiIsInR5cCI6...
@@ -797,7 +797,7 @@ mc registry versions my-package
 
 # Show details of a specific version
 mc registry show my-package
-mc registry show my-package@1.16.0
+mc registry show my-package@1.17.0
 
 # Search packages by keyword
 mc registry search "web server"
@@ -806,7 +806,7 @@ mc registry search "web server"
 mc install my-package
 
 # Install a specific version
-mc install my-package@1.16.0
+mc install my-package@1.17.0
 
 # List installed packages
 mc registry installs
@@ -875,7 +875,7 @@ mc package push ./my-package
 
 # Inspect a .mcpkg file — show components and required env vars
 mc inspect my-package-1.0.0.mcpkg
-mc inspect my-package@1.16.0          # inspect from registry
+mc inspect my-package@1.17.0          # inspect from registry
 ```
 
 ### Output Formats
